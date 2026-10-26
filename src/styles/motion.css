@@ -23,3 +23,19 @@
     scroll-behavior: auto !important;
   }
 }
+
+/*
+ * თემის გადართვა (§7: „ფერების გადასვლა, 200ms“). PreferencesProvider გადართვისას
+ * <html data-theme-switching>-ს 260ms-ით სვამს. მხოლოდ no-preference-ში — reduce-ში ფერი
+ * მყისიერად იცვლება. !important საჭიროა, რომ კომპონენტის საკუთარი transition-property
+ * (მაგ. translate) ამ 260ms-ში ფერებს არ გამორიცხავდეს.
+ */
+@media (prefers-reduced-motion: no-preference) {
+  [data-theme-switching] *,
+  [data-theme-switching] *::before,
+  [data-theme-switching] *::after {
+    transition-property: background-color, border-color, color, fill, stroke !important;
+    transition-duration: var(--mc-dur-base) !important;
+    transition-timing-function: var(--ease-out) !important;
+  }
+}

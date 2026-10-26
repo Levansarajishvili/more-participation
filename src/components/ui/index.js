@@ -24,6 +24,7 @@ export { default as Media } from './Media.jsx';
 export { default as Quote } from './Quote.jsx';
 export { default as SaveToggle } from './SaveToggle.jsx';
 export { default as SectionHeading } from './SectionHeading.jsx';
+export { default as Switch } from './Switch.jsx';
 export { default as UiLink } from './UiLink.jsx';
 export { default as VisuallyHidden } from './VisuallyHidden.jsx';
 

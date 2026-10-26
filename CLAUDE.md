@@ -100,26 +100,36 @@ scripts/
   i18n-stub.mjs           en.js-ის გენერაცია ka.js-იდან (`npm run i18n:stub`)
 src/
   main.jsx                შრიფტები, სტილები, RouterProvider
-  routes.jsx              საჯარო როუტები; /__kit მხოლოდ DEV
+  routes.jsx              createRoutes() (ყოველ router-ს საკუთარი lazy-ობიექტები), routes, pageRoutes;
+                          handle.title — i18n-ის გასაღები; /__kit მხოლოდ DEV
   styles/
-    index.css             შესასვლელი: tailwindcss → tokens → theme → base → focus → motion
+    index.css             შესასვლელი: tailwindcss → tokens → theme → base → components → layout → focus → motion
     tokens.css            --mc-* სამ თემაზე
     theme.css             @theme: შკალები, breakpoint-ები, რადიუსები, ხანგრძლივობები; @theme inline: ფერის უტილიტები
     base.css              ტიპოგრაფია, --mc-font-scale, --mc-leading, data-size / data-spacing
-    components.css        F3: UI ნაკრების სტილები (@layer components, mc-*), reduced-motion
-    focus.css             სამშრიანი რგოლი (layer-ის გარეშე) + ბარათის რგოლი (:has) + data-force
-    motion.css            prefers-reduced-motion
+    components.css        F3: UI ნაკრების სტილები (@layer components, mc-*), reduced-motion; F4: Switch
+    layout.css            F4: გარსი — ზედა ზოლი, მენიუ, ჰედერი (data-layout), მობ. პანელი, ფუტერი (container query)
+    focus.css             სამშრიანი რგოლი (layer-ის გარეშე) + ბარათის რგოლი (:has) + data-force;
+                          F4: #main და [data-route-focus] — რგოლის გარეშე
+    motion.css            prefers-reduced-motion; F4: [data-theme-switching] — თემის ფერების გადასვლა 200ms
     tokens.test.js        HEX მხოლოდ §2-იდან + კონტრასტის ბარიერები
   features/
-    a11y/prefs.js         mc-a11y-ის კონტრაქტი (F4-ის თავსებადობის მენიუ აქედან კითხულობს)
+    a11y/
+      prefs.js            mc-a11y-ის კონტრაქტი: parse/serialize, stepFontSize, read/writeStoredPrefs, applyRootAttributes
+      PreferencesProvider.jsx  state → <html data-*>, OS-ის თემა, storage event, თემის გადასვლა
+      usePreferences.js   PreferencesContext + usePreferences()
+      speech.js           speechSynthesis-ის store: ქართული ხმა, readElement, cancelSpeech, useSpeech (Esc აჩერებს)
+      A11yMenu.jsx        თავსებადობის მენიუ (არამოდალური პანელი)
+      __tests__/          მენიუ: შენახვა/აღდგენა, Esc, OS-ის თემა, ხმოვანი რეჟიმი; speech.js
   components/
     ui/                   F3: index.js (შესასვლელი), Button, Chip, Card, Media, Accordion, SaveToggle,
                           A11yBadge, GrowthStat, SectionHeading, Quote, Icon (+ icon-sprite.js), Logo
-                          (+ logo-geometry.js), VisuallyHidden, LiveRegion, UiLink, utils.js
+                          (+ logo-geometry.js), VisuallyHidden, LiveRegion, UiLink, Switch (F4), utils.js
       cards/              Article, Series, Video, News, Event, Team, PartnerCard
       fields/             TextField, TextArea, Select, Checkbox, RadioGroup, Field.jsx, field-utils.js
       __tests__/          axe, კლავიატურა, ლოგო, components.css (fixtures.jsx — mock-ის summary-ები)
-    layout/               RootLayout (F4-ში PageShell, SiteHeader, SiteFooter)
+    layout/               F4: RootLayout (Provider + PageShell + ScrollRestoration), PageShell, SiteHeader,
+                          SiteFooter, site-nav.js (ბმულები), useShellLayout.js, usePageTitle.js, __tests__/
     media/                F7: slider, player
   pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
   content/
@@ -146,7 +156,8 @@ src/
   assets/logo/            ლოგო LogoSynergy-დან: mark-{3d,flat,tiny}[-inverse], mark-mono, wordmark-{horizontal,vertical}
   assets/icons/icons.svg  ხატულების ერთადერთი წყარო (<symbol>, class main | accent | dot | fill)
   test/
-    setup.js              jest-dom, axe matcher, matchMedia stub
+    setup.js              jest-dom, axe matcher, matchMedia / scrollTo stub, localStorage + <html> გასუფთავება
+    media.js              installMatchMedia({ width, dark }) — მართვადი matchMedia + innerWidth
     contrast.js           WCAG კონტრასტი, tokens.css-ის პარსერი, სავალდებულო წყვილები
 ```
 
@@ -185,3 +196,31 @@ src/
 - ფორმის ველები: `label` სავალდებულოა, შეცდომა — `error` (სტრიქონი ან `ContentError.fields[name]`), სავალდებულო — `required`, არასავალდებულო — `optional`. options — `options(kind, ids)` (`{ id, label }`).
 - სტატუსის შეტყობინება — `<LiveRegion>`, რომელიც DOM-ში მუდმივად დგას; შეცვლა მხოლოდ შიგთავსისაა.
 - ტესტები: ყოველ ახალ კომპონენტს axe-ის შემთხვევა `__tests__/axe.test.jsx`-ში; ინტერაქცია — `userEvent.setup()` + კლავიატურა. ფერის კონტრასტს jsdom ვერ ამოწმებს — Chromium-ში `/__kit`-ზე axe (gate).
+
+## კოდის კონვენციები (F4)
+
+- გარსი ერთია: ყოველი საჯარო როუტი (404-ისა და გვერდის შეცდომის ჩათვლით) `PageShell`-ში ეხვევა. გვერდი
+  `<header>`, `<nav>`, `<footer>`-ს, თავსებადობის მენიუს ან რეჟიმის გადამრთველს არ ხატავს; გვერდზე
+  `<main>` არ არის — მას PageShell იძლევა (`id="main"`, `tabIndex={-1}`). ადმინი (F8) — `AdminShell`.
+- გვერდი `<h1>`-ს პირველივე რენდერზე ხატავს (ჩატვირთვის მდგომარეობაშიც) — როუტის შეცვლისას
+  ფოკუსი მასზე გადადის. `<title>` გვერდში აღარ იწერება: სტატიკური სათაური — როუტის
+  `handle: { title: 'nav.about' }` (i18n-ის გასაღები; `null` — მხოლოდ საიტის სახელი), დინამიკური —
+  `usePageTitle(article.title)`.
+- სათაური და ფოკუსი მხოლოდ pathname-ის ცვლილებაზე იცვლება; ფილტრი (`?category=`) მათ არ ეხება.
+  hash (`/about#team`) → ფოკუსი სამიზნეზე. ScrollRestoration ახალ გვერდზე ზემოთ ადის, „უკან“ აღადგენს.
+- თავსებადობის პარამეტრები მხოლოდ `usePreferences()`-ით: `prefs`, `theme` (მოქმედი), `fontScale`,
+  `setTheme`, `stepSize`, `setSpacing`, `setVoice`, `reset`. `localStorage['mc-a11y']`-ს და `<html data-*>`-ს
+  კომპონენტი პირდაპირ არ ეხება.
+- თემაზე დამოკიდებული JS (ლოგოს ტონი) — `theme`-იდან: light → `color`, dark → `inverse`,
+  contrast → `mono`. მუქი ფონის ზოლები (ზედა ზოლი, ფუტერი): ფონი `--mc-footer` ძირეული თემიდან,
+  შიგთავსი `data-theme="dark"` ქვეხე; ამ ქვეხიდან ამომხტარი პანელი ძირეულ თემას `data-theme={theme}`-ით აბრუნებს.
+- breakpoint-ი `data-size`-ს არ მიჰყვება (media query-ის rem = ბრაუზერის შრიფტი). შრიფტის მასშტაბზე
+  დამოკიდებული განლაგება — container query-ით (`container: name / inline-size`; მისი rem `<html>`-ის
+  ზომაა) ან, როცა DOM-ის რიგი იცვლება, JS-ით რეალური სიგანიდან (`useShellLayout`).
+- გრძელი ქართული სიტყვა ვიწრო ბლოკში: `overflow-wrap: anywhere` (min-content-საც ამცირებს).
+- სანავიგაციო ბმულები მხოლოდ `site-nav.js`-დან (`NAV_ITEMS`, `JOIN_HREF`, `EN_HREF`, `FOOTER_*`).
+- URL-ი, რომელიც ჯერ არ არსებობს: `SiteSettings.links.*` = null → ტექსტი „[ბმული მზადდება]“, ბმული
+  არა. ტელეფონი/ელფოსტა ბმული ხდება მხოლოდ `isPhone` / `isEmail`-ის შემდეგ.
+- ორობითი პარამეტრი — `<Switch>` (`role="switch"`); მიუწვდომელი — `disabled` + `disabledReason`
+  (`aria-disabled`, ფოკუსს იღებს, მიზეზი ხილულია). ზღვარზე მისული ღილაკი — `aria-disabled`, არა `disabled`.
+- ტესტებში router — `createMemoryRouter(createRoutes(), …)`; სიგანე და OS-ის თემა — `installMatchMedia()`.

@@ -25,6 +25,7 @@ import {
   SectionHeading,
   Select,
   SeriesCard,
+  Switch,
   TeamCard,
   TextArea,
   TextField,
@@ -40,6 +41,7 @@ import {
   listVideos,
 } from '@/content/adapter.js';
 import { ARTICLE_CATEGORIES, CONTACT_TOPICS, options, REPLY_CHANNELS } from '@/content/taxonomy.js';
+import { usePageTitle } from '@/components/layout/usePageTitle.js';
 import { useContent } from '@/hooks/useContent.js';
 import { t } from '@/i18n/index.js';
 
@@ -79,6 +81,11 @@ const UI_GLYPHS = [
   'captions',
   'online',
   'external',
+  'menu',
+  'moon',
+  'minus',
+  'reset',
+  'arrow-up-right',
 ];
 
 const FAQ = [
@@ -127,6 +134,7 @@ function State({ name, children }) {
 }
 
 export default function KitPage() {
+  usePageTitle('UI ნაკრები');
   const { data } = useContent(
     () =>
       Promise.all([
@@ -144,6 +152,7 @@ export default function KitPage() {
   const [topics, setTopics] = useState(/** @type {string[]} */ ([]));
   const [reply, setReply] = useState('email');
   const [busy, setBusy] = useState(false);
+  const [spacing, setSpacing] = useState(false);
   const [announcement, setAnnouncement] = useState('');
 
   const categoryOptions = [
@@ -154,14 +163,13 @@ export default function KitPage() {
 
   return (
     <div className="site-container flex flex-col gap-7 py-7">
-      <title>UI ნაკრები — მეტი ჩართულობა</title>
-      <header className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2">
         <h1 className="text-h1">UI ნაკრები</h1>
         <p className="max-w-article text-lead text-muted">
           F3: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
           მუშაობს; „Hover“, „ფოკუსი“ და „დაჭერილი“ სტატიკური ასლებია (data-force).
         </p>
-      </header>
+      </div>
 
       <KitSection id="kit-buttons" title="Button, IconButton">
         {() => (
@@ -389,6 +397,40 @@ export default function KitPage() {
             items={FAQ.map((item) => ({ ...item, title: `${item.title} (${theme})` }))}
             defaultOpen={['q2']}
           />
+        )}
+      </KitSection>
+
+      <KitSection
+        id="kit-switch"
+        title="Switch (F4)"
+        note="role=switch + aria-checked; მდგომარეობის ტექსტი aria-hidden-ია. გათიშული — aria-disabled: ფოკუსს იღებს და მიზეზს ხსნის."
+      >
+        {(theme) => (
+          <>
+            <Switch
+              icon="layout"
+              label={`${t('a11y.spacing')} (${theme})`}
+              description={t('a11y.spacingWide')}
+              checked={spacing}
+              onChange={setSpacing}
+            />
+            <Switch icon="layout" label="Hover" checked={false} data-force="hover" tabIndex={-1} />
+            <Switch icon="layout" label="ფოკუსი" checked data-force="focus" tabIndex={-1} />
+            <Switch
+              icon="layout"
+              label="დაჭერილი"
+              checked={false}
+              data-force="active"
+              tabIndex={-1}
+            />
+            <Switch
+              icon="voice"
+              label={`${t('a11y.voice')} (${theme})`}
+              checked={false}
+              disabled
+              disabledReason={t('a11y.voiceUnavailable')}
+            />
+          </>
         )}
       </KitSection>
 

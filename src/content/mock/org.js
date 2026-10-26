@@ -101,6 +101,12 @@ export function createSettings() {
     ],
     socialHandle: '[@მეტიჩართულობა]',
     team: { livedExperienceCount: '[N]' },
-    links: { privacy: null, vacancies: null, becomePartner: null, shareStory: null },
+    links: {
+      privacy: null,
+      vacancies: null,
+      becomePartner: null,
+      shareStory: null,
+      accessibilityStatement: null,
+    },
   };
 }

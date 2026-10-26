@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -79,6 +79,15 @@ describe('Logo', () => {
     expect(mark).toHaveAccessibleName('მთავარი გვერდი');
     expect(mark).toHaveAttribute('data-detail', '3d');
     expect(document.querySelector('[aria-hidden="true"][data-detail="tiny"]')).not.toBeNull();
+  });
+
+  it('ლოკაპი: სიტყვიერი ნიშანი lazy chunk-იდან ჩნდება, სახელი თავიდანვე სრულია', async () => {
+    render(<Logo layout="horizontal" size={56} />);
+    const lockup = screen.getByRole('img');
+    expect(lockup).toHaveAccessibleName(
+      'მეტი ჩართულობა განვითარებისა და სოციალური ცვლილებებისთვის',
+    );
+    await waitFor(() => expect(lockup.querySelectorAll(':scope > svg')).toHaveLength(2));
   });
 
   it('მინიმუმზე ნაკლები — dev-გაფრთხილება', () => {

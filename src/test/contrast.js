@@ -107,7 +107,19 @@ export const PAIRS = [
     min: MIN.graphic,
     themes: ['dark', 'contrast'],
   },
-  ...['--mc-bg', '--mc-surface', '--mc-alt', '--mc-hero', '--mc-footer', '--mc-cta'].map((bg) => ({
+  // F4: ჰედერის მთავარი ზოლი
+  { label: 'ტექსტი ჰედერზე', fg: '--mc-ink', bg: '--mc-header', min: MIN.body },
+  { label: 'ნავიგაციის აქტიური ხაზი', fg: '--mc-graphic', bg: '--mc-header', min: MIN.graphic },
+  { label: 'მეორეული ტექსტი ჰედერზე', fg: '--mc-muted', bg: '--mc-header', min: MIN.text },
+  ...[
+    '--mc-bg',
+    '--mc-surface',
+    '--mc-alt',
+    '--mc-hero',
+    '--mc-footer',
+    '--mc-header',
+    '--mc-cta',
+  ].map((bg) => ({
     label: 'ფოკუსის რგოლი (ერთი ფენა მაინც)',
     fg: ['--mc-ring-inner', '--mc-ring-mid', '--mc-ring-outer'],
     bg,

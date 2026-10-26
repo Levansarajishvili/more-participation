@@ -10,6 +10,8 @@
  * F3: UIKit-ის hover / pressed / ბარათის ჩარჩო / სექციის ზოლი §2-ის გარეთა ფერებს იყენებდა
  * (#DCE6F1, #16305A, #1E3A66, rgba-ჩრდილი). მათ ნაცვლად — სემანტიკური ტოკენები §2-ის HEX-ზე:
  * --mc-hover, --mc-pressed, --mc-pressed-ink, --mc-card-border, --mc-band-bg, --mc-band-ink.
+ *
+ * F4: --mc-header — ჰედერის ფონი (ღიაში surface, მუქში alt; ერთი ტოკენით ვერ გამოიხატებოდა).
  */
 @layer base {
   :root,
@@ -20,7 +22,8 @@
     --mc-surface: #ffffff; /* surface */
     --mc-alt: #e9eff6; /* alt */
     --mc-hero: #0b2545; /* navy-800 */
-    --mc-footer: #0a1d38; /* navy-900 */
+    --mc-footer: #0a1d38; /* navy-900 — ფუტერი და ჰედერის ზედა ზოლი */
+    --mc-header: #ffffff; /* surface — ჰედერის მთავარი ზოლი (SiteHeader) */
     --mc-ink: #0b2545; /* navy-800 */
     --mc-muted: #42526a; /* slate-600 */
     --mc-link: #155a78; /* petrol-600 */
@@ -57,6 +60,7 @@
     --mc-alt: #0b1c33; /* alt */
     --mc-hero: #030b16; /* hero */
     --mc-footer: #030b16; /* hero */
+    --mc-header: #0b1c33; /* alt — §2: „მონაცვლე სექცია, header“ */
     --mc-ink: #eaf0f7; /* ink */
     --mc-muted: #b8c7d9; /* muted */
     --mc-link: #8ec5ff; /* link */
@@ -94,6 +98,7 @@
     --mc-alt: #000000;
     --mc-hero: #000000;
     --mc-footer: #000000;
+    --mc-header: #000000;
     --mc-ink: #ffffff;
     --mc-muted: #ffffff;
     --mc-link: #ffe600;

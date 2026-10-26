@@ -1,9 +1,10 @@
+import { t } from '@/i18n/index.js';
+
 /** ვიდეოები (`/videos`). შიგთავსი — F7. */
 export default function VideosPage() {
   return (
-    <>
-      <title>ვიდეოები — მეტი ჩართულობა</title>
-      <h1>ვიდეოები</h1>
-    </>
+    <div className="site-container py-7">
+      <h1 className="text-h1">{t('nav.videos')}</h1>
+    </div>
   );
 }

@@ -6,8 +6,12 @@ import { afterEach, describe, expect, it } from 'vitest';
 import {
   A11Y_STORAGE_KEY,
   colorSchemeFor,
+  DEFAULT_PREFS,
   parsePrefs,
+  serializePrefs,
+  stepFontSize,
   toRootAttributes,
+  writeStoredPrefs,
 } from '@/features/a11y/prefs.js';
 
 const html = readFileSync(resolve('index.html'), 'utf8');
@@ -129,5 +133,35 @@ describe('prefs.js', () => {
       spacing: true,
       voice: true,
     });
+  });
+
+  it('stepFontSize: A11yPanel-ის ბიჯები, ზღვარზე უცვლელი', () => {
+    expect(stepFontSize(100, 1)).toBe(125);
+    expect(stepFontSize(175, 1)).toBe(200);
+    expect(stepFontSize(200, 1)).toBe(200);
+    expect(stepFontSize(100, -1)).toBe(100);
+    expect(stepFontSize(150, -1)).toBe(125);
+  });
+
+  it('serializePrefs: პროტოტიპის ფორმა + voice; parsePrefs-თან ორმხრივი', () => {
+    const prefs = { theme: 'dark', size: 150, spacing: true, voice: true };
+    expect(JSON.parse(serializePrefs(prefs))).toEqual({
+      size: 150,
+      theme: 'dark',
+      spacing: true,
+      voice: true,
+    });
+    expect(parsePrefs(serializePrefs(prefs))).toEqual(prefs);
+    // ხელით არჩეული თემის გარეშე `theme` არ იწერება — mc-boot OS-ს მიჰყვება
+    expect(JSON.parse(serializePrefs({ ...prefs, theme: null }))).not.toHaveProperty('theme');
+  });
+
+  it('writeStoredPrefs: ნაგულისხმევი პარამეტრები საცავიდან იშლება', () => {
+    writeStoredPrefs({ ...DEFAULT_PREFS, size: 125 });
+    expect(localStorage.getItem(A11Y_STORAGE_KEY)).toBe(
+      '{"size":125,"spacing":false,"voice":false}',
+    );
+    writeStoredPrefs({ ...DEFAULT_PREFS });
+    expect(localStorage.getItem(A11Y_STORAGE_KEY)).toBeNull();
   });
 });

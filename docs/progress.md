@@ -252,3 +252,111 @@ F1-ის რეპოს გასწორება: წაიშალა ც
 ### შემდეგი: F4 — გარსი
 
 SiteHeader (ზედა ზოლი, თავსებადობის მენიუ, ნავიგაცია `aria-current`, რეჟიმის გადამრთველი, CTA „ჩაერთე“, ჰამბურგერი < 1200px), SiteFooter, PageShell (skip-link — `VisuallyHidden focusable`), OS-ის თემის ცვლილება (F1-ის საკითხი 6). Gate: სრულად იმართება კლავიატურით. F3-იდან: `Logo` (ტონი თემით), `Button variant="cta"`, `IconButton`, `ChipGroup`/`RadioGroup` მენიუსთვის, `LiveRegion` („პარამეტრები ნაგულისხმევზე დაბრუნდა“).
+
+## F4 — გარსი ✅ (2026-10-26)
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (16 ფაილი, 361 ტესტი: F3-ის 302 + F4-ის 59; სუიტა ზედიზედ ოთხჯერ — 361/361) · `npm run build` ✓ + check-dist ✓ (14 JS chunk) · **Chromium 141.0.7390.37 + axe-core 4.14.0** (ფერის კონტრასტით):
+- გარსი 1440 / 390 × light / dark / contrast — **0 დარღვევა, 0 incomplete**, ჰორიზონტალური სქროლი არ არის;
+- გახსნილი თავსებადობის მენიუ — 0 დარღვევა; 12 incomplete = ფენა გვერდს ფარავს და axe ფონს ვერ ადგენს → პანელის ტექსტი computed style-ით გაიზომა: მინიმუმი ღიაში 6.85:1 (გათიშული პუნქტი), მუქში 9.07:1, კონტრასტში 21:1;
+- გახსნილი ჰამბურგერი (390) — WCAG-ის წესებით 0; best-practice `landmark-one-main` / `page-has-heading-one` ვარდება, რადგან `main` განზრახ `inert`-ია;
+- `/__kit` (უკვე გარსით) — 0 დარღვევა, 0 incomplete, 6 კომბინაცია;
+- ჩატევა: შრიფტი 100 / 125 / 150 / 175 / 200 × განლაგება ჩართ./გამორთ. × სიგანე 390 / 768 / 1199 / 1200 / 1300 / 1439 / 1440 / 1600 / 1920 / 2400 — 100 კომბინაცია, 0 გადაფენა / გადაკვეთა / სქროლი, ნავიგაცია ერთ ხაზზე;
+- **მხოლოდ კლავიატურით:** Tab-ის თანმიმდევრობა (იხ. ქვემოთ), ყოველ ინტერაქტიულ ელემენტზე რგოლი ჩანს; skip-link → `#main`; ჰამბურგერის ციკლი, Shift+Tab, Esc → ღილაკი; პანელის ბმული → ახალი გვერდის h1 + სათაური; მენიუ: + / რადიო ←→ / Esc → ღილაკი;
+- **გადატვირთვა:** შრიფტი 125% + მუქი → reload → `data-size="125"`, `data-theme="dark"` (mc-boot), საცავი `{"size":125,"theme":"dark","spacing":false,"voice":false}`;
+- container query-ის rem `<html>`-ს მიჰყვება: ფუტერი 1440-ზე — 100% 12 სვეტი, 125–150% 2, 200% 1;
+- reduced-motion (computed style): ისარი, ბურთულა, თემის გადასვლა 0s; no-preference — 200ms.
+
+### Tab-ის თანმიმდევრობა
+
+**1440 (wide):** 1 გადასვლა შინაარსზე → 2 თავსებადობის მენიუ → 3 English → 4 ლოგო („მეტი ჩართულობა — მთავარი“) → 5 მთავარი → 6 ჩვენ შესახებ → 7 სტატიები → 8 განვითარება → 9 ვიდეოები → 10 სიახლეები → 11 კონტაქტი → 12 მუქი რეჟიმი → 13 ჩაერთე → გვერდის შიგთავსი.
+
+**390 (compact):** 1 გადასვლა შინაარსზე (ჩანს ფოკუსისას) → 2 თავსებადობის მენიუ → 3 English → 4 ლოგო → 5 მუქი რეჟიმი → 6 მენიუ. გახსნილი მენიუ: 7 მთავარი … 13 კონტაქტი → 14 ჩაერთე → მენიუ (ციკლი).
+
+**გახსნილი თავსებადობის მენიუ (ორივე ზომა):** ღილაკი → დახურვა → ხმოვანი რეჟიმი → შრიფტის შემცირება → შრიფტის გაზრდა → კონტრასტი (რადიო, ←→) → განლაგება → გასუფთავება → English (პანელი იხურება).
+
+### მატრიცა
+
+| | light | dark | contrast |
+|---|---|---|---|
+| 1440 | ✓ wide, axe 0, მენიუ ✓ | ✓ wide, axe 0, მენიუ ✓, ლოგო inverse | ✓ wide, axe 0, მენიუ ✓, ლოგო mono |
+| 390 | ✓ compact, axe 0, ჰამბურგერი ✓, მენიუ ✓ | ✓ compact, axe 0, ჰამბურგერი ✓ | ✓ compact, axe 0, ჰამბურგერი ✓ |
+
+### შექმნილი ფაილები
+
+- `src/features/a11y/`: `PreferencesProvider.jsx`, `usePreferences.js`, `speech.js`, `A11yMenu.jsx`, `__tests__/a11y-menu.test.jsx`.
+- `src/components/layout/`: `PageShell.jsx`, `SiteHeader.jsx`, `SiteFooter.jsx`, `site-nav.js`, `useShellLayout.js`, `usePageTitle.js`, `__tests__/shell.test.jsx`.
+- `src/components/ui/Switch.jsx`, `src/hooks/useMediaQuery.js`, `src/pages/RootError.jsx`, `src/styles/layout.css`, `src/test/media.js`.
+- შეიცვალა: `routes.jsx` (`createRoutes()`, უგზო ErrorBoundary, `handle.title`), `routes.test.jsx`, `RootLayout.jsx`, `RouteError.jsx` (გარსის შიგნით), `NotFoundPage.jsx`, 8 placeholder-გვერდი (`<title>` ამოღებულია, h1 `t()`-ით), `KitPage.jsx` (Switch, ახალი გლიფები, `<header>` → `<div>`), `prefs.js`, `Logo.jsx` (lazy სიტყვიერი ნიშანი), `index.js` (Switch), `icons.svg` (+5), `tokens.css` / `theme.css` (`--mc-header`), `components.css` (Switch, IconButton `aria-pressed` / `aria-disabled`), `focus.css`, `motion.css`, `index.css`, `ka.js` / `en.js`, `model.js` + `mock/org.js` (`links.accessibilityStatement`), ტესტები: `tokens.test.js`, `contrast.js`, `setup.js`, `theme-boot.test.js`, `axe.test.jsx`, `components.test.jsx`; `CLAUDE.md` (რუკა + F4 კონვენციები), `docs/project-context.md`.
+
+### საჯარო API
+
+**თავსებადობის პარამეტრები** (`@/features/a11y/`):
+- `<PreferencesProvider>` — RootLayout-შია; `localStorage['mc-a11y']` → state → `<html data-theme | data-size | data-spacing>` + `<meta name="color-scheme">`; OS-ის თემა (`theme: null`-ზე, სესიის შუაშიც), `storage` event, თემის გადართვისას `data-theme-switching` 260ms.
+- `usePreferences() → { prefs: { theme | null, size, spacing, voice }, theme, systemTheme, fontScale, setTheme(theme | null), setSize(size), stepSize(1 | -1) → size, setSpacing(bool), setVoice(bool), reset() }`.
+- `prefs.js` (+): `stepFontSize(size, dir)`, `serializePrefs(prefs)` → `{ size, theme?, spacing, voice }`, `readStoredPrefs()`, `writeStoredPrefs(prefs)` (ნაგულისხმევზე გასაღები იშლება), `applyRootAttributes(root, prefs, prefersDark)`.
+- `speech.js`: `useSpeech() → { status: 'unsupported' | 'pending' | 'ready' | 'no-voice', phase: 'idle' | 'speaking' | 'done' | 'stopped', voiceName }`, `readElement(el) → boolean`, `speakBlocks(blocks)`, `cancelSpeech()`, `readableBlocks(root)`, `chunkText(text)` (≤ 220), `findGeorgianVoice(voices)`, `VOICE_TIMEOUT_MS` 2000, `SPEECH_LANG` 'ka-GE', `resetSpeechForTests()`.
+- `<A11yMenu className>` — SiteHeader-ში; გვერდი არ იყენებს.
+
+**გარსი** (`@/components/layout/`):
+- `<RootLayout>` = PreferencesProvider + PageShell + ScrollRestoration (root route Component).
+- `<PageShell>` — `<SiteHeader>` + `<main id="main" tabIndex={-1} inert={navOpen}>` + `<SiteFooter>`; სათაური, ფოკუსი (`data-route-focus` h1-ზე), ხმოვანი რეჟიმის წაკითხვა გადასვლისას.
+- `<SiteHeader onNavOpenChange={(open) => …}>` — `data-layout="wide | desktop | compact"`.
+- `<SiteFooter inert>`.
+- `useShellLayout(ref) → 'wide' | 'desktop' | 'compact'`; `shellLayoutFor(availablePx, remPx, spacing)`, `DESKTOP_REM` 65, `WIDE_REM` 78, `SPACING_FACTOR` 1.2.
+- `usePageTitle(title)`, `formatDocumentTitle(title)`, `PageTitleContext`.
+- `site-nav.js`: `NAV_ITEMS` (7 × `{ to, label, end? }`), `JOIN_HREF` '/contact', `EN_HREF` '[en-ვერსიის მისამართი]', `FOOTER_MATERIALS`, `FOOTER_ORGANIZATION`, `FOOTER_ACCESSIBILITY` (`{ label, to? | setting? }`).
+
+**როუტები** (`@/routes.jsx`): `createRoutes()`, `routes`, `pageRoutes`; `handle: { title: 'nav.about' }` (i18n-ის გასაღები; `null` — მხოლოდ საიტის სახელი). `/` → RootLayout (ErrorBoundary: RootError) → უგზო როუტი (ErrorBoundary: RouteError) → გვერდები, `*` → NotFoundPage.
+
+**UI ნაკრები (+):** `<Switch checked onChange label description icon disabled disabledReason id>` — `role="switch"`, `aria-checked`; გათიშული — `aria-disabled` + ხილული მიზეზი (`aria-describedby`). `IconButton` იღებს `aria-disabled`-ს (ფოკუსი რჩება), `aria-pressed="true"` = ink-ის შევსება. `Logo`: ლოკაპის სიტყვიერი ნიშანი — `React.lazy` (ცალკე chunk, 7.4 kB gzip თითო).
+
+**hook-ი:** `useMediaQuery(query) → boolean` (`change` event-ით).
+
+**ტოკენი:** `--mc-header` (#FFFFFF / #0B1C33 / #000000), Tailwind `bg-header`. **ხატულები (+):** `menu`, `moon`, `minus`, `reset`, `arrow-up-right`.
+
+**CSS (layout.css):** `.mc-topbar`, `.mc-skip(--hidden)`, `.mc-a11y`, `.mc-a11y__toggle`, `.mc-a11y-panel`, `.mc-a11y-row`, `.mc-mainbar`, `.mc-brand`, `.mc-nav`, `.mc-nav__link`, `.mc-mobile-nav`, `.mc-footer*`; container-ები `mc-topbar`, `mc-footer`.
+
+**i18n (+):** `nav.skipLink` („გადასვლა შინაარსზე“), `nav.english`, `a11y.menu` („თავსებადობის მენიუ“), `a11y.menuClose`, `a11y.voiceHint`, `a11y.voiceChecking`, `a11y.themes.{light,dark,contrast}` (სტანდარტული / მუქი / მაღალი), `a11y.status.*`, `common.on/off`, `footer.{descriptor,contactPage,reportBarrier,team,linkPending,year}`, `shell.*` (404 / შეცდომა); ამოღებულია `a11y.themeLight/Dark/Contrast`, `footer.accessibilityStatement` → „ხელმისაწვდომობის განცხადება“.
+
+**მოდელი:** `SiteSettings.links.accessibilityStatement: string | null` (mock — null).
+
+**ბანდლი:** მთავარი chunk 118.86 kB gzip (F3: 99.04 — პირველად შედის UI ნაკრები, ლოგოს ნიშნები, adapter, გარსი), CSS 11.15 kB gzip; `wordmark-horizontal` / `-vertical` — ცალკე chunk-ები (7.39 / 7.41 kB).
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+- **ოქროსფერი გარსში მხოლოდ CTA-ზე:** თავსებადობის ღილაკის ჩარჩო და გახსნილი მდგომარეობა (დაფაზე #FFB81C) → ink-ის ჩარჩო / შევსება (#EAF0F7 #0A1D38-ზე 14.69:1); პანელის ჩრდილი (#FFB81C) → `--mc-card-border`.
+- **ნავიგაცია 16px** (დაფაზე 17): 17px-ზე შვიდი პუნქტი 827px-ია, სრული ზოლი 1329px > 1280.
+- **ჰედერის ზღვარი ზოლის რეალურ სიგანეზეა** და არა media query-ზე: 100%-ზე იგივე 1200 / 1440px, მაგრამ 125%+-ზე და გაშლილ ინტერვალებზე ჰამბურგერი ადრე ჩნდება (წინააღმდეგ შემთხვევაში ნავიგაცია ეკრანს სცდებოდა).
+- **1200–1439px:** სახელი „მეტი ჩართულობა“ ვიზუალურად დამალულია (ნიშანი რჩება, სახელი — ეკრანის მკითხველისთვის).
+- **ლოგო ჰედერში** — ნიშანი + ცოცხალი ტექსტი (SiteHeader / HomeMobile დაფები), არა SVG ლოკაპი; ტონი თემით (color / inverse / mono).
+- **გვერდზე გადასვლა — ზემოთ მყისიერად** (prompt: reduced-motion-ში მყისიერად, სხვაგან გლუვად): ScrollRestoration „უკან“ პოზიციას აღადგენს და F2-ის `preventScrollReset`-ს პატივს სცემს; გლუვი სქროლი ახალ გვერდზე მდგომარეობის ცვლილებას არ ხსნის.
+- **„მუქი რეჟიმი“** — ხატულა მუდმივად მთვარეა (დაფაზე მზეზე იცვლებოდა); მდგომარეობა — შევსება + `aria-pressed`.
+- **პროგრამული ფოკუსი** (`#main`, h1) რგოლს არ აჩვენებს.
+- **A11yPanel-ის მენიუ** ციკლური ღილაკების (100→125→…→100, სტანდარტ.→მუქი→მაღალი) ნაცვლად: −/+ ზღვრებით, რადიო-ჯგუფი სამი ვარიანტით, `role="switch"`; პანელის რადიუსი 20 → 24 (იერარქია), სიგანე 360 (`22.5rem`, ≤ ეკრანი − 2 × კიდე).
+- **Switch-ის მდგომარეობის ტექსტი წარწერის ქვემოთაა** (დაფაზე მარჯვნივ, ჩიპად) — 360px-იან პანელში ერთ ხაზზე არ ეტეოდა.
+- **IconButton `aria-pressed`** — `--mc-pressed`-ის ნაცვლად ink-ის შევსება (მუქ ჰედერზე #0B1C33 ფონს ერწყმოდა).
+- **skip-link** desktop-ზე ყოველთვის ჩანს (SiteHeader დაფა), compact-ში — მხოლოდ ფოკუსისას (HomeMobile).
+- **ხმოვანი რეჟიმი:** A11yPanel-ის პროტოტიპი ერთ ტექსტს კითხულობდა; აქ — `#main` ბლოკებად და ჩართულ რეჟიმში ყოველი ახალი გვერდი; Esc აჩერებს. ჩატვირთვისას არ ირთვება.
+- **ფუტერი:** დაფის „განცხადება“ → „ხელმისაწვდომობის განცხადება“, „ბარიერის შეტყობინება“ → „შეგხვდა ბარიერი? შეგვატყობინე“ (HomeMobile; ბმულის ტექსტი კონტექსტის გარეშეც აღწერითია); ბმულების ფერი #DCE6F1 (ტოკენი არ არის) → `--mc-muted` (#B8C7D9, 9.80 / 11.48:1); გამყოფი #3A5A80 → `--mc-line`; სოციალური ქსელები — 44px აბრები ორივე ზომაზე.
+- **განლაგების ფუტერი** container query-ითაა (48rem → 2 სვეტი, 75rem → 12 სვეტი, დაფის მიხედვით 4 + 2 × 4).
+- **`/__kit`-ის `<header>` → `<div>`:** `main`-ში `header`-ს ზოგიერთი ხელსაწყო banner-ად ითვლის.
+- **გვერდებიდან `<title>` ამოღებულია** — სათაური ერთ ადგილას (PageShell).
+
+### ღია საკითხები
+
+1. **CTA „ჩაერთე“-ს სამიზნე** — §5-ში გვერდი არ არის; დროებით `/contact` (`JOIN_HREF`). ჰეროს CTA (F5) იგივეს გამოიყენებს.
+2. **English** — href `[en-ვერსიის მისამართი]` (`EN_HREF`); დაწკაპებისას 404-ზე მიდის.
+3. **ხელმისაწვდომობის განცხადება** — გვერდი/URL არ არის (`links.accessibilityStatement` = null). კონფიდენციალურობის პოლიტიკა და საიტის რუკა (HomeMobile-ის ქვედა ზოლი) ფუტერში ჯერ არ არის — URL-ები null-ია.
+4. **F5: About-ის `id="team"` და `id="partners"`** — ფუტერის ბმულები მათზე მიდის (ფოკუსი hash-ის სამიზნეზე გადადის).
+5. **გვერდების breakpoint-ები (F5+)** `data-size`-ს არ მიჰყვება — სვეტებიანი სექციები container query-ით (როგორც ფუტერი) ან ზღვრის გამრავლებით.
+6. **ხმოვანი რეჟიმი რეალური ქართული ხმით** შესამოწმებელია (Windows Narrator-ის ka-GE, macOS, Android); headless Chromium-ს ხმები არ აქვს, ტესტებში ყალბი API-ა. „მოუსმინე“ სტატიაზე (F6) იგივე `speech.js`-ს გამოიყენებს.
+7. **ჰედერის ზღვრები (65 / 78rem)** Noto Sans Georgian-ზეა გაზომილი; შრიფტის ჩატვირთვამდე (fallback Sylfaen / system-ui, `font-display: swap`) ზოლი შეიძლება ერთ კადრში განსხვავდებოდეს. F1-ის ღია საკითხი 5 (preload) ამას ამცირებს.
+8. **prerender / SSG (§9.4):** ჰედერის განლაგება JS-ზეა (`useShellLayout`) — სერვერზე `estimateAvailable` 1440-ით ითვლის; hydration-ზე compact-ზე გადასვლა შესაძლებელია.
+9. **ბანდლი** 118.86 kB gzip: ლოგოს 3D ნიშნები (3.2 kB × 2) და icon sprite (2.5 kB) მთავარშია; F8-მდე გასაზომი, საჭიროებისას ნიშნების lazy.
+10. **დაფები გასასწორებელია:** SiteHeader / A11yPanel — ოქროსფერი მენიუს ღილაკი და ჩრდილი; SiteFooter — #DCE6F1, #3A5A80; ნავიგაცია 17 → 16px.
+11. F3-ის პირველ ცივ გაშვებაზე ერთხელ ჩავარდა 1/302 ტესტი (timeout, ვერ დავიჭირე); F4-ის შემდეგ ზედიზედ ოთხი გაშვება 361/361 — არ განმეორდა.
+12. **დახურულია:** F1-ის 6 (OS-ის თემა სესიის შუაში), F3-ის 2 (ჰედერის ლოგოს ტონი), F3-ის 3 (ლოგოს bundle — სიტყვიერი ნიშანი lazy). ძალაშია: F1 3–5, 7; F2 2–11; F3 1, 4–7.
+
+### შემდეგი: F5 — მთავარი + ჩვენ შესახებ
+
+2 გვერდი: HomePage (ჰერო + CTA „ჩაერთე“ `JOIN_HREF`-ზე + სამი შესასვლელი + კვირის ვიდეო, სექციები), AboutPage (ფოტოები, მისია, ღირებულებები, „ჩვენი გზა“, გუნდი `id="team"`, პარტნიორები `id="partners"`). Gate: სათაურების ხე, axe 0. F4-იდან: გვერდი `<main>`-ს არ ხატავს; h1 — პირველივე რენდერზე; სათაური — `handle.title`; breakpoint-ები `data-size`-ზე — container query; ბადის gutter 24px (F1-ის ღია საკითხი 4).

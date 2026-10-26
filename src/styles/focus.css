@@ -50,3 +50,15 @@
     box-shadow: none;
   }
 }
+
+/*
+ * F4: პროგრამული ფოკუსი — skip-link-ის სამიზნე (<main id="main" tabindex="-1">) და გვერდის <h1>
+ * როუტის ცვლილებისას (PageShell, `data-route-focus`). ეს ელემენტები ინტერაქტიული არ არის:
+ * რგოლი არ ჩანს, ეკრანის მკითხველი კი სათაურს კითხულობს. შემდეგი Tab პირველ ბმულზე/ღილაკზე
+ * ჩვეულებრივ რგოლს აჩვენებს.
+ */
+:is(#main, [data-route-focus]):focus,
+:is(#main, [data-route-focus]):focus-visible {
+  outline: none;
+  box-shadow: none;
+}

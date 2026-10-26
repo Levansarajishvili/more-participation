@@ -25,6 +25,7 @@ import {
   SectionHeading,
   Select,
   SeriesCard,
+  Switch,
   TeamCard,
   TextArea,
   TextField,
@@ -73,6 +74,17 @@ const CASES = [
       <>
         <IconButton icon="close" label="დახურვა" />
         <IconButton icon="contrast" label="კონტრასტი" pressed={false} />
+        <IconButton icon="moon" label="მუქი რეჟიმი" pressed />
+        <IconButton icon="plus" label="გაზრდა" aria-disabled />
+      </>
+    ),
+  ],
+  [
+    'Switch: ჩართული, გამორთული, გათიშული მიზეზით',
+    () => (
+      <>
+        <Switch icon="layout" label="განლაგება" description="მეტი მანძილი" checked />
+        <Switch label="ხმოვანი რეჟიმი" checked={false} disabled disabledReason="ხმა არ არის" />
       </>
     ),
   ],

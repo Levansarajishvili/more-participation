@@ -121,4 +121,21 @@
   <symbol id="external" viewBox="0 0 24 24" data-label="ახალ ჩანართში">
     <path class="main" d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
   </symbol>
+
+  <!-- F4: გარსის გლიფები (SiteHeader / A11yPanel დაფებიდან; minus — plus-ის წყვილი) -->
+  <symbol id="menu" viewBox="0 0 24 24" data-label="მენიუ" stroke-width="2.5">
+    <path class="main" d="M4 7h16M4 12h16M4 17h16" />
+  </symbol>
+  <symbol id="moon" viewBox="0 0 24 24" data-label="მუქი რეჟიმი">
+    <path class="main" d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z" />
+  </symbol>
+  <symbol id="minus" viewBox="0 0 24 24" data-label="შემცირება">
+    <path class="main" d="M5 12h14" />
+  </symbol>
+  <symbol id="reset" viewBox="0 0 24 24" data-label="გასუფთავება">
+    <path class="main" d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5" />
+  </symbol>
+  <symbol id="arrow-up-right" viewBox="0 0 24 24" data-label="გადასვლა" stroke-width="2.5">
+    <path class="main" d="M7 17L17 7M9 7h8v8" />
+  </symbol>
 </svg>

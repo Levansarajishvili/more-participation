@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { lazy, Suspense, useEffect } from 'react';
 
 import Mark3d from '@/assets/logo/mark-3d.svg?react';
 import Mark3dInverse from '@/assets/logo/mark-3d-inverse.svg?react';
@@ -7,8 +7,6 @@ import MarkFlatInverse from '@/assets/logo/mark-flat-inverse.svg?react';
 import MarkMono from '@/assets/logo/mark-mono.svg?react';
 import MarkTiny from '@/assets/logo/mark-tiny.svg?react';
 import MarkTinyInverse from '@/assets/logo/mark-tiny-inverse.svg?react';
-import WordmarkHorizontal from '@/assets/logo/wordmark-horizontal.svg?react';
-import WordmarkVertical from '@/assets/logo/wordmark-vertical.svg?react';
 import { t } from '@/i18n/index.js';
 
 import {
@@ -30,7 +28,15 @@ const MARKS = {
   inverse: { '3d': Mark3dInverse, flat: MarkFlatInverse, tiny: MarkTinyInverse },
   mono: { '3d': MarkMono, flat: MarkMono, tiny: MarkMono },
 };
-const WORDMARKS = { horizontal: WordmarkHorizontal, vertical: WordmarkVertical };
+/**
+ * სიტყვიერი ნიშანი (≈ 7.2 kB gzip თითო) ცალკე chunk-ია: გარსი მხოლოდ ნიშანს იყენებს, ლოკაპი
+ * გვერდზე პირველი გამოყენებისას იტვირთება. ხელმისაწვდომი სახელი გარე `<svg>`-ზეა, ამიტომ
+ * ჩატვირთვამდეც სრულია. (F4: მთავარი bundle −14.4 kB gzip)
+ */
+const WORDMARKS = {
+  horizontal: lazy(() => import('@/assets/logo/wordmark-horizontal.svg?react')),
+  vertical: lazy(() => import('@/assets/logo/wordmark-vertical.svg?react')),
+};
 
 /** სიტყვიერი ნიშნის ფერები (ფაილში ნაგულისხმევია ფერადი: #0B2545 / #A8430C). */
 const WORDMARK_TONE = {
@@ -124,7 +130,9 @@ export default function Logo({
         width={geometry.mark.size}
         height={geometry.mark.size}
       />
-      <Wordmark {...geometry.wordmark} />
+      <Suspense fallback={null}>
+        <Wordmark {...geometry.wordmark} />
+      </Suspense>
     </svg>
   );
 }

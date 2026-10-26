@@ -25,3 +25,16 @@ if (!window.matchMedia) {
     dispatchEvent: () => false,
   });
 }
+
+// jsdom-ს scrollTo / scrollIntoView არ აქვს (ScrollRestoration, skip-link).
+window.scrollTo = () => {};
+if (!Element.prototype.scrollIntoView) Element.prototype.scrollIntoView = () => {};
+
+afterEach(() => {
+  // თავსებადობის პარამეტრები ტესტებს შორის არ გადადის
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  for (const name of ['data-theme', 'data-size', 'data-spacing', 'data-theme-switching']) {
+    document.documentElement.removeAttribute(name);
+  }
+});

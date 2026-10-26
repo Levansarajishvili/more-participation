@@ -2,7 +2,8 @@
  * თავსებადობის პარამეტრების კონტრაქტი: localStorage-ის გასაღები, დასაშვები მნიშვნელობები
  * და <html>-ის ატრიბუტები. index.html-ის inline script იგივე ლოგიკას ES5-ზე იმეორებს
  * (bundle-მდე იმპორტი შეუძლებელია); თანხვედრას src/theme-boot.test.js ამოწმებს.
- * თავსებადობის მენიუ (F4) მხოლოდ ამ მოდულით კითხულობს და წერს პარამეტრებს.
+ * თავსებადობის მენიუ (F4) მხოლოდ ამ მოდულით კითხულობს და წერს პარამეტრებს:
+ * React-ში — `PreferencesProvider` / `usePreferences()`.
  */
 
 export const A11Y_STORAGE_KEY = 'mc-a11y';
@@ -79,4 +80,78 @@ export function toRootAttributes(prefs, prefersDark) {
  */
 export function colorSchemeFor(theme) {
   return theme === 'light' ? 'light' : 'dark';
+}
+
+/**
+ * შრიფტის ზომის ბიჯი (A11yPanel: 100 → 125 → 150 → 175 → 200). ზღვარზე იგივე რჩება.
+ * @param {FontSize} size
+ * @param {1 | -1} direction
+ * @returns {FontSize}
+ */
+export function stepFontSize(size, direction) {
+  const index = FONT_SIZES.indexOf(size);
+  const next = Math.min(FONT_SIZES.length - 1, Math.max(0, (index < 0 ? 0 : index) + direction));
+  return FONT_SIZES[next];
+}
+
+/**
+ * პარამეტრები → localStorage-ის სტრიქონი. ფორმა A11yPanel-ის პროტოტიპისაა
+ * (`{ size, theme, spacing }`) + `voice`; ხელით არჩეული თემა თუ არ არის, `theme` არ იწერება.
+ * @param {A11yPrefs} prefs
+ * @returns {string}
+ */
+export function serializePrefs(prefs) {
+  return JSON.stringify({
+    size: prefs.size,
+    ...(prefs.theme ? { theme: prefs.theme } : {}),
+    spacing: prefs.spacing,
+    voice: prefs.voice,
+  });
+}
+
+/** @type {string | null} localStorage-ის გარეშე (პირადი რეჟიმი, დაბლოკილი საცავი) */
+let memoryCopy = null;
+
+/** @returns {A11yPrefs} */
+export function readStoredPrefs() {
+  try {
+    return parsePrefs(window.localStorage.getItem(A11Y_STORAGE_KEY));
+  } catch {
+    return parsePrefs(memoryCopy);
+  }
+}
+
+/**
+ * ნაგულისხმევი პარამეტრები საცავში არ იწერება — გასაღები იშლება („გასუფთავება“).
+ * @param {A11yPrefs} prefs
+ */
+export function writeStoredPrefs(prefs) {
+  const isDefault =
+    prefs.theme === DEFAULT_PREFS.theme &&
+    prefs.size === DEFAULT_PREFS.size &&
+    prefs.spacing === DEFAULT_PREFS.spacing &&
+    prefs.voice === DEFAULT_PREFS.voice;
+  const raw = isDefault ? null : serializePrefs(prefs);
+  try {
+    if (raw === null) window.localStorage.removeItem(A11Y_STORAGE_KEY);
+    else window.localStorage.setItem(A11Y_STORAGE_KEY, raw);
+  } catch {
+    memoryCopy = raw;
+  }
+}
+
+/**
+ * ატრიბუტების დადება `<html>`-ზე და `<meta name="color-scheme">`-ის განახლება — იგივე, რასაც
+ * index.html-ის mc-boot პირველ რენდერამდე აკეთებს.
+ * @param {HTMLElement} root
+ * @param {A11yPrefs} prefs
+ * @param {boolean} prefersDark
+ */
+export function applyRootAttributes(root, prefs, prefersDark) {
+  const attributes = toRootAttributes(prefs, prefersDark);
+  for (const [name, value] of Object.entries(attributes)) {
+    if (root.getAttribute(name) !== value) root.setAttribute(name, value);
+  }
+  const meta = root.ownerDocument.querySelector('meta[name="color-scheme"]');
+  meta?.setAttribute('content', colorSchemeFor(attributes['data-theme']));
 }

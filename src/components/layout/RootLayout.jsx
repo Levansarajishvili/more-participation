@@ -1,13 +1,19 @@
-import { Outlet } from 'react-router';
+import { ScrollRestoration } from 'react-router';
+
+import PreferencesProvider from '@/features/a11y/PreferencesProvider.jsx';
+
+import PageShell from './PageShell.jsx';
 
 /**
- * დროებითი ძირეული განლაგება. F4-ში იცვლება PageShell-ით
- * (SiteHeader + skip-link + main + SiteFooter); `id="main"` skip-link-ის სამიზნეა.
+ * ძირეული როუტის კომპონენტი: თავსებადობის პარამეტრები → გარსი → გვერდი.
+ * ScrollRestoration: ახალ გვერდზე ზემოთ (მყისიერად), „უკან / წინ“ — შენახული პოზიცია;
+ * `preventScrollReset` (ფილტრები, useUrlFilters) პოზიციას არ ცვლის; hash — სამიზნემდე.
  */
 export default function RootLayout() {
   return (
-    <main id="main">
-      <Outlet />
-    </main>
+    <PreferencesProvider>
+      <PageShell />
+      <ScrollRestoration />
+    </PreferencesProvider>
   );
 }

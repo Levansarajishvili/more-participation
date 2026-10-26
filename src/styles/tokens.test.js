@@ -4,9 +4,11 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import {
+  MIN,
   PAIRS,
   THEME_NAMES,
   allowedHexFromContext,
+  contrast,
   measure,
   parseThemes,
 } from '../test/contrast.js';
@@ -17,13 +19,14 @@ const context = readFileSync(resolve('docs/project-context.md'), 'utf8');
 const themes = parseThemes(css);
 const allowed = allowedHexFromContext(context);
 
-/** prompt 1-ის 19 ტოკენი + CTA ჩარჩო, ფოკუსის რგოლის სამი ფენა და F3-ის მდგომარეობები */
+/** prompt 1-ის 19 ტოკენი + CTA ჩარჩო, ფოკუსის რგოლის სამი ფენა, F3-ის მდგომარეობები და F4-ის ჰედერი */
 const REQUIRED = [
   'bg',
   'surface',
   'alt',
   'hero',
   'footer',
+  'header',
   'ink',
   'muted',
   'link',
@@ -90,4 +93,24 @@ describe('tokens.css', () => {
       });
     });
   }
+
+  /*
+   * F4: ზედა ზოლი და ფუტერი ორივე თემაში მუქია — შიგთავსს `data-theme="dark"` ქვეხე აქვს,
+   * ფონი კი ძირეული თემის `--mc-footer`-ია (ღიაში #0A1D38, მუქში #030B16).
+   */
+  describe('F4: მუქი ქვეხე --mc-footer-ზე', () => {
+    const cases = ['light', 'dark'].flatMap((root) =>
+      [
+        ['--mc-ink', MIN.body],
+        ['--mc-muted', MIN.text],
+        ['--mc-link', MIN.text],
+        ['--mc-border', MIN.graphic],
+        ['--mc-ring-mid', MIN.graphic],
+      ].map(([fg, min]) => [`${root}-ის ფუტერზე ${fg}`, root, fg, min]),
+    );
+    it.each(cases)('%s', (_, root, fg, min) => {
+      const ratio = contrast(themes.dark[fg], themes[root]['--mc-footer']);
+      expect(ratio, `${fg}: ${ratio.toFixed(2)}:1`).toBeGreaterThanOrEqual(min);
+    });
+  });
 });

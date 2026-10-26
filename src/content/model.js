@@ -402,7 +402,7 @@ export const MEDIA_RATIO = Object.freeze({
  * @property {SocialLink[]} social
  * @property {string} socialHandle     სლაიდის ქვედა ზოლში
  * @property {{ livedExperienceCount: string }} team  მხოლოდ ჯამური რიცხვი; პირად ბარათზე ეს ინფორმაცია არ ინახება
- * @property {{ privacy: string | null, vacancies: string | null, becomePartner: string | null, shareStory: string | null }} links
+ * @property {{ privacy: string | null, vacancies: string | null, becomePartner: string | null, shareStory: string | null, accessibilityStatement: string | null }} links  F4: + ხელმისაწვდომობის განცხადება (ფუტერი)
  */
 
 /* ─── ფორმები ───────────────────────────────────────────────────────────── */

@@ -1,0 +1,541 @@
+/*
+ * გარსის სტილები (F4): SiteHeader, თავსებადობის მენიუ, მობილური ნავიგაცია, SiteFooter, PageShell.
+ * წყარო: SiteHeader, SiteFooter, A11yPanel, HomeMobile დაფები. ფერი მხოლოდ --mc-* ტოკენით —
+ * ამ ფაილში HEX არ არის (ამოწმებს src/components/layout/__tests__/shell.test.jsx).
+ *
+ * ზედა ზოლი და ფუტერი: ფონი ძირეული თემის --mc-footer (ღია #0A1D38, მუქი #030B16), შიგთავსი
+ * `data-theme="dark"` ქვეხეა — ტექსტი #EAF0F7 (14.69:1 / 17.22:1), ფოკუსის რგოლი მუქის.
+ * ჰედერის მდგომარეობა `data-layout="wide | desktop | compact"`-ით (useShellLayout, JS):
+ * ზღვარი შრიფტის მასშტაბზე მრავლდება. ფუტერი — container query (rem = <html>-ის ზომა).
+ */
+@layer components {
+  /* ------------------------------------------------------------ PageShell */
+  #root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+  }
+  .mc-main {
+    display: block;
+    flex: 1 0 auto;
+  }
+
+  /* ------------------------------------------------------------ ჰედერი */
+  .mc-site-header {
+    position: relative;
+    z-index: 40;
+  }
+
+  /* ზედა ზოლი: 56px, flex-wrap — 200%-ზე და 390px-ზე ელემენტები ახალ ხაზზე გადადის */
+  .mc-topbar {
+    container: mc-topbar / inline-size;
+    background-color: var(--mc-footer);
+  }
+  /*
+   * გრძელი ქართული სიტყვა (ხელმისაწვდომობის, თავსებადობის) 200%-ზე და გაშლილ ინტერვალებზე
+   * 390px-ში ვერ ეტევა: `anywhere` სიტყვას მხოლოდ მაშინ ჰყოფს, როცა სხვა გზა არ არის — და
+   * flex-ელემენტის min-content-საც ამცირებს, რაც `break-word`-ს არ შეუძლია. ჰორიზონტალური სქროლი არ ჩნდება.
+   */
+  .mc-topbar__inner,
+  .mc-mobile-nav,
+  .mc-footer__inner {
+    overflow-wrap: anywhere;
+  }
+  .mc-topbar__inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    min-height: 3.5rem;
+    padding-block: 0.375rem;
+    font-size: var(--text-small);
+    line-height: 1.3;
+  }
+  .mc-skip,
+  .mc-topbar__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.625rem;
+    border-radius: 6px;
+    color: var(--mc-ink);
+    font-weight: 600;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+  .mc-skip:hover,
+  .mc-topbar__link:hover {
+    text-decoration-thickness: 2px;
+  }
+  /* compact: skip-link ჩანს მხოლოდ ფოკუსისას (HomeMobile-ის ზოლში ადგილი არ არის) */
+  .mc-skip--hidden:not(:focus) {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+  .mc-topbar__link {
+    margin-inline-start: auto;
+    padding-inline: 0.5rem;
+  }
+
+  /* ------------------------------------------------------------ თავსებადობის მენიუ */
+  .mc-a11y {
+    position: relative;
+  }
+  /* HomeMobile: padding 12, შუალედი 6 — 390-ზე ღილაკი და English ერთ ხაზზე ეტევა */
+  .mc-a11y__toggle.mc-btn {
+    gap: 0.375rem;
+    padding-inline: 0.75rem;
+    font-size: var(--text-small);
+  }
+  /* გახსნილი: ink-ის შევსება (დაფაზე ოქროსფერი იყო — ოქროსფერი მხოლოდ CTA-ა); hover — muted,
+     როგორც არჩეულ ჩიპზე. სპეციფიკურობა .mc-btn--secondary:hover-ს უტოლდება და მოგვიანებით დგას. */
+  .mc-a11y__toggle.mc-btn[aria-expanded='true'] {
+    border-color: var(--mc-ink);
+    background-color: var(--mc-ink);
+    color: var(--mc-surface);
+  }
+  .mc-a11y__toggle.mc-btn[aria-expanded='true']:hover {
+    border-color: var(--mc-muted);
+    background-color: var(--mc-muted);
+    color: var(--mc-surface);
+  }
+  .mc-a11y__toggle[aria-expanded='true'] .mc-icon:last-child {
+    rotate: 180deg;
+  }
+  /* ვიწრო ზოლი (390px 175%+): დეკორატიული ხატულა ქრება, რომ „თავსებადობის“ ერთ ხაზზე დაეტიოს */
+  @container mc-topbar (width < 24rem) {
+    .mc-a11y__toggle.mc-btn {
+      padding-inline: 0.5rem;
+    }
+    .mc-a11y__toggle .mc-icon:first-child {
+      display: none;
+    }
+  }
+  /* კიდევ უფრო ვიწრო (390px 200%-ზე): ისარიც ქრება — გახსნილ მდგომარეობას შევსება აჩვენებს */
+  @container mc-topbar (width < 13rem) {
+    .mc-a11y__toggle .mc-icon:last-child {
+      display: none;
+    }
+  }
+
+  .mc-a11y-panel {
+    position: absolute;
+    top: calc(100% + 0.75rem);
+    left: 0;
+    z-index: 60;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    width: 22.5rem;
+    max-width: calc(100vw - 2 * var(--mc-edge));
+    padding: 1rem;
+    border: 2px solid var(--mc-ink);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    box-shadow: 6px 6px 0 var(--mc-card-border);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    font-weight: 400;
+  }
+  .mc-a11y-panel[hidden] {
+    display: none;
+  }
+  .mc-a11y-panel__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.25rem;
+  }
+  .mc-a11y-panel__title {
+    margin: 0;
+    font-size: var(--text-body);
+    line-height: 1.3;
+    font-weight: 800;
+  }
+  .mc-a11y-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 0.5rem;
+    min-height: 3.25rem;
+    padding: 0.25rem 0.375rem 0.25rem 0.875rem;
+    border: 2px solid var(--mc-line);
+    border-radius: var(--radius-field-lg);
+    background-color: var(--mc-bg);
+    font-weight: 700;
+    line-height: 1.3;
+  }
+  .mc-a11y-row__label {
+    flex: 1 1 5rem;
+    min-width: 0;
+    overflow-wrap: normal;
+  }
+  /* −  100%  + : ჯგუფი არ იხლიჩება; ვიწრო პანელში მთლიანად ახალ ხაზზე გადადის */
+  .mc-a11y-row__controls {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.25rem;
+    margin-inline-start: auto;
+  }
+  .mc-a11y-row__value {
+    min-width: 3.25rem;
+    text-align: center;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  .mc-a11y-theme .mc-radio-list--pills .mc-choice--radio {
+    background-color: var(--mc-surface);
+  }
+  .mc-a11y-panel__rule {
+    width: 100%;
+    margin: 0.125rem 0;
+    border: 0;
+    border-top: 2px solid var(--mc-line);
+  }
+  .mc-a11y-panel__status {
+    min-height: 1.5rem;
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 500;
+    color: var(--mc-muted);
+  }
+
+  /* ------------------------------------------------------------ მთავარი ზოლი */
+  .mc-mainbar {
+    position: relative;
+    background-color: var(--mc-header);
+    border-bottom: 1px solid var(--mc-line);
+  }
+  .mc-mainbar__inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem 1rem;
+    min-height: 6rem;
+    padding-block: 0.5rem;
+  }
+  [data-layout='desktop'] .mc-mainbar__inner {
+    gap: 0.5rem;
+  }
+  /* compact: 200%-ზე 390px-ში სახელი ორ ხაზად, ღილაკები საჭიროებისას ქვემოთ (reflow, 1.4.10) */
+  [data-layout='compact'] .mc-mainbar__inner {
+    flex-wrap: wrap;
+    min-height: 4.5rem;
+    gap: 0.5rem;
+  }
+  .mc-mainbar__actions {
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.625rem;
+  }
+  [data-layout='compact'] .mc-mainbar__actions {
+    gap: 0.5rem;
+  }
+
+  .mc-brand {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    border-radius: var(--radius-field);
+    color: var(--mc-ink);
+    text-decoration: none;
+  }
+  .mc-brand .mc-logo {
+    flex-shrink: 0;
+  }
+  .mc-brand__name {
+    font-size: 1.3125rem; /* 21 */
+    line-height: 1.15;
+    font-weight: 900;
+    white-space: nowrap;
+  }
+  [data-layout='compact'] .mc-brand {
+    flex-shrink: 1;
+    gap: 0.625rem;
+    min-width: 0;
+  }
+  [data-layout='compact'] .mc-brand__name {
+    font-size: var(--text-body); /* 18 */
+    white-space: normal;
+    overflow-wrap: normal;
+  }
+  [data-layout='compact'] .mc-mainbar__actions {
+    margin-inline-start: auto;
+  }
+  .mc-brand:hover .mc-brand__name {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  /* ------------------------------------------------------------ ნავიგაცია */
+  .mc-nav__list {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-nav__link {
+    --mc-shadow: 0 0 transparent;
+    display: inline-flex;
+    align-items: center;
+    min-height: 3rem;
+    padding-inline: 0.5rem;
+    border-radius: 6px;
+    color: var(--mc-ink);
+    /* 16 და არა დაფის 17: შვიდი ქართული პუნქტი + სრული სახელი 1440-ზე 1280px-ში ეტევა */
+    font-size: var(--text-small);
+    line-height: 1.3;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    box-shadow: var(--mc-shadow);
+    transition: background-color var(--mc-dur-base) var(--ease-out);
+  }
+  .mc-nav__link:hover {
+    background-color: var(--mc-hover);
+  }
+  /* აქტიური: წონა 800 + 3px ხაზი (--mc-graphic: ღიაში 3.06:1, მუქში 7.32:1) */
+  .mc-nav__link[aria-current] {
+    --mc-shadow: inset 0 -3px 0 var(--mc-graphic);
+    font-weight: 800;
+  }
+  [data-layout='desktop'] .mc-nav__link {
+    padding-inline: 0.4375rem;
+  }
+  [data-theme='contrast'] .mc-nav__link:hover {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  /* ------------------------------------------------------------ მობილური პანელი */
+  .mc-mobile-nav {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    min-height: 100dvh;
+    padding-block: 1rem 3rem;
+    border-top: 1px solid var(--mc-line);
+    background-color: var(--mc-header);
+  }
+  .mc-mobile-nav[hidden] {
+    display: none;
+  }
+  .mc-mobile-nav__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  .mc-nav--panel .mc-nav__list {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.25rem;
+  }
+  .mc-nav--panel .mc-nav__link {
+    display: flex;
+    min-height: 3.25rem;
+    padding-inline: 1rem;
+    font-size: var(--text-body);
+    font-weight: 700;
+    white-space: normal;
+  }
+  .mc-nav--panel .mc-nav__link[aria-current] {
+    --mc-shadow: inset 4px 0 0 var(--mc-graphic);
+    font-weight: 800;
+  }
+
+  /* ------------------------------------------------------------ ფუტერი */
+  .mc-footer {
+    container: mc-footer / inline-size;
+    background-color: var(--mc-footer);
+  }
+  .mc-footer__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding-block: 2.75rem 1.75rem;
+  }
+  .mc-footer__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.75rem 1.5rem;
+  }
+  .mc-footer__brand {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .mc-footer__brand .mc-logo {
+    width: 3.375rem; /* 54 — HomeMobile */
+    height: 3.375rem;
+  }
+  .mc-footer__brand-text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    min-width: 0;
+  }
+  .mc-footer__name {
+    margin: 0;
+    font-size: 1.3125rem;
+    line-height: 1.25;
+    font-weight: 900;
+  }
+  .mc-footer__descriptor {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: 1.45;
+    font-weight: 700;
+  }
+  .mc-footer__slogan {
+    margin: 0.25rem 0 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-footer__heading {
+    margin: 0 0 0.25rem;
+    font-size: 1.0625rem;
+    line-height: 1.3;
+    font-weight: 800;
+  }
+  .mc-footer__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-footer__link,
+  .mc-footer__text {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 0.375rem;
+    min-height: 2.75rem;
+    font-size: 1.0625rem;
+    line-height: 1.35;
+    color: var(--mc-muted);
+  }
+  .mc-footer__link {
+    border-radius: 6px;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+  .mc-footer__link:hover {
+    color: var(--mc-ink);
+    text-decoration-thickness: 2px;
+  }
+  .mc-footer__pending {
+    font-size: var(--text-small);
+  }
+  .mc-footer__bottom {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--mc-line);
+  }
+  .mc-footer__copyright {
+    margin: 0;
+    font-size: var(--text-small);
+    color: var(--mc-muted);
+  }
+  .mc-footer__social-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  /* სოციალური ქსელი: ხილული სახელი, 44px, ჩარჩო --mc-border (6.53:1 / 7.65:1) */
+  .mc-footer__pill {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding-inline: 0.875rem;
+    border: 2px solid var(--mc-border);
+    border-radius: var(--radius-pill);
+    color: var(--mc-ink);
+    font-size: var(--text-small);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  a.mc-footer__pill:hover {
+    border-color: var(--mc-ink);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+  /* url: null — ბმული ჯერ არ არის: წყვეტილი ჩარჩო, muted ტექსტი (როგორც გათიშული ღილაკი) */
+  .mc-footer__pill--pending {
+    border-style: dashed;
+    color: var(--mc-muted);
+  }
+
+  @container mc-footer (min-width: 48rem) {
+    .mc-footer__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+    .mc-footer__brand {
+      grid-column: 1 / -1;
+    }
+    .mc-footer__bottom {
+      flex-direction: row;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+    }
+  }
+
+  /* SiteFooter დაფა: 12 სვეტი — ბრენდი 4, დანარჩენი ოთხი ბლოკი 2-2 */
+  @container mc-footer (min-width: 75rem) {
+    .mc-footer__inner {
+      gap: 2.25rem;
+      padding-block: 4rem 2.25rem;
+    }
+    .mc-footer__grid {
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+    }
+    .mc-footer__brand {
+      grid-column: 1 / span 4;
+      gap: 1.125rem;
+    }
+    .mc-footer__brand .mc-logo {
+      width: 5.25rem; /* 84 */
+      height: 5.25rem;
+    }
+    .mc-footer__col {
+      grid-column: span 2;
+    }
+  }
+}
+
+/* ისრის ბრუნვის ანიმაცია მხოლოდ no-preference-ში; reduce-ში ისარი მყისიერად ტრიალდება */
+@media (prefers-reduced-motion: no-preference) {
+  .mc-a11y__toggle .mc-icon:last-child {
+    transition: rotate var(--mc-dur-base) var(--ease-out);
+  }
+}
