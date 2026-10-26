@@ -38,8 +38,19 @@ export default [
     },
   },
   {
-    files: ['*.config.js', 'scripts/**/*.{js,mjs}', 'src/**/*.test.{js,jsx}', 'src/test/**'],
+    files: [
+      '*.config.js',
+      'scripts/**/*.{js,mjs}',
+      'src/**/*.test.{js,jsx}',
+      'src/test/**',
+      'src/**/__tests__/**',
+    ],
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
+  },
+  {
+    // ტესტის დამხმარე ფაილები (fixtures) კომპონენტებს არ ექსპორტებს — fast refresh აქ არ არის
+    files: ['src/**/__tests__/**'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
   {
     files: ['scripts/**/*.mjs'],

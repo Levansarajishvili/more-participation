@@ -71,6 +71,25 @@ export const PAIRS = [
     { label: 'CTA-ს საზღვარი', fg: ['--mc-cta', '--mc-cta-frame'], bg, min: MIN.graphic },
     { label: 'CTA-ს ჩრდილი', fg: '--mc-cta-shadow', bg, min: MIN.graphic },
   ]),
+  // F3: მდგომარეობები და ზოლი
+  { label: 'ტექსტი hover-ზე', fg: '--mc-ink', bg: '--mc-hover', min: MIN.body },
+  { label: 'ტექსტი დაჭერისას', fg: '--mc-pressed-ink', bg: '--mc-pressed', min: MIN.body },
+  { label: 'ტექსტი ზოლზე', fg: '--mc-band-ink', bg: '--mc-band-bg', min: MIN.body },
+  { label: 'მთავარი ღილაკი / არჩეული ჩიპი', fg: '--mc-surface', bg: '--mc-ink', min: MIN.body },
+  {
+    label: 'მთავარი ღილაკი hover (surface muted-ზე)',
+    fg: '--mc-surface',
+    bg: '--mc-muted',
+    min: MIN.text,
+    themes: ['light', 'dark'],
+  },
+  {
+    label: 'მთავარი ღილაკი დაჭერისას (surface link-ზე)',
+    fg: '--mc-surface',
+    bg: '--mc-link',
+    min: MIN.text,
+  },
+  { label: 'გათიშული ტექსტი', fg: '--mc-muted', bg: '--mc-alt', min: MIN.text },
   { label: 'CTA ტექსტი', fg: '--mc-cta-ink', bg: '--mc-cta', min: MIN.body },
   { label: 'CTA ტექსტი hover', fg: '--mc-cta-ink', bg: '--mc-cta-hover', min: MIN.body },
   {

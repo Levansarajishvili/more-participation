@@ -54,7 +54,7 @@
 
 - აგება 8 ნაბიჯად მიდის (project-context.md, §11). ერთი ჩატი = ერთი ნაბიჯი; სხვა ნაბიჯის სამუშაოს არ იწყებ.
 - prompt-ებში `CLAUDE.md` ნიშნავს ამ ინსტრუქციას, `docs/project-context.md` და `docs/progress.md` — Context-ის ფაილებს.
-- prompt-ებში ლოგოს ოთხი ვარიანტი და `variant` prop-ი მოძველებულია: კოდში მხოლოდ საბოლოო ლოგოა, „ერთად · სინერგია“ (project-context.md, §4). ლოგოს გამოსახულებას დიზაინის დაფებიდან არ იღებ.
+- prompt-ებში ლოგოს ოთხი ვარიანტი და `variant` prop-ი მოძველებულია: კოდში მხოლოდ საბოლოო ლოგოა, „ერთად · სინერგია“ (project-context.md, §4). ლოგოს გამოსახულების ერთადერთი წყარო LogoSynergy დაფაა (ფაილები `src/assets/logo/`-ში უკვე ამოღებულია); გვერდების დაფების `logo` გადამრთველიდან ლოგოს არ იღებ და თავიდან არ ხატავ.
 - ჩატის დასაწყისში წაიკითხე Context-ის progress.md. თუ რეპოს zip მიმაგრებულია, გახსენი sandbox-ში, გაუშვი `npm install` და gate-ები (lint, test, build) თავად შეამოწმე — არ ივარაუდო, რომ წინა ნაბიჯი მუშაობს.
 - დიზაინის დაფებს კანვიდან კითხულობ (ბმული — project-context.md, §8).
 - ჩატის ბოლოს მომეცი: (1) რეპო zip-ად, node_modules-ის, dist-ისა და .git-ის გარეშე; (2) progress.md სრულად — შექმნილი ფაილები, საჯარო API (props, hook-ები, ტოკენების სახელები), დიზაინიდან გადახვევები, ღია საკითხები, gate-ის სტატუსი. თუ ნაბიჯი ორ ნაწილად მიდის, zip მხოლოდ ბოლო ნაწილის შემდეგ.
@@ -81,7 +81,7 @@
 | svgr | vite-plugin-svgr 5.2.0 | `import Logo from './x.svg?react'` |
 | შრიფტები | @fontsource-variable/noto-sans-georgian 5.3.0, @fontsource/noto-serif-georgian 5.3.0 (500) | self-hosted, unicode-range |
 | ESLint | 9.39.5 + jsx-a11y (strict), react, react-hooks, react-refresh, prettier | 10-ზე jsx-a11y-ის peer ჯერ არ არის |
-| ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, vitest-axe | `expect.extend(axeMatchers)` setup-ში |
+| ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, user-event 14.6.7, vitest-axe | `expect.extend(axeMatchers)` setup-ში; კლავიატურა — `userEvent.setup()` |
 
 npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check), `format`, `test`, `test:watch`, `tokens:report`.
 
@@ -92,7 +92,8 @@ CLAUDE.md                 ეს ფაილი
 docs/
   project-context.md      Context-ის ასლი (ჭეშმარიტების წყარო)
   progress.md             ნაბიჯების შეჯამება
-index.html                lang="ka", color-scheme meta, inline mc-boot
+index.html                lang="ka", color-scheme meta, inline mc-boot, favicon.svg
+public/favicon.svg        ლოგოს 16px ვერსია (LogoSynergy)
 scripts/
   check-dist.mjs          postbuild: mc-boot პირველია, /__kit და validate.js არ არის, შრიფტი არ არის base64
   contrast-report.mjs     ტოკენების კონტრასტის ცხრილი
@@ -105,16 +106,22 @@ src/
     tokens.css            --mc-* სამ თემაზე
     theme.css             @theme: შკალები, breakpoint-ები, რადიუსები, ხანგრძლივობები; @theme inline: ფერის უტილიტები
     base.css              ტიპოგრაფია, --mc-font-scale, --mc-leading, data-size / data-spacing
-    focus.css             სამშრიანი რგოლი (layer-ის გარეშე)
+    components.css        F3: UI ნაკრების სტილები (@layer components, mc-*), reduced-motion
+    focus.css             სამშრიანი რგოლი (layer-ის გარეშე) + ბარათის რგოლი (:has) + data-force
     motion.css            prefers-reduced-motion
     tokens.test.js        HEX მხოლოდ §2-იდან + კონტრასტის ბარიერები
   features/
     a11y/prefs.js         mc-a11y-ის კონტრაქტი (F4-ის თავსებადობის მენიუ აქედან კითხულობს)
   components/
-    ui/                   F3: პრიმიტივები, ბარათები, ველები, Icon, Logo
+    ui/                   F3: index.js (შესასვლელი), Button, Chip, Card, Media, Accordion, SaveToggle,
+                          A11yBadge, GrowthStat, SectionHeading, Quote, Icon (+ icon-sprite.js), Logo
+                          (+ logo-geometry.js), VisuallyHidden, LiveRegion, UiLink, utils.js
+      cards/              Article, Series, Video, News, Event, Team, PartnerCard
+      fields/             TextField, TextArea, Select, Checkbox, RadioGroup, Field.jsx, field-utils.js
+      __tests__/          axe, კლავიატურა, ლოგო, components.css (fixtures.jsx — mock-ის summary-ები)
     layout/               RootLayout (F4-ში PageShell, SiteHeader, SiteFooter)
     media/                F7: slider, player
-  pages/                  თითო გვერდი = ერთი lazy chunk
+  pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
   content/
     adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk
     model.js              JSDoc typedef-ები + EXCERPT_MAX, MEDIA_RATIO, READING_WPM
@@ -136,7 +143,8 @@ src/
     en.js                 იგივე გასაღებები, [EN] placeholder-ები (გენერირდება)
     index.js              t(), createT(), formatDurationLabel + format.js-ის რეექსპორტი
     format.js             ka-GE, Asia/Tbilisi: formatDate, formatTimeRange, formatDuration…
-  assets/logo/            F3-მდე: საბოლოო ლოგოს SVG ნაკრები
+  assets/logo/            ლოგო LogoSynergy-დან: mark-{3d,flat,tiny}[-inverse], mark-mono, wordmark-{horizontal,vertical}
+  assets/icons/icons.svg  ხატულების ერთადერთი წყარო (<symbol>, class main | accent | dot | fill)
   test/
     setup.js              jest-dom, axe matcher, matchMedia stub
     contrast.js           WCAG კონტრასტი, tokens.css-ის პარსერი, სავალდებულო წყვილები
@@ -163,3 +171,17 @@ src/
 - სტატიის ტექსტი ბლოკებია (`p`, `h2`, `h3`, `list`, `quote`, `image`, `link`); HTML სტრიქონი არსად. `TextRun.lang = 'en'` → `<span lang="en">`.
 - `src: null` / URL `null` — მასალა ჯერ არ არის: ჩანაცვლების ჩარჩო ან გათიშული ღილაკი, არასოდეს გატეხილი სურათი.
 - mock-ში ყოველი წასაკითხი ტექსტი `[ფრჩხილებშია]` — ამას `src/content/mock/mock.test.js` ამოწმებს.
+
+## კოდის კონვენციები (F3)
+
+- UI მხოლოდ `@/components/ui/index.js`-დან: `Button`, `IconButton`, `Chip`, `ChipGroup`, `Card` და 7 ბარათი, `Media`, ველები, `Accordion`, `SaveToggle`, `A11yBadge`, `GrowthStat`, `SectionHeading`, `Quote`, `Icon`, `Logo`, `VisuallyHidden`, `LiveRegion`, `UiLink`. ახალ ღილაკს / ბარათს / ველს გვერდზე არ აწყობ — ჯერ ნაკრებს ამოწმებ, საჭიროებისას ნაკრებს ავრცობ.
+- ვიზუალური მდგომარეობა `components.css`-შია (`mc-*` კლასები, `@layer components`), განლაგება — Tailwind-ის უტილიტებით. ფერი მხოლოდ `var(--mc-*)`; hover → `--mc-hover`, დაჭერა → `--mc-pressed` / `--mc-pressed-ink`, ბარათის ჩარჩო → `--mc-card-border`, ფართო ზოლი → `--mc-band-bg` / `--mc-band-ink` + `--mc-band` კიდე.
+- ყოველი მდგომარეობის სელექტორი `:hover` / `:active`-ს გვერდით `[data-force~='hover' | 'active']`-საც იღებს (მხოლოდ `/__kit`-ისთვის); ფოკუსი — focus.css.
+- გადაადგილება (translate, scale, rotate-ის ანიმაცია) მხოლოდ `@media (prefers-reduced-motion: no-preference)`-ში; ფერის ცვლილება ხანგრძლივობით `var(--mc-dur-*)` (reduce-ში 0).
+- საკუთარი ჩრდილი — `--mc-shadow` (`box-shadow: var(--mc-shadow)`), რომ ფოკუსის რგოლი მას არ წაშლის.
+- დაწკაპებადი ბარათი — `Card`-ის `to` / `href` / `onSelect` (stretched-link); ბარათზე `<a>` არასოდეს ედება. ინტერაქტიული შვილები — `overlay` / `actions`.
+- ხატულა მხოლოდ `<Icon name>`-ით; ახალი ხატულა — `<symbol>` `icons.svg`-ში. მარტო-ხატულიან ღილაკს `IconButton`-ის `label` აქვს.
+- ლოგო მხოლოდ `<Logo>`-ით; `size` = სიმაღლე px-ში, დეტალს ზომა ირჩევს. ფაილებს ხელით არ ასწორებ — წყარო LogoSynergy-ა.
+- ფორმის ველები: `label` სავალდებულოა, შეცდომა — `error` (სტრიქონი ან `ContentError.fields[name]`), სავალდებულო — `required`, არასავალდებულო — `optional`. options — `options(kind, ids)` (`{ id, label }`).
+- სტატუსის შეტყობინება — `<LiveRegion>`, რომელიც DOM-ში მუდმივად დგას; შეცვლა მხოლოდ შიგთავსისაა.
+- ტესტები: ყოველ ახალ კომპონენტს axe-ის შემთხვევა `__tests__/axe.test.jsx`-ში; ინტერაქცია — `userEvent.setup()` + კლავიატურა. ფერის კონტრასტს jsdom ვერ ამოწმებს — Chromium-ში `/__kit`-ზე axe (gate).

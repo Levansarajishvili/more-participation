@@ -143,3 +143,112 @@ F1-ის რეპოს გასწორება: წაიშალა ც
 ### შემდეგი: F3 — UI ნაკრები
 
 პრიმიტივები, ბარათები, ველები, Icon, Logo, `/__kit`. Gate: axe 0 სამივე თემაში. F2-იდან: ბარათები `ArticleSummary` / `VideoSummary` / `SeriesSummary` / `NewsSummary`-ს იღებს, `src: null` → ჩანაცვლების ჩარჩო, თარიღი `formatDateParts`-ით, შენახვა `useSaved`-ით, ტექსტი `t()`-ით. F3-მდე საჭიროა ლოგოს ფაილური ნაკრები (§9.1).
+
+## F3 — UI ნაკრები ✅ (2026-10-26)
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (14 ფაილი, 302 ტესტი: F2-ის 240 + F3-ის 62 — 42 კომპონენტის, 20 ახალი კონტრასტის წყვილი) · `npm run build` ✓ + check-dist ✓ (`/__kit` build-ში არ ხვდება; მთავარი bundle უცვლელია — 313.39 kB / 99.04 kB gzip, გვერდები ნაკრებს ჯერ არ იყენებს) · **axe-core 4.14.0 Chromium-ში, `/__kit`: 0 დარღვევა, 0 incomplete** — ძირეული თემა light / dark / contrast × სიგანე 1440 და 390 (თითო გვერდზე სამივე თემის სვეტი, color-contrast ჩათვლით), ჰორიზონტალური სქროლი არ არის · **reduced-motion** (computed style): CTA და ბარათი `translate: none`, ყველა transition `0s`, შენახვის ანიმაცია `none`, „+“ მყისიერად 45°; ჩვეულებრივ რეჟიმში 120 / 150 / 180 / 200ms და −2 / +4 / −4px ძვრა.
+
+რეპოს გასწორება: წაიშალა `src/components/ui/.gitkeep`, `src/assets/logo/.gitkeep`; `routes.test.jsx`-ში `/__kit`-ის ტესტს 30s timeout (jsdom-ის axe დიდ გვერდზე > 5s).
+
+### შექმნილი ფაილები
+
+- `src/components/ui/`: `index.js`, `Button.jsx` (+ IconButton), `Chip.jsx` (+ ChipGroup), `Card.jsx`, `Media.jsx`, `Accordion.jsx`, `SaveToggle.jsx`, `A11yBadge.jsx`, `GrowthStat.jsx`, `SectionHeading.jsx`, `Quote.jsx`, `Icon.jsx`, `icon-sprite.js`, `Logo.jsx`, `logo-geometry.js`, `VisuallyHidden.jsx`, `LiveRegion.jsx`, `UiLink.jsx`, `utils.js`;
+  `cards/{Article,Series,Video,News,Event,Team,Partner}Card.jsx`; `fields/{TextField,TextArea,Select,Checkbox,RadioGroup,Field}.jsx`, `fields/field-utils.js`;
+  `__tests__/{axe,keyboard,components}.test.jsx`, `__tests__/fixtures.jsx`.
+- `src/assets/icons/icons.svg`; `src/assets/logo/{mark-3d,mark-3d-inverse,mark-flat,mark-flat-inverse,mark-tiny,mark-tiny-inverse,mark-mono,wordmark-horizontal,wordmark-vertical}.svg`; `public/favicon.svg`.
+- `src/styles/components.css`.
+- შეიცვალა: `tokens.css` (+6 ტოკენი), `tokens.test.js`, `src/test/contrast.js` (+8 წყვილი), `focus.css` (ბარათის რგოლი, `data-force`), `index.css` (components.css), `pages/KitPage.jsx`, `i18n/ka.js` + `en.js` (`saved.toggle`, `saved.toggleOn`, `media.*`, `fields.*`), `routes.test.jsx`, `index.html` (favicon), `eslint.config.js` (`__tests__` — node globals, react-refresh off), `package.json` (`@testing-library/user-event` 14.6.7, exact), `CLAUDE.md` (რუკა, F3 კონვენციები, ლოგოს წყარო), `docs/project-context.md` (§2, §4, §8, §9, §10).
+
+### საჯარო API
+
+**ტოკენები (ახალი):** `--mc-hover`, `--mc-pressed`, `--mc-pressed-ink`, `--mc-card-border`, `--mc-band-bg`, `--mc-band-ink` (მნიშვნელობები და კონტრასტი — project-context §2). ლოგოს ცვლადები: `--mc-logo-name`, `--mc-logo-descriptor`, `--mc-logo-knockout`. ხატულის: `--mc-icon-accent`.
+
+**კომპონენტები** (`@/components/ui/index.js`; ყოველ ფაილში JSDoc; დამატებითი props → ძირეულ ელემენტზე):
+
+| კომპონენტი | props |
+|---|---|
+| `Button` | `variant: 'cta' \| 'primary' \| 'secondary' \| 'link'` = secondary, `size: 'sm' \| 'md' \| 'lg'` (44 / 48 / 56; cta → lg), `to`, `href`, `newTab`, `type`, `disabled`, `loading`, `loadingLabel`, `icon`, `iconEnd`, `fullWidth`, `onClick` |
+| `IconButton` | `icon`, **`label`** (სავალდებულო), `variant: 'secondary' \| 'primary' \| 'ghost'`, `size: 'sm' \| 'md'`, `pressed`, `disabled`, `to`, `href`, `newTab` |
+| `Chip` | `pressed`, `onClick`, `disabled`, `lang` |
+| `ChipGroup` | `label`, `labelHidden`, `options: { id: string \| null, label, lang?, disabled? }[]`, `value`, `onChange`, `multiple` |
+| `Card` | `title`, `headingLevel` = h3, `to` / `href` / `newTab` / `onSelect`, `titleLang`, `eyebrow`, `media`, `overlay`, `meta`, `actions`, `aside`, `children`, `as` = article |
+| `ArticleCard` | `article: ArticleSummary`, `headingLevel`, `saveable` = true |
+| `SeriesCard` | `series: SeriesSummary`, `headingLevel` → `/development?series=:slug` |
+| `VideoCard` | `video: VideoSummary`, `headingLevel`, `to` (ნაგულისხმევი `/videos?video=:slug`), `onSelect` |
+| `NewsCard` | `item: NewsSummary`, `headingLevel`, `to` (ბმული მხოლოდ მითითებისას) |
+| `EventCard` / `TeamCard` / `PartnerCard` | `event: Event` / `member: TeamMember` / `partner: Partner`, `headingLevel` |
+| `Media` | `image: Image \| null`, `ratio`, `kind: 'photo' \| 'poster' \| 'logo' \| 'portrait'`, `fit: 'cover' \| 'contain'`, `decorative`, `round`, `loading` |
+| `TextField` / `TextArea` | `label`, `hint`, `error: string \| { message }`, `optional`, `id`, `type` / `rows`, + input props (`required`, `value`, …) |
+| `Select` | `label`, `options: { id, label }[]`, `placeholder`, `hint`, `error`, `optional`, + select props |
+| `Checkbox` | `label`, `hint`, `error`, + input props |
+| `RadioGroup` | `legend`, `name`, `options: { id, label, lang? }[]`, `value` / `defaultValue`, `onChange`, `hint`, `error`, `optional`, `required`, `layout: 'pills' \| 'list'` |
+| `Accordion` | `items: { id, title, content }[]`, `headingLevel` = h3, `multiple` = true, `defaultOpen: string[]` |
+| `SaveToggle` | `slug`, `title`, `variant: 'icon' \| 'label'`, `onChange(saved)` |
+| `A11yBadge` | `kind: 'wheelchair' \| 'signInterpreter' \| 'captions' \| 'format'`, `value: AccessLevel \| EventFormat` |
+| `GrowthStat` | `value`, `label` |
+| `SectionHeading` | `title`, `as` = h2, `size`, `id`, `eyebrow`, `lead`, `action`, `band` |
+| `Quote` | `children`, `cite`, `lang` |
+| `Icon` | `name`, `size` = '1.5rem', `accent`, `label` (→ role="img") |
+| `Logo` | `layout: 'horizontal' \| 'vertical' \| 'mark'`, `tone: 'color' \| 'mono' \| 'inverse'`, `size` (სიმაღლე px; 56 / 160 / 48), `label`, `decorative`, `knockout` |
+| `VisuallyHidden` | `as`, `focusable` |
+| `LiveRegion` | `children`, `visible`, `alert`, `as` |
+| `UiLink` | `to` / `href`, `newTab` |
+
+**კონსტანტები:** `BRAND_ICONS` (18), `ICONS`, `LOGO_3D_MIN` 48, `LOGO_FLAT_MIN` 24, `LOGO_MIN_WIDTH { mark 24, horizontal 160, vertical 120 }`, `LOGO_CLEAR_SPACE` 0.23, `logoMetrics(layout, size) → { width, height, markPx }`, `logoDetail(markPx) → '3d' | 'flat' | 'tiny'`.
+
+**ხატულები** (`icons.svg`): IconSet — engagement, growth, change, education, employment, art, sport, civic, volunteer, partnership, event, location, contact, accessibility, voice, font-size, contrast, layout; UI — check, alert, triangle-up, sign-language, bookmark, play (დაფებიდან), plus, chevron-down, close, captions, online, external (ზოგადი).
+
+**ლოგოს ზომები:** ჰორიზონტალური viewBox 712.38 × 129.69 (size 56 → 307.6 × 56, ნიშანი 65.3px → 3D; 3D იწყება 41.2px სიმაღლიდან; მინ. 160px სიგანე = 29.1px); ვერტიკალური 391.65 × 336.65. ფაილები gzip-ით: 3D ნიშანი 3.2 kB, ბრტყელი 1.8, tiny 0.7, mono 0.7, სიტყვიერი ნიშანი 7.2 kB თითო; მთელი ნაკრები 12.2 kB.
+
+**კომპონენტი → UIKit-ის მდგომარეობები → განსხვავება დაფისგან:**
+
+| კომპონენტი | მდგომარეობები | განსხვავება |
+|---|---|---|
+| Button cta | ნაგულისხმ., hover, ფოკუსი, დაჭერილი, გათიშული, loading | დაფას ემთხვევა (4px / 6px ჩრდილი, −2 / +4px); ჩრდილი `--mc-shadow`-ითაა, გათიშულის ფონი `--mc-alt`. |
+| Button primary | იგივე | დაფაზე არ არის: ink ფონი, hover → muted, დაჭერა → link (ოქროსფერი მხოლოდ CTA-ა). |
+| Button secondary | იგივე | hover #DCE6F1 / #16305A → `--mc-hover`, დაჭერა #1E3A66 → `--mc-pressed` (§2-ის ფერები). |
+| Button link | იგივე | დაფას ემთხვევა; 44px სამიზნე. |
+| IconButton | ნაგულისხმ., hover, ფოკუსი, aria-pressed, გათიშული | დაფის ✕ ღილაკი (44px წრე), ხატულა SVG-ით და არა ტექსტით. |
+| Chip | იგივე + არჩეული | მინ. 48px, ✓ არჩეულზე — დაფას ემთხვევა; hover-ს ფონი `--mc-hover`. |
+| Card | ნაგულისხმ., hover, focus-within | რადიუსი 24 (ContentKit 18); hover-ჩრდილი rgba-ს ნაცვლად მყარი `0 4px 0 --mc-card-border`. |
+| ველები | ნაგულისხმ., hover, ფოკუსი, შეცდომა, გათიშული | სიმაღლე 56 (Components; UIKit 52), შეცდომის ხატულა Components-იდან; მუქში ველის ფონი surface (UIKit #0B1C33). |
+| Checkbox / Radio | მონიშნული, შეცდომა, გათიშული | 24px, რადიო — აბრები (Components); forced-colors-ში ნატიური ველი. |
+| Accordion | დახურული, გახსნილი, hover, ფოკუსი | „+“ SVG-ია და არა ტექსტი; ↑ ↓ Home End. |
+| SaveToggle | ნაგულისხმ., hover, ფოკუსი, დაჭერილი, შენახული | შევსება `--mc-ink` (ContentKit-ზე ოქროსფერია); წრე 44px (ბარათზე 36px იყო). |
+| A11yBadge / GrowthStat | yes / on-request / no | ტინტის ფონი (#E3F6EE) → surface + 2px ჩარჩო (§2); მწვანე მხოლოდ ზრდაზე. |
+| SectionHeading band | ღია / მუქი / კონტრასტი | `--mc-band-bg` / `--mc-band-ink` ტოკენებით; მუქში 6px კიდე — §2-ის წესი. |
+| VideoCard | ნაგულისხმ., hover, ფოკუსი | CC / ჟესტ. / დრო — ფიქსირებული §2-ის წყვილები (rgba(0,0,0,.75)-ის ნაცვლად #0A1D38). |
+| Logo | 3D / ბრტყელი / favicon × ფერადი / ინვერსიული / მონო | LogoSynergy; ვერტიკალური ლოკაპი და ბრტყელი ინვერსია აწყობილია (იხ. გადახვევები). |
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+- **ლოგოს წყარო LogoSynergy დაფაა** (მომხმარებლის გადაწყვეტილება; prompt-ის „ფაილები რეპოში თუ არ არის — გაჩერდი“ ამით შეიცვალა). დაფის SVG-ები უცვლელადაა გადმოტანილი (ზომის ატრიბუტების გარეშე).
+- **აწყობილი ვერსიები:** `mark-flat-inverse` / `mark-tiny-inverse` — ბრტყელი ფორმა + დაფის ინვერსიული პალიტრა (30 წყვილი 3D ფერადი ↔ 3D ინვერსიული შედარებით, მხოლოდ ნაჭრებზე; შემოწმება: იგივე წესი 3D ფერადს დაფის 3D ინვერსიულად ზუსტად აქცევს). `wordmark-vertical` — დაფის გლიფები LogoSystem-ის ვერტიკალური განლაგებით („მეტი / ჩართულობა“, დესკრიპტორი ორ სტრიქონად). მონოქრომის თეთრი 3px კონტური → `--mc-logo-knockout` (ნაგულისხმევი `--mc-bg`).
+- **ლოკაპის viewBox** მელნის საზღვრამდეა შეკუმშული (დაფაზე 773 × 220 ცარიელი კიდეებით) — `size` ლოგოს ხილული სიმაღლეა.
+- **სუფთა სივრცე** = ჰაბის რადიუსი (ნიშნის 23%) LogoSynergy-დან; §4-ის „თავის დიამეტრი“ შეიცვალა.
+- **ახალი ტოკენები** (§2-ის HEX-ით) UIKit-ის §2-ის გარეთა hover / pressed / ტინტების ნაცვლად; კონტრასტის თემაში hover-ს ხაზგასმა აჩვენებს (ფონი შავი რჩება).
+- **Button `primary`** — დაფაზე არ არის; ink-ის შევსება (ContentKit-ის „შემდეგი“ ღილაკის სტილი).
+- **SaveToggle:** ხატულიანს მუდმივი სახელი „შენახვა: {სათაური}“ + `aria-pressed` (APG); ლეიბლიანს ხილული „შენახვა / შენახულია“ + დამალული სათაური — label-in-name.
+- **Card-ის DOM რიგი:** სათაური → წარწერა → ტექსტი → მეტა → მედია; ვიზუალურად მედია და წარწერა ზემოთაა (CSS `order`).
+- **ChipGroup:** ყოველი ჩიპი Tab-გაჩერებაა (roving tabindex არ არის); ერთარჩევნიანში არჩეულზე ხელახლა დაჭერა არაფერს ცვლის.
+- **RadioGroup** — `role="radiogroup"` + `aria-labelledby` (fieldset-ზე radiogroup jsx-a11y-ს ეწინააღმდეგება).
+- **VideoCard-ის დაკვრის ნიშანი ოქროსფერია** (დაფების მიხედვით; დეკორატიული, hover / ფოკუსზე ჩნდება) — დაკვრა CTA-დ ითვლება.
+- **Accordion:** `region` მხოლოდ ≤ 6 პანელზე (APG).
+- **A11yBadge** მწვანეს არ იყენებს: დონე ჩარჩოს ტიპით და ტექსტით განსხვავდება.
+- **ხატულები:** 18 ხატულის აქცენტი ნაგულისხმევად `currentColor`-ია (#F26A1F ღია ფონზე 2.82–3.06:1); `accent` prop — დეკორატიული გამოყენებისთვის. 6 ზოგადი UI-გლიფი (plus, chevron-down, close, captions, online, external) დაფებზე არ იყო.
+- **`/__kit`-ის წარწერები** dev-ის ტექსტია და i18n-ში არ არის.
+
+### ღია საკითხები
+
+1. **ვერტიკალური ლოკაპი** — დასადასტურებელი (LogoSynergy-ზე არ არის). ბეჭდვის ნაკრები (PNG, PDF მმ-ში, ავატარი, apple-touch-icon, ICO) — ჯერ არ არის.
+2. **ჰედერის ლოგოს ტონი (F4):** ღიაში `color`, მუქში `inverse`, კონტრასტში `mono` — F4-ის თემის hook-მა უნდა აირჩიოს (ან CSS-ით ორი ვერსია).
+3. **ლოგოს bundle:** `Logo` ყველა ვარიანტს სტატიკურად შემოიტანს (≈ 12 kB gzip SVG + JSX). F4-ში ჰედერისთვის გაზომვა; საჭიროებისას ვარიანტების lazy.
+4. **თარიღის ICU:** ქართული ლოკალის გარეშე `formatDate` ინგლისურს აბრუნებს (Playwright Chromium — „October 24, 2026“, „10:00 AM“). `format.js`-ს თვეების fallback სჭირდება (F2-ის კოდი).
+5. **NewsCard-ის ბმული** — F2-ის ღია საკითხი 2-ის მიხედვით (როუტი / აკორდეონი / გარე ბმული). **VideoCard-ის ბმული** `/videos?video=:slug` — F7 დააზუსტებს (ან `onSelect`).
+6. **დაფები გასასწორებელია:** UIKit-ის hover / pressed / ტინტები → ახალი ტოკენები; ContentKit — შენახვის შევსება `--mc-ink`, ბარათის რადიუსი 24, play / CC ნიშნები §2-ის წყვილებით.
+7. **SeriesCard:** ტიპოგრაფიული ყდა თემას და სლაიდების რაოდენობას აჩვენებს; ტექსტური სათაური ყდაზე F7-ის სლაიდების დიზაინთან ერთად.
+8. F1-ის ღია საკითხები 1, 2 და 8 დახურულია (ჩრდილები, ზოლის ტექსტი, favicon); 3–7 და F2-ის 2–11 ძალაშია (F1-ის 4 — ბადის gutter, დაფაზე 24px — F5-ში).
+
+### შემდეგი: F4 — გარსი
+
+SiteHeader (ზედა ზოლი, თავსებადობის მენიუ, ნავიგაცია `aria-current`, რეჟიმის გადამრთველი, CTA „ჩაერთე“, ჰამბურგერი < 1200px), SiteFooter, PageShell (skip-link — `VisuallyHidden focusable`), OS-ის თემის ცვლილება (F1-ის საკითხი 6). Gate: სრულად იმართება კლავიატურით. F3-იდან: `Logo` (ტონი თემით), `Button variant="cta"`, `IconButton`, `ChipGroup`/`RadioGroup` მენიუსთვის, `LiveRegion` („პარამეტრები ნაგულისხმევზე დაბრუნდა“).

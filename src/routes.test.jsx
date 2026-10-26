@@ -28,14 +28,19 @@ async function renderAt(path) {
 }
 
 describe('როუტები', () => {
-  it.each(PAGES)('%s — ერთი h1, სათაური და main', async (path, h1, title) => {
-    const { container, heading } = await renderAt(path);
-    expect(heading).toHaveTextContent(h1);
-    expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
-    expect(screen.getByRole('main')).toContainElement(heading);
-    expect(document.title).toBe(title);
-    expect(await axe(container)).toHaveNoViolations();
-  });
+  it.each(PAGES)(
+    '%s — ერთი h1, სათაური და main',
+    async (path, h1, title) => {
+      const { container, heading } = await renderAt(path);
+      expect(heading).toHaveTextContent(h1);
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+      expect(screen.getByRole('main')).toContainElement(heading);
+      expect(document.title).toBe(title);
+      expect(await axe(container)).toHaveNoViolations();
+      // /__kit-ს სამ თემაში ყველა კომპონენტი აქვს — jsdom-ის axe-ს 5 წამზე მეტი სჭირდება
+    },
+    30_000,
+  );
 
   it('/__kit მხოლოდ dev-ში რეგისტრირდება', () => {
     const paths = routes[0].children.map((route) => route.path);

@@ -103,6 +103,23 @@ const ka = {
     list: 'შენახული სტატიები',
     count: '{count} შენახული',
     empty: 'შენახული სტატია ჯერ არ გაქვს.',
+    toggle: 'შენახვა',
+    toggleOn: 'შენახულია',
+  },
+
+  /** მედიის ჩანაცვლების ჩარჩო (`src: null`): „[ფოტო: მონაწილე მენტორთან …]“ */
+  media: {
+    placeholder: '[{kind}: {alt}]',
+    photo: 'ფოტო',
+    poster: 'ვიდეოს კადრი',
+    logo: 'ლოგო',
+    portrait: 'ფოტო',
+  },
+
+  /** ფორმის ველები (F3 UI ნაკრები) */
+  fields: {
+    errorPrefix: 'შეცდომა:',
+    selectPlaceholder: 'აირჩიე',
   },
 
   home: {

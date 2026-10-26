@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240">
+<g transform="translate(0.00 -3.20)">
+<path d="M104.13 98.16 L95.31 86.02 A8.0 8.0 0 1 0 85.91 73.08 L76.50 60.13 A74.0 74.0 0 0 1 100.85 48.52 A21 21 0 1 1 139.15 48.52 A74.0 74.0 0 0 1 163.50 60.13 L156.15 70.25 A11.5 11.5 0 1 1 142.63 88.85 L135.87 98.16 A27.0 27.0 0 0 0 104.13 98.16 Z" fill="currentColor" style="stroke:var(--mc-logo-knockout,#FFFFFF)" stroke-width="3">
+</path>
+</g>
+<g transform="translate(3.04 -0.99)">
+<path d="M135.87 98.16 L144.69 86.02 A8.0 8.0 0 1 0 154.09 73.08 L163.50 60.13 A74.0 74.0 0 0 1 182.06 79.70 A21 21 0 1 1 193.90 116.13 A74.0 74.0 0 0 1 190.38 142.87 L178.49 139.00 A11.5 11.5 0 1 1 156.62 131.90 L145.68 128.34 A27.0 27.0 0 0 0 135.87 98.16 Z" fill="currentColor" style="stroke:var(--mc-logo-knockout,#FFFFFF)" stroke-width="3">
+</path>
+</g>
+<g transform="translate(1.88 2.59)">
+<path d="M145.68 128.34 L159.94 132.98 A8.0 8.0 0 1 0 175.16 137.92 L190.38 142.87 A74.0 74.0 0 0 1 177.51 166.57 A21 21 0 1 1 146.52 189.08 A74.0 74.0 0 0 1 120.00 194.00 L120.00 181.50 A11.5 11.5 0 1 1 120.00 158.50 L120.00 147.00 A27.0 27.0 0 0 0 145.68 128.34 Z" fill="currentColor" style="stroke:var(--mc-logo-knockout,#FFFFFF)" stroke-width="3">
+</path>
+</g>
+<g transform="translate(-1.88 2.59)">
+<path d="M120.00 147.00 L120.00 162.00 A8.0 8.0 0 1 0 120.00 178.00 L120.00 194.00 A74.0 74.0 0 0 1 93.48 189.08 A21 21 0 1 1 62.49 166.57 A74.0 74.0 0 0 1 49.62 142.87 L61.51 139.00 A11.5 11.5 0 1 1 83.38 131.90 L94.32 128.34 A27.0 27.0 0 0 0 120.00 147.00 Z" fill="currentColor" style="stroke:var(--mc-logo-knockout,#FFFFFF)" stroke-width="3">
+</path>
+</g>
+<g transform="translate(-3.04 -0.99)">
+<path d="M94.32 128.34 L80.06 132.98 A8.0 8.0 0 1 0 64.84 137.92 L49.62 142.87 A74.0 74.0 0 0 1 46.10 116.13 A21 21 0 1 1 57.94 79.70 A74.0 74.0 0 0 1 76.50 60.13 L83.85 70.25 A11.5 11.5 0 1 1 97.37 88.85 L104.13 98.16 A27.0 27.0 0 0 0 94.32 128.34 Z" fill="currentColor" style="stroke:var(--mc-logo-knockout,#FFFFFF)" stroke-width="3">
+</path>
+</g>
+<circle cx="120.0" cy="120.0" r="29.0" fill="currentColor" style="stroke:var(--mc-logo-knockout,#FFFFFF)" stroke-width="3">
+</circle>
+</svg>

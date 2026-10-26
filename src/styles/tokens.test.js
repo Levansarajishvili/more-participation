@@ -17,7 +17,7 @@ const context = readFileSync(resolve('docs/project-context.md'), 'utf8');
 const themes = parseThemes(css);
 const allowed = allowedHexFromContext(context);
 
-/** prompt 1-ის 19 ტოკენი + CTA ჩარჩო და ფოკუსის რგოლის სამი ფენა */
+/** prompt 1-ის 19 ტოკენი + CTA ჩარჩო, ფოკუსის რგოლის სამი ფენა და F3-ის მდგომარეობები */
 const REQUIRED = [
   'bg',
   'surface',
@@ -39,6 +39,12 @@ const REQUIRED = [
   'cta-ink',
   'cta-shadow',
   'cta-frame',
+  'hover',
+  'pressed',
+  'pressed-ink',
+  'card-border',
+  'band-bg',
+  'band-ink',
   'ring-inner',
   'ring-mid',
   'ring-outer',

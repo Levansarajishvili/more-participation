@@ -90,6 +90,19 @@ const en = {
     list: '[EN: saved.list]',
     count: '[EN: saved.count] {count}',
     empty: '[EN: saved.empty]',
+    toggle: '[EN: saved.toggle]',
+    toggleOn: '[EN: saved.toggleOn]',
+  },
+  media: {
+    placeholder: '[EN: media.placeholder] {kind} {alt}',
+    photo: '[EN: media.photo]',
+    poster: '[EN: media.poster]',
+    logo: '[EN: media.logo]',
+    portrait: '[EN: media.portrait]',
+  },
+  fields: {
+    errorPrefix: '[EN: fields.errorPrefix]',
+    selectPlaceholder: '[EN: fields.selectPlaceholder]',
   },
   home: {
     heroTitle: '[EN: home.heroTitle]',

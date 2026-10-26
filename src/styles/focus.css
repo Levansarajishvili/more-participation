@@ -22,3 +22,31 @@
     outline-offset: 3px;
   }
 }
+
+/* `/__kit`: ფოკუსის მდგომარეობის სტატიკური ჩვენება (`data-force="focus"`) */
+[data-force~='focus']:not(.mc-card) {
+  box-shadow:
+    0 0 0 2px var(--mc-ring-inner),
+    0 0 0 5px var(--mc-ring-mid),
+    0 0 0 8px var(--mc-ring-outer),
+    var(--mc-shadow, 0 0 #0000);
+}
+
+/*
+ * ბარათი (stretched-link): რგოლი მთელ ბარათზე, როცა სათაურის ბმული ფოკუსშია.
+ * `:has`-ის გარეშე ბრაუზერში რგოლი ბმულს რჩება (ნაგულისხმევი წესი ზემოთ).
+ */
+@supports selector(:has(*)) {
+  .mc-card:has(.mc-card__link:focus-visible),
+  .mc-card[data-force~='focus'] {
+    box-shadow:
+      0 0 0 2px var(--mc-ring-inner),
+      0 0 0 5px var(--mc-ring-mid),
+      0 0 0 8px var(--mc-ring-outer),
+      var(--mc-shadow, 0 0 #0000);
+  }
+
+  .mc-card__link:focus-visible {
+    box-shadow: none;
+  }
+}

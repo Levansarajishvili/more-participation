@@ -6,6 +6,10 @@
  *
  * სელექტორი `[data-theme]` და არა `html[…]`: თემა ქვეხეზეც მუშაობს.
  * კონტრასტის თემა გლობალურია — მის შიგნით ჩადგმული `data-theme` მას ვერ გადაფარავს.
+ *
+ * F3: UIKit-ის hover / pressed / ბარათის ჩარჩო / სექციის ზოლი §2-ის გარეთა ფერებს იყენებდა
+ * (#DCE6F1, #16305A, #1E3A66, rgba-ჩრდილი). მათ ნაცვლად — სემანტიკური ტოკენები §2-ის HEX-ზე:
+ * --mc-hover, --mc-pressed, --mc-pressed-ink, --mc-card-border, --mc-band-bg, --mc-band-ink.
  */
 @layer base {
   :root,
@@ -32,6 +36,13 @@
     --mc-cta-ink: #0a1d38; /* navy-900 */
     --mc-cta-shadow: #0a1d38; /* navy-900 */
     --mc-cta-frame: #0a1d38; /* navy-900 */
+
+    --mc-hover: #e9eff6; /* alt — მეორადი ღილაკი, ჩიპი, აკორდეონი */
+    --mc-pressed: #c8d2df; /* hairline */
+    --mc-pressed-ink: #0b2545; /* navy-800 */
+    --mc-card-border: #0b2545; /* navy-800 — UIKit / ContentKit */
+    --mc-band-bg: #ff8a3d; /* orange-300 — ფართო ზოლი */
+    --mc-band-ink: #0a1d38; /* navy-900, 7.19:1 */
 
     --mc-ring-inner: #ffffff;
     --mc-ring-mid: #0b2545;
@@ -62,6 +73,13 @@
     --mc-cta-shadow: #c2410c;
     --mc-cta-frame: #ffb81c; /* = CTA: ჩარჩო არ ჩანს, საზღვარს ფონთან კონტრასტი ქმნის */
 
+    --mc-hover: #2b4a70; /* line */
+    --mc-pressed: #0b1c33; /* alt — „ჩაძირული“ */
+    --mc-pressed-ink: #eaf0f7; /* ink */
+    --mc-card-border: #2b4a70; /* line */
+    --mc-band-bg: #0b1c33; /* alt: ზოლი → 6px ზედა კიდე (--mc-band) */
+    --mc-band-ink: #eaf0f7; /* ink */
+
     --mc-ring-inner: #071526;
     --mc-ring-mid: #eaf0f7;
     --mc-ring-outer: #ffb81c;
@@ -91,6 +109,13 @@
     --mc-cta-ink: #000000;
     --mc-cta-shadow: #ffffff;
     --mc-cta-frame: #ffffff;
+
+    --mc-hover: #000000; /* ფონი არ იცვლება — hover-ს ხაზგასმა აჩვენებს (components.css) */
+    --mc-pressed: #ffffff; /* ინვერსია */
+    --mc-pressed-ink: #000000;
+    --mc-card-border: #ffffff;
+    --mc-band-bg: #000000;
+    --mc-band-ink: #ffffff;
 
     --mc-ring-inner: #000000;
     --mc-ring-mid: #ffffff;

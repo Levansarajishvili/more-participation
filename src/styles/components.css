@@ -1,0 +1,1014 @@
+/*
+ * UI ნაკრების სტილები (F3). ფერი მხოლოდ --mc-* ტოკენებიდან (tokens.css); გამონაკლისი —
+ * სერიის ყდის ფიქსირებული წყვილები და ვიდეოს კადრზე დადებული ნიშნები (თემით არ იცვლება, §2),
+ * ყველა HEX §2-იდან (ამოწმებს components.test.js).
+ *
+ * მდგომარეობები: :hover / :focus-visible / :active / :disabled; `/__kit` იგივეს
+ * `data-force="hover | focus | active"`-ით აჩვენებს. ფოკუსის რგოლი — focus.css (layer-ის გარეშე).
+ * გადაადგილება (translate, scale, rotate) მხოლოდ `prefers-reduced-motion: no-preference`-ში;
+ * reduce-ში ხანგრძლივობები 0-ია (motion.css) — მდგომარეობა ფერით, მყისიერად იცვლება.
+ */
+@layer components {
+  /* ------------------------------------------------------------ ხატულა */
+  .mc-icon {
+    display: inline-block;
+    flex-shrink: 0;
+    vertical-align: -0.2em;
+  }
+  .mc-icon__accent {
+    stroke: var(--mc-icon-accent, currentColor);
+  }
+  .mc-icon--accent {
+    --mc-icon-accent: var(--mc-graphic);
+  }
+
+  /* ------------------------------------------------------------ ღილაკი */
+  .mc-btn {
+    --mc-shadow: 0 0 #0000;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--spacing);
+    min-width: 2.75rem;
+    padding: 0.375rem 1.375rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
+    font: inherit;
+    font-size: var(--text-body);
+    line-height: 1.3;
+    font-weight: 700;
+    text-align: center;
+    text-decoration: none;
+    cursor: pointer;
+    box-shadow: var(--mc-shadow);
+    transition-property: background-color, color, border-color, box-shadow, translate;
+    transition-duration: var(--mc-dur-base);
+    transition-timing-function: var(--ease-out);
+  }
+  .mc-btn--sm {
+    min-height: 2.75rem; /* 44 */
+    padding-inline: 1rem;
+  }
+  .mc-btn--md {
+    min-height: 3rem; /* 48 */
+  }
+  .mc-btn--lg {
+    min-height: 3.5rem; /* 56 */
+    padding-inline: 1.625rem;
+  }
+  .mc-btn--full {
+    width: 100%;
+  }
+
+  /* CTA: ოქროსფერი მხოლოდ აქ */
+  .mc-btn--cta {
+    --mc-shadow: 4px 4px 0 var(--mc-cta-shadow);
+    background-color: var(--mc-cta);
+    color: var(--mc-cta-ink);
+    border-color: var(--mc-cta-frame);
+    font-weight: 800;
+    transition-duration: var(--mc-dur-press);
+  }
+  .mc-btn--cta:is(:hover, [data-force~='hover']):not(:disabled, [aria-disabled='true']) {
+    --mc-shadow: 6px 6px 0 var(--mc-cta-shadow);
+    background-color: var(--mc-cta-hover);
+  }
+  .mc-btn--cta:is(:active, [data-force~='active']):not(:disabled, [aria-disabled='true']) {
+    --mc-shadow: 0 0 #0000;
+    background-color: var(--mc-cta);
+  }
+
+  /* მთავარი: ink-ის შევსება */
+  .mc-btn--primary {
+    background-color: var(--mc-ink);
+    border-color: var(--mc-ink);
+    color: var(--mc-surface);
+  }
+  .mc-btn--primary:is(:hover, [data-force~='hover']):not(:disabled, [aria-disabled='true']) {
+    background-color: var(--mc-muted);
+    border-color: var(--mc-muted);
+  }
+  .mc-btn--primary:is(:active, [data-force~='active']):not(:disabled, [aria-disabled='true']) {
+    background-color: var(--mc-link);
+    border-color: var(--mc-link);
+  }
+
+  /* მეორადი: კონტური */
+  .mc-btn--secondary {
+    background-color: transparent;
+    border-color: var(--mc-ink);
+    color: var(--mc-ink);
+  }
+  .mc-btn--secondary:is(:hover, [data-force~='hover']):not(:disabled, [aria-disabled='true']) {
+    background-color: var(--mc-hover);
+  }
+  .mc-btn--secondary:is(:active, [data-force~='active']):not(:disabled, [aria-disabled='true']) {
+    background-color: var(--mc-pressed);
+    color: var(--mc-pressed-ink);
+  }
+
+  /* ბმული: 44px სამიზნე, ხაზგასმა 2px */
+  .mc-btn--link {
+    min-height: 2.75rem;
+    padding: 0 0.25rem;
+    border: 0;
+    border-radius: 6px;
+    color: var(--mc-link);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+  .mc-btn--link:is(:hover, [data-force~='hover']):not(:disabled, [aria-disabled='true']) {
+    color: var(--mc-ink);
+    text-decoration-thickness: 3px;
+  }
+  .mc-btn--link:is(:active, [data-force~='active']):not(:disabled, [aria-disabled='true']) {
+    color: var(--mc-ink);
+    text-decoration-line: none;
+  }
+
+  /* გათიშული: წყვეტილი კონტური + muted ტექსტი (≥ 4.5:1 alt-ზე) */
+  .mc-btn:is(:disabled, [aria-disabled='true']) {
+    --mc-shadow: 0 0 #0000;
+    background-color: var(--mc-alt);
+    border: 2px dashed var(--mc-border);
+    color: var(--mc-muted);
+    cursor: not-allowed;
+  }
+  .mc-btn--link:is(:disabled, [aria-disabled='true']) {
+    background-color: transparent;
+    border: 0;
+    text-decoration-line: none;
+  }
+  .mc-btn[aria-busy='true'] {
+    cursor: progress;
+  }
+
+  /* კონტრასტის თემაში ფონი თითქმის არ იცვლება — hover-ს ხაზგასმა აჩვენებს */
+  [data-theme='contrast']
+    :is(.mc-btn, .mc-chip, .mc-acc-trigger, .mc-save):is(:hover, [data-force~='hover']):not(
+      :disabled
+    ) {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  .mc-spinner {
+    width: 1.125em;
+    height: 1.125em;
+    flex-shrink: 0;
+    border: 3px solid currentColor;
+    border-right-color: transparent;
+    border-radius: var(--radius-circle);
+    animation: mc-spin var(--mc-dur-spin) linear infinite;
+  }
+
+  /* ------------------------------------------------------------ IconButton */
+  .mc-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border: 2px solid transparent;
+    border-radius: var(--radius-circle);
+    background-color: transparent;
+    color: var(--mc-ink);
+    cursor: pointer;
+    transition-property: background-color, color, border-color;
+    transition-duration: var(--mc-dur-base);
+    transition-timing-function: var(--ease-out);
+  }
+  .mc-icon-btn--sm {
+    width: 2.75rem;
+    height: 2.75rem;
+  }
+  .mc-icon-btn--md {
+    width: 3rem;
+    height: 3rem;
+  }
+  .mc-icon-btn--secondary {
+    border-color: var(--mc-ink);
+    background-color: var(--mc-surface);
+  }
+  .mc-icon-btn--primary {
+    background-color: var(--mc-ink);
+    color: var(--mc-surface);
+  }
+  .mc-icon-btn:is(:hover, [data-force~='hover']):not(:disabled) {
+    background-color: var(--mc-hover);
+    color: var(--mc-ink);
+  }
+  .mc-icon-btn--primary:is(:hover, [data-force~='hover']):not(:disabled) {
+    background-color: var(--mc-muted);
+    color: var(--mc-surface);
+  }
+  .mc-icon-btn:is(:active, [data-force~='active'], [aria-pressed='true']):not(:disabled) {
+    background-color: var(--mc-pressed);
+    color: var(--mc-pressed-ink);
+  }
+  .mc-icon-btn:disabled {
+    border: 2px dashed var(--mc-border);
+    background-color: var(--mc-alt);
+    color: var(--mc-muted);
+    cursor: not-allowed;
+  }
+
+  /* ------------------------------------------------------------ ჩიპი */
+  .mc-chip-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing);
+  }
+  .mc-chip-group__label {
+    font-size: var(--text-small);
+    font-weight: 700;
+    color: var(--mc-muted);
+  }
+  .mc-chip-group__list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 3rem;
+    padding: 0.25rem 1.125rem;
+    border: 2px solid var(--mc-border);
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    font: inherit;
+    font-size: var(--text-body);
+    line-height: 1.3;
+    font-weight: 600;
+    cursor: pointer;
+    transition-property: background-color, color, border-color;
+    transition-duration: var(--mc-dur-chip);
+    transition-timing-function: var(--ease-out);
+  }
+  .mc-chip:is(:hover, [data-force~='hover']):not(:disabled) {
+    background-color: var(--mc-hover);
+    border-color: var(--mc-ink);
+  }
+  .mc-chip:is(:active, [data-force~='active']):not(:disabled) {
+    background-color: var(--mc-pressed);
+    color: var(--mc-pressed-ink);
+  }
+  .mc-chip[aria-pressed='true'] {
+    background-color: var(--mc-ink);
+    border-color: var(--mc-ink);
+    color: var(--mc-surface);
+    font-weight: 700;
+  }
+  .mc-chip[aria-pressed='true']:is(:hover, [data-force~='hover']):not(:disabled) {
+    background-color: var(--mc-muted);
+    border-color: var(--mc-muted);
+    color: var(--mc-surface);
+  }
+  .mc-chip:disabled {
+    border-style: dashed;
+    background-color: var(--mc-alt);
+    color: var(--mc-muted);
+    cursor: not-allowed;
+  }
+
+  /* ------------------------------------------------------------ ბარათი */
+  .mc-card {
+    --mc-shadow: 0 0 #0000;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    box-shadow: var(--mc-shadow);
+    transition-property: box-shadow, translate;
+    transition-duration: var(--mc-dur-base);
+    transition-timing-function: var(--ease-out);
+  }
+  .mc-card--link:is(:hover, :focus-within, [data-force~='hover'], [data-force~='focus']) {
+    --mc-shadow: 0 4px 0 var(--mc-card-border);
+  }
+  .mc-card__body {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem 1.5rem;
+  }
+  /* DOM: სათაური → წარწერა; ეკრანზე წარწერა ზემოთ */
+  .mc-card__eyebrow {
+    order: -1;
+    margin: 0;
+    font-size: var(--text-small);
+    font-weight: 800;
+    color: var(--mc-accent-text);
+  }
+  .mc-card__title {
+    margin: 0;
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    font-weight: 800;
+  }
+  .mc-card__link {
+    color: inherit;
+    text-decoration: none;
+    font: inherit;
+    text-align: inherit;
+    background: none;
+    border: 0;
+    padding: 0;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+  .mc-card__link::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-card);
+  }
+  .mc-card--link:is(:hover, [data-force~='hover']) .mc-card__link {
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+  .mc-card__text {
+    color: var(--mc-muted);
+  }
+  .mc-card__text > p {
+    margin: 0;
+  }
+  .mc-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.25rem 1rem;
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-card__meta-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+  }
+  .mc-card__actions {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    padding-top: 0.5rem;
+  }
+  .mc-card__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    width: 100%;
+  }
+  .mc-card__note {
+    width: 100%;
+    margin: 0;
+    font-size: var(--text-small);
+    color: var(--mc-muted);
+  }
+  .mc-card__media {
+    order: -1;
+    overflow: hidden;
+    border-radius: calc(var(--radius-card) - 2px) calc(var(--radius-card) - 2px) 0 0;
+  }
+  .mc-card__overlay {
+    position: absolute;
+    z-index: 1;
+    top: 0.75rem;
+    right: 0.75rem;
+  }
+  .mc-card--aside {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+  .mc-card__aside {
+    order: -1;
+    padding: 1.5rem 0 1.5rem 1.5rem;
+  }
+  .mc-card--person .mc-card__media {
+    width: 7.5rem;
+    margin: 1.5rem 1.5rem 0;
+    border-radius: var(--radius-circle);
+  }
+  .mc-card--partner .mc-card__media {
+    margin: 1rem 1rem 0;
+    border-radius: var(--radius-field);
+  }
+
+  /* სერიის ყდა: ფიქსირებული წყვილები, თემით არ იცვლება (§2, F2 ღია საკითხი 1) */
+  .mc-cover {
+    aspect-ratio: 4 / 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+  }
+  .mc-cover__topic {
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    font-weight: 900;
+  }
+  .mc-cover__count {
+    font-size: var(--text-small);
+    font-weight: 700;
+  }
+  .mc-tone--navy {
+    background-color: #0b2545;
+    color: #ffffff; /* 15.39:1 */
+  }
+  .mc-tone--navy-deep {
+    background-color: #0a1d38;
+    color: #ffffff; /* 16.86:1 */
+  }
+  .mc-tone--petrol {
+    background-color: #155a78;
+    color: #ffffff; /* 7.59:1 */
+  }
+  .mc-tone--orange {
+    background-color: #ff8a3d;
+    color: #0a1d38; /* 7.19:1 */
+  }
+  .mc-tone--alt {
+    background-color: #e9eff6;
+    color: #0b2545; /* 13.29:1 */
+  }
+
+  /* ვიდეოს კადრი: ნიშნები ფოტოზე — ფიქსირებული წყვილები */
+  .mc-video-thumb {
+    position: relative;
+  }
+  .mc-video-thumb__badges {
+    position: absolute;
+    top: 0.75rem;
+    left: 0.75rem;
+    display: flex;
+    gap: 0.375rem;
+  }
+  .mc-thumb-badge {
+    padding: 0.125rem 0.5rem;
+    border-radius: 8px;
+    background-color: #ffffff;
+    color: #0b2545; /* 15.39:1 */
+    font-size: var(--text-small);
+    line-height: 1.5;
+    font-weight: 800;
+  }
+  .mc-thumb-badge--time {
+    position: absolute;
+    right: 0.75rem;
+    bottom: 0.75rem;
+    background-color: #0a1d38;
+    color: #ffffff; /* 16.86:1 */
+    font-weight: 700;
+  }
+  .mc-video-thumb__play {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.5rem;
+    height: 3.5rem;
+    margin: -1.75rem 0 0 -1.75rem;
+    border: 2px solid var(--mc-cta-frame);
+    border-radius: var(--radius-circle);
+    background-color: var(--mc-cta);
+    color: var(--mc-cta-ink);
+    opacity: 0;
+    transition: opacity var(--mc-dur-base) var(--ease-out);
+  }
+  .mc-card--link:is(:hover, :focus-within, [data-force~='hover']) .mc-video-thumb__play {
+    opacity: 1;
+  }
+
+  /* ღონისძიების თარიღი */
+  .mc-date-tile {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 4.5rem;
+    padding: 0.75rem 0.5rem;
+    border: 2px solid var(--mc-ink);
+    border-radius: var(--radius-field-lg);
+    line-height: 1.1;
+  }
+  .mc-date-tile__day {
+    font-size: var(--text-h3);
+    font-weight: 900;
+  }
+  .mc-date-tile__month {
+    font-size: var(--text-small);
+    font-weight: 700;
+  }
+
+  /* ------------------------------------------------------------ მედია */
+  .mc-media {
+    position: relative;
+    overflow: hidden;
+    background-color: var(--mc-alt);
+  }
+  .mc-media__img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .mc-media__img--contain {
+    object-fit: contain;
+    background-color: var(--mc-surface);
+  }
+  .mc-media--placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    border: 2px dashed var(--mc-border);
+    color: var(--mc-muted);
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    text-align: center;
+  }
+  .mc-card__media > .mc-media--placeholder,
+  .mc-card__media .mc-video-thumb > .mc-media--placeholder {
+    border-width: 0 0 2px;
+  }
+  .mc-media--round {
+    border-radius: var(--radius-circle);
+  }
+  .mc-media--round.mc-media--placeholder {
+    border-width: 2px;
+    padding: 0.75rem;
+  }
+
+  /* ------------------------------------------------------------ ველები */
+  .mc-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    min-width: 0;
+  }
+  .mc-fieldset {
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .mc-label {
+    padding: 0;
+    font-size: var(--text-body);
+    line-height: 1.4;
+    font-weight: 700;
+    color: var(--mc-ink);
+  }
+  .mc-label__optional {
+    font-weight: 500;
+    color: var(--mc-muted);
+  }
+  .mc-hint {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-input {
+    width: 100%;
+    min-height: 3.5rem;
+    padding: 0.5rem 1rem;
+    border: 2px solid var(--mc-border);
+    border-radius: var(--radius-field);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    font: inherit;
+    font-size: var(--text-body);
+    line-height: 1.4;
+    transition: border-color var(--mc-dur-base) var(--ease-out);
+  }
+  .mc-input::placeholder {
+    color: var(--mc-muted);
+    opacity: 1;
+  }
+  .mc-input:is(:hover, [data-force~='hover']):not(:disabled),
+  .mc-input:is(:focus, [data-force~='focus']) {
+    border-color: var(--mc-ink);
+  }
+  .mc-input[aria-invalid='true'] {
+    border-width: 3px;
+    border-color: var(--mc-error);
+    padding-inline: calc(1rem - 1px);
+  }
+  .mc-input:disabled {
+    border-style: dashed;
+    background-color: var(--mc-alt);
+    color: var(--mc-muted);
+    cursor: not-allowed;
+  }
+  .mc-textarea {
+    min-height: 8rem;
+    padding-block: 0.75rem;
+    resize: vertical;
+    line-height: var(--text-body--line-height);
+  }
+  .mc-select-wrap {
+    position: relative;
+  }
+  .mc-select {
+    appearance: none;
+    padding-right: 3rem;
+    cursor: pointer;
+  }
+  .mc-select__icon {
+    position: absolute;
+    top: 50%;
+    right: 1rem;
+    translate: 0 -50%;
+    pointer-events: none;
+  }
+  .mc-error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 700;
+    color: var(--mc-error);
+  }
+  .mc-error__icon {
+    margin-top: 0.0625rem;
+  }
+
+  /* Checkbox / Radio: label მთლიანად დაწკაპებადია */
+  .mc-choice {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 2.75rem;
+    font-size: var(--text-body);
+    line-height: 1.4;
+    cursor: pointer;
+  }
+  .mc-check,
+  .mc-radio {
+    appearance: none;
+    display: inline-grid;
+    place-content: center;
+    flex-shrink: 0;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: 0;
+    border: 2px solid var(--mc-border);
+    background-color: var(--mc-surface);
+    color: var(--mc-surface);
+    cursor: pointer;
+    transition-property: background-color, border-color;
+    transition-duration: var(--mc-dur-chip);
+    transition-timing-function: var(--ease-out);
+  }
+  .mc-check {
+    border-radius: 6px;
+  }
+  .mc-radio {
+    border-radius: var(--radius-circle);
+  }
+  .mc-check::before {
+    content: '';
+    width: 0.75rem;
+    height: 0.4rem;
+    margin-top: -0.2rem;
+    border-bottom: 3px solid currentColor;
+    border-left: 3px solid currentColor;
+    rotate: -45deg;
+    scale: 0;
+  }
+  .mc-check:checked {
+    background-color: var(--mc-ink);
+    border-color: var(--mc-ink);
+  }
+  .mc-check:checked::before {
+    scale: 1;
+  }
+  .mc-radio::before {
+    content: '';
+    width: 0.625rem;
+    height: 0.625rem;
+    border-radius: var(--radius-circle);
+    background-color: var(--mc-ink);
+    scale: 0;
+  }
+  .mc-radio:checked {
+    border-color: var(--mc-ink);
+  }
+  .mc-radio:checked::before {
+    scale: 1;
+  }
+  .mc-choice:hover > :is(.mc-check, .mc-radio):not(:checked, :disabled) {
+    border-color: var(--mc-ink);
+  }
+  .mc-check:disabled,
+  .mc-radio:disabled {
+    border-style: dashed;
+    background-color: var(--mc-alt);
+    cursor: not-allowed;
+  }
+  .mc-choice:has(:disabled) {
+    color: var(--mc-muted);
+    cursor: not-allowed;
+  }
+  .mc-check[aria-invalid='true'] {
+    border-color: var(--mc-error);
+    border-width: 3px;
+  }
+  .mc-radio-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.625rem;
+  }
+  .mc-radio-list--list {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .mc-radio-list--pills .mc-choice--radio {
+    min-height: 3rem;
+    padding: 0.25rem 1rem;
+    border: 2px solid var(--mc-border);
+    border-radius: var(--radius-pill);
+    gap: 0.625rem;
+  }
+  .mc-radio-list--pills .mc-choice--radio:hover {
+    background-color: var(--mc-hover);
+  }
+  .mc-radio-list--pills .mc-choice--radio:has(:checked) {
+    border-color: var(--mc-ink);
+    font-weight: 700;
+  }
+  .mc-fieldset[aria-invalid='true'] .mc-radio-list--pills .mc-choice--radio {
+    border-color: var(--mc-error);
+  }
+  @media (forced-colors: active) {
+    .mc-check,
+    .mc-radio {
+      appearance: auto;
+    }
+    .mc-check::before,
+    .mc-radio::before {
+      content: none;
+    }
+  }
+
+  /* ------------------------------------------------------------ აკორდეონი */
+  .mc-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .mc-acc-item {
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-field-lg);
+    background-color: var(--mc-surface);
+  }
+  .mc-acc-heading {
+    margin: 0;
+    font-size: var(--text-body);
+    line-height: 1.4;
+    font-weight: 800;
+  }
+  .mc-acc-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    width: 100%;
+    min-height: 3.5rem;
+    padding: 0.75rem 1.25rem;
+    border: 0;
+    border-radius: calc(var(--radius-field-lg) - 2px);
+    background-color: transparent;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    transition: background-color var(--mc-dur-base) var(--ease-out);
+  }
+  .mc-acc-trigger:is(:hover, [data-force~='hover']) {
+    background-color: var(--mc-hover);
+  }
+  .mc-acc-icon {
+    transition: rotate var(--mc-dur-base) var(--ease-out);
+  }
+  .mc-acc-trigger[aria-expanded='true'] .mc-acc-icon {
+    rotate: 45deg;
+  }
+  .mc-acc-panel {
+    padding: 0.25rem 1.25rem 1.25rem;
+  }
+  .mc-acc-panel > :first-child {
+    margin-top: 0;
+  }
+  .mc-acc-panel > :last-child {
+    margin-bottom: 0;
+  }
+
+  /* ------------------------------------------------------------ შენახვა */
+  .mc-save {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    border: 2px solid var(--mc-ink);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    transition-property: background-color, color;
+    transition-duration: var(--mc-dur-pop);
+    transition-timing-function: var(--ease-out);
+  }
+  .mc-save--icon {
+    width: 2.75rem;
+    height: 2.75rem;
+    border-radius: var(--radius-circle);
+  }
+  .mc-save--label {
+    min-height: 3rem;
+    padding: 0.25rem 1.125rem 0.25rem 0.875rem;
+    border-radius: var(--radius-pill);
+  }
+  .mc-save:is(:hover, [data-force~='hover']) {
+    background-color: var(--mc-hover);
+  }
+  .mc-save:is(:active, [data-force~='active']) {
+    background-color: var(--mc-pressed);
+    color: var(--mc-pressed-ink);
+  }
+  .mc-save__glyph {
+    display: inline-flex;
+  }
+  .mc-save__glyph path {
+    fill: transparent;
+    transition: fill var(--mc-dur-pop) var(--ease-out);
+  }
+  .mc-save[aria-pressed='true'] .mc-save__glyph path {
+    fill: currentColor; /* --mc-ink; ოქროსფერი მხოლოდ CTA-ა */
+  }
+
+  /* ------------------------------------------------------------ ხელმისაწვდომობის ნიშანი, ზრდა */
+  .mc-badge,
+  .mc-growth {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.25rem 0.875rem;
+    border: 2px solid var(--mc-ink);
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    font-size: var(--text-small);
+    line-height: 1.5;
+    font-weight: 700;
+  }
+  .mc-badge--on-request {
+    border-color: var(--mc-border);
+  }
+  .mc-badge--no {
+    border-style: dashed;
+    border-color: var(--mc-border);
+    color: var(--mc-muted);
+  }
+  .mc-growth {
+    border-color: var(--mc-growth);
+    color: var(--mc-growth);
+  }
+  .mc-growth__value {
+    font-weight: 800;
+  }
+
+  /* ------------------------------------------------------------ სექციის სათაური, ზოლი */
+  .mc-section-heading {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-section-heading__title {
+    margin: 0;
+  }
+  .mc-eyebrow {
+    order: -1;
+    margin: 0;
+    font-size: var(--text-small);
+    font-weight: 800;
+    color: var(--mc-accent-text);
+  }
+  .mc-lead {
+    margin: 0;
+    max-width: 40em;
+    font-size: var(--text-lead);
+    line-height: var(--text-lead--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-section-heading__action {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .mc-band {
+    padding: 2rem 1.5rem;
+    border-top: 6px solid var(--mc-band);
+    border-radius: var(--radius-block);
+    background-color: var(--mc-band-bg);
+    color: var(--mc-band-ink);
+  }
+  @media (min-width: 48rem) {
+    .mc-band {
+      padding: 3rem 3.5rem;
+    }
+  }
+  .mc-band :is(.mc-eyebrow, .mc-lead) {
+    color: inherit;
+  }
+
+  /* ------------------------------------------------------------ ციტატა */
+  .mc-quote {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding-left: 1.5rem;
+    border-left: 6px solid var(--mc-graphic);
+  }
+  .mc-quote blockquote {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: var(--text-quote);
+    line-height: var(--text-quote--line-height);
+    font-weight: 500;
+  }
+  .mc-quote blockquote > p {
+    margin: 0;
+  }
+  .mc-quote blockquote > p::before {
+    content: '„';
+  }
+  .mc-quote blockquote > p::after {
+    content: '“';
+  }
+  .mc-quote figcaption {
+    font-size: var(--text-small);
+    font-weight: 700;
+    color: var(--mc-muted);
+  }
+
+  /* ------------------------------------------------------------ ლოგო */
+  .mc-logo {
+    display: block;
+    flex-shrink: 0;
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+/* მოძრაობა მხოლოდ მაშინ, როცა მომხმარებელს არ აქვს მოთხოვნილი შემცირება */
+@media (prefers-reduced-motion: no-preference) {
+  .mc-btn--cta:is(:hover, [data-force~='hover']):not(:disabled, [aria-disabled='true']) {
+    translate: -2px -2px;
+  }
+  .mc-btn--cta:is(:active, [data-force~='active']):not(:disabled, [aria-disabled='true']) {
+    translate: 4px 4px;
+  }
+  .mc-card--link:is(:hover, :focus-within, [data-force~='hover'], [data-force~='focus']) {
+    translate: 0 -4px;
+  }
+  .mc-save__glyph--pop {
+    animation: mc-pop var(--mc-dur-pop) var(--ease-spring);
+  }
+}
+
+@keyframes mc-pop {
+  50% {
+    scale: 1.2;
+  }
+}
+
+@keyframes mc-spin {
+  to {
+    rotate: 360deg;
+  }
+}
