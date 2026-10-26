@@ -94,8 +94,9 @@ docs/
   progress.md             ნაბიჯების შეჯამება
 index.html                lang="ka", color-scheme meta, inline mc-boot
 scripts/
-  check-dist.mjs          postbuild: mc-boot პირველია, /__kit არ არის, შრიფტი არ არის base64
+  check-dist.mjs          postbuild: mc-boot პირველია, /__kit და validate.js არ არის, შრიფტი არ არის base64
   contrast-report.mjs     ტოკენების კონტრასტის ცხრილი
+  i18n-stub.mjs           en.js-ის გენერაცია ka.js-იდან (`npm run i18n:stub`)
 src/
   main.jsx                შრიფტები, სტილები, RouterProvider
   routes.jsx              საჯარო როუტები; /__kit მხოლოდ DEV
@@ -114,9 +115,27 @@ src/
     layout/               RootLayout (F4-ში PageShell, SiteHeader, SiteFooter)
     media/                F7: slider, player
   pages/                  თითო გვერდი = ერთი lazy chunk
-  content/                F2: მოდელი, adapter, mock
-  hooks/                  F2+
-  i18n/                   F2
+  content/
+    adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk
+    model.js              JSDoc typedef-ები + EXCERPT_MAX, MEDIA_RATIO, READING_WPM
+    taxonomy.js           კატეგორიები, თემები, ტიპები (id ლათინურად), label(), options()
+    query.js              სუფთა ფუნქციები: isPublic, ფილტრი, ძიება, cursor
+    errors.js             ContentError { code, message, fields }, normalizeError
+    forms.js              validateContact / validateSubscribe (adapter + F6 ფორმა)
+    validate.js           validateContent — dev console + F8-ის ჩეკლისტი (dev-only)
+    slug.js               ქართული → ლათინური (§10)
+    text.js               ბლოკების ტექსტი, კითხვის დრო, ძიების ნორმალიზაცია
+    mock/                 createMockAdapter, createMockData; ყველა ფაქტი [ფრჩხილებში]
+  hooks/
+    useContent.js         ერთი მოთხოვნა → { data, status, error, reload }
+    useLoadMore.js        cursor-ით „მეტის ჩატვირთვა“, firstNewIndex ფოკუსისთვის
+    useUrlFilters.js      category / q (300ms) / year / series / sort URL-ში
+    useSaved.js           localStorage['mc-saved'], ტაბებს შორის სინქრონი
+  i18n/
+    ka.js                 ინტერფეისის ყველა სტრიქონი
+    en.js                 იგივე გასაღებები, [EN] placeholder-ები (გენერირდება)
+    index.js              t(), createT(), formatDurationLabel + format.js-ის რეექსპორტი
+    format.js             ka-GE, Asia/Tbilisi: formatDate, formatTimeRange, formatDuration…
   assets/logo/            F3-მდე: საბოლოო ლოგოს SVG ნაკრები
   test/
     setup.js              jest-dom, axe matcher, matchMedia stub
@@ -133,3 +152,14 @@ src/
 - საკუთარი ჩრდილი `box-shadow`-ით არა, `--mc-shadow`-ით, რომ ფოკუსის რგოლს არ გადაეწეროს.
 - ქვეხის თემა: `data-theme="dark"` ელემენტზე. კონტრასტის თემის შიგნით ჩადგმული თემა არ მოქმედებს.
 - ტექსტი ქართულად, უცნობი მონაცემი `[ფრჩხილებში]`.
+
+## კოდის კონვენციები (F2)
+
+- კონტენტი მხოლოდ `@/content/adapter.js`-დან: `listArticles`, `getArticle`, `listSeries`, `getSeries`, `listVideos`, `getVideo`, `listNews`, `listEvents`, `getTeam`, `getPartners`, `getStages`, `getSettings`, `subscribe`, `sendContact`. mock-ს ან query.js-ს გვერდი პირდაპირ არ იძახებს.
+- მოთხოვნა კომპონენტში: `useContent(() => getArticle(slug), [slug])`; სია „მეტით“: `useLoadMore((cursor) => listArticles({ category, q, cursor }), [category, q])`. fn ყოველთვის inline-ია — ESLint deps-ს ამოწმებს; პირობითი მოთხოვნა — `{ enabled }`.
+- შეცდომა ყოველთვის `ContentError`-ია: UI გადაწყვეტილებას `code`-ით იღებს (`not-found` → 404, `network` → „ხელახლა ცდა“), `message`-ს პირდაპირ აჩვენებს; ფორმაში — `error.fields[name].message`.
+- ტექსტი UI-ში მხოლოდ `t('…')`-ით; ტაქსონომიის წარწერა — `label('articleCategory', id)`. რიცხვის შემდეგ არსებითი მხოლობითშია.
+- თარიღი მხოლოდ `formatDate` / `formatDateParts` / `formatTimeRange`-ით (Asia/Tbilisi); `<time dateTime={toDateAttribute(iso)}>`.
+- სტატიის ტექსტი ბლოკებია (`p`, `h2`, `h3`, `list`, `quote`, `image`, `link`); HTML სტრიქონი არსად. `TextRun.lang = 'en'` → `<span lang="en">`.
+- `src: null` / URL `null` — მასალა ჯერ არ არის: ჩანაცვლების ჩარჩო ან გათიშული ღილაკი, არასოდეს გატეხილი სურათი.
+- mock-ში ყოველი წასაკითხი ტექსტი `[ფრჩხილებშია]` — ამას `src/content/mock/mock.test.js` ამოწმებს.

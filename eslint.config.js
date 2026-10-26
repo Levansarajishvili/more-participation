@@ -31,6 +31,10 @@ export default [
       ...jsxA11y.flatConfigs.strict.rules,
       'react/prop-types': 'off',
       'react-refresh/only-export-components': ['error', { allowConstantExport: true }],
+      // ობიექტიდან ველის „ამოგდება“ rest-ით (`const { body, ...summary } = article`)
+      'no-unused-vars': ['error', { ignoreRestSiblings: true }],
+      // useContent / useLoadMore-ის deps იგივე წესით მოწმდება, რაც useEffect-ის
+      'react-hooks/exhaustive-deps': ['error', { additionalHooks: '^(useContent|useLoadMore)$' }],
     },
   },
   {
