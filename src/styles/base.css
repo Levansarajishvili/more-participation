@@ -1,0 +1,101 @@
+/*
+ * საბაზისო სტილი: შრიფტი, ზომა, ხაზის სიმაღლე, თავსებადობის მენიუს ცვლადები.
+ * data-size / data-spacing ატრიბუტებს index.html-ის inline script პირველ რენდერამდე სვამს.
+ */
+@layer base {
+  :root {
+    --mc-font-scale: 1; /* data-size: 100 | 125 | 150 | 175 | 200 */
+    --mc-leading: 1; /* data-spacing: normal | wide — line-height-ის მამრავლი */
+    --mc-tracking: normal;
+    --mc-word-spacing: normal;
+    --mc-paragraph-gap: 1.1em;
+    --mc-edge: 20px; /* კონტეინერის კიდე ≤ 767px */
+  }
+
+  @media (min-width: 48rem) {
+    :root {
+      --mc-edge: 80px;
+    }
+  }
+
+  [data-size='125'] {
+    --mc-font-scale: 1.25;
+  }
+  [data-size='150'] {
+    --mc-font-scale: 1.5;
+  }
+  [data-size='175'] {
+    --mc-font-scale: 1.75;
+  }
+  [data-size='200'] {
+    --mc-font-scale: 2;
+  }
+
+  /* WCAG 1.4.12-ის მნიშვნელობები: ტექსტი 1.65 → 1.98, ასო 0.12em, სიტყვა 0.16em, აბზაცი 2em */
+  [data-spacing='wide'] {
+    --mc-leading: 1.2;
+    --mc-tracking: 0.12em;
+    --mc-word-spacing: 0.16em;
+    --mc-paragraph-gap: 2em;
+  }
+
+  html {
+    /* 100% = მომხმარებლის ბრაუზერის ზომა; rem-ზე აგებული ყველაფერი მასშტაბდება */
+    font-size: calc(100% * var(--mc-font-scale));
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    min-height: 100dvh;
+    background-color: var(--mc-bg);
+    color: var(--mc-ink);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    font-weight: 400;
+    overflow-wrap: break-word; /* გრძელი ქართული სიტყვები და URL-ები 390px-ზე და 200%-ზე */
+  }
+
+  /* em ყოველ ელემენტზე თავისი ზომიდან ითვლება, ამიტომ მემკვიდრეობაზე არ ვენდობით */
+  body,
+  body * {
+    letter-spacing: var(--mc-tracking);
+    word-spacing: var(--mc-word-spacing);
+  }
+
+  /* ქართულს კურსივი არ აქვს: ხაზგასმა წონით */
+  em,
+  i {
+    font-style: normal;
+    font-weight: 700;
+  }
+
+  cite,
+  dfn,
+  var,
+  address {
+    font-style: normal;
+  }
+
+  /* 16px-ზე ნაკლები ტექსტი არ არსებობს */
+  small {
+    font-size: var(--text-small);
+  }
+
+  /* Noto Serif Georgian — მხოლოდ ციტატები */
+  blockquote,
+  q {
+    font-family: var(--font-serif);
+    font-weight: 500;
+  }
+
+  /* კლასის გარეშე ბმული (სტატიის ტექსტი, CMS-ის HTML) */
+  a:not([class]) {
+    color: var(--mc-link);
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+}

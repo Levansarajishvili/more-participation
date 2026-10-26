@@ -1,0 +1,25 @@
+/*
+ * prefers-reduced-motion: reduce — ხანგრძლივობა 0. მდგომარეობის ცვლილება ფერით რჩება,
+ * მაგრამ მყისიერად. გადაადგილება (translate, scale) კომპონენტში `motion-safe:`-ით იწერება,
+ * რომ ამ რეჟიმში საერთოდ არ მოხდეს.
+ */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --mc-dur-press: 0ms;
+    --mc-dur-chip: 0ms;
+    --mc-dur-pop: 0ms;
+    --mc-dur-base: 0ms;
+    --mc-dur-slide: 0ms;
+    --mc-dur-progress: 0ms;
+    --mc-dur-spin: 0ms;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

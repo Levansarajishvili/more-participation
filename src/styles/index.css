@@ -1,0 +1,7 @@
+/* სტილების შესასვლელი. რიგი მნიშვნელოვანია: ტოკენები → Tailwind-ის თემა → საბაზისო → ფოკუსი → მოძრაობა. */
+@import 'tailwindcss';
+@import './tokens.css';
+@import './theme.css';
+@import './base.css';
+@import './focus.css';
+@import './motion.css';

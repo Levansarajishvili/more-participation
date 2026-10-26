@@ -1,0 +1,7 @@
+dist
+coverage
+node_modules
+package-lock.json
+# Context-ის ფაილები სიტყვასიტყვით ინახება
+docs/
+CLAUDE.md

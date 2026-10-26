@@ -1,0 +1,24 @@
+/*
+ * ფოკუსის სამშრიანი რგოლი: შიდა 2px, შუა 3px, გარე 3px.
+ * ღიაში თეთრი / #0B2545 / #FFB81C; ფერები თემის ტოკენებია (tokens.css: --mc-ring-*).
+ *
+ * ფაილი layer-ის გარეშეა, ამიტომ უტილიტა (outline-none, shadow-*) რგოლს ვერ წაშლის.
+ * კომპონენტი, რომელსაც საკუთარი ჩრდილი აქვს (CTA, ბარათი), მას --mc-shadow-ით აძლევს
+ * და არა box-shadow-ით — ფოკუსისას ჩრდილი რგოლის ქვეშ რჩება.
+ */
+:focus-visible {
+  outline: 2px solid transparent; /* forced-colors: box-shadow ქრება, outline სისტემის ფერს იღებს */
+  outline-offset: 2px;
+  box-shadow:
+    0 0 0 2px var(--mc-ring-inner),
+    0 0 0 5px var(--mc-ring-mid),
+    0 0 0 8px var(--mc-ring-outer),
+    var(--mc-shadow, 0 0 #0000);
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 3px solid CanvasText;
+    outline-offset: 3px;
+  }
+}
