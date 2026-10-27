@@ -1,0 +1,27 @@
+/*
+ * სიახლეები (F6, NewsPage): ქრონოლოგიური სია და ღონისძიებების ბადე. ფერი მხოლოდ --mc-* ტოკენით.
+ */
+@layer components {
+  /* `<ol>` ნომრების გარეშე: რიგი ქრონოლოგიურია, ეკრანის მკითხველი „სია, 6 ელემენტი“-ს ისმენს */
+  .mc-news-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-news-list > li {
+    display: flex;
+    min-width: 0;
+  }
+  .mc-news-list > li > * {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* ღონისძიებები: 2 სვეტი (1440), სვეტის მინიმუმი 22rem — 125–200%-ზე და 390-ზე ერთი */
+  .mc-news-events {
+    --mc-cols: 2;
+    --mc-min: 22rem;
+  }
+}

@@ -387,13 +387,16 @@ export const MEDIA_RATIO = Object.freeze({
  */
 
 /**
+ * F6: `messenger.url` (WhatsApp / Viber-ის ბმული), `address.embedUrl` (რუკის iframe) და
+ * `address.directions` (რუკის ტექსტური ალტერნატივა: როგორ მოგვაგნო). iframe მხოლოდ მაშინ ედება,
+ * როცა `embedUrl`-იც და `directions`-იც არის — რუკა ტექსტური ალტერნატივის გარეშე არ ჩნდება.
  * @typedef {object} SiteSettings
  * @property {{
  *   phone: string,
  *   email: string,
- *   messenger: { label: string, value: string },
+ *   messenger: { label: string, value: string, url: string | null },
  *   signVideo: { schedule: string, bookingUrl: string | null },
- *   address: { text: string, mapUrl: string | null },
+ *   address: { text: string, mapUrl: string | null, embedUrl: string | null, directions: string },
  * }} contacts
  * @property {OpeningHours[]} hours
  * @property {string} responseTime     „2 სამუშაო დღეში“ — ჩაისმება contact.lead/success-ში
@@ -408,14 +411,19 @@ export const MEDIA_RATIO = Object.freeze({
 /* ─── ფორმები ───────────────────────────────────────────────────────────── */
 
 /**
- * კონტაქტის ფორმა. დიაგნოზს არ ვეკითხებით — მხოლოდ იმას, როგორ ვუპასუხოთ.
+ * კონტაქტის ფორმა. დიაგნოზს არ ვეკითხებით — მხოლოდ იმას, როგორ ვუპასუხოთ და რა მხარდაჭერა
+ * სჭირდება კომუნიკაციას (F6: `support`, თავისუფალი ტექსტი, არასავალდებულო).
+ * `website` — honeypot: ადამიანისთვის უხილავი ველი (ასისტიური ტექნოლოგიისთვისაც დამალული),
+ * რომელსაც მხოლოდ ბოტი ავსებს; შევსებულ შეტყობინებას სერვერი ჩუმად აგდებს (CAPTCHA არ არის).
  * @typedef {object} ContactPayload
  * @property {string} name
  * @property {string} contact          ტელეფონი ან ელფოსტა
  * @property {ContactTopic} topic
  * @property {string} message
+ * @property {string} [support]        კომუნიკაციის მხარდაჭერა: თარჯიმანი, მარტივი ენა…
  * @property {ReplyChannel} replyVia
  * @property {boolean} consent
+ * @property {string} [website]        honeypot — ცარიელი უნდა იყოს
  */
 
 /** @typedef {{ ok: true, id: string }} ContactResult */

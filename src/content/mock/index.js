@@ -1,7 +1,8 @@
 import { ContentError } from '../errors.js';
-import { validateContact, validateSubscribe } from '../forms.js';
+import { isHoneypotFilled, validateContact, validateSubscribe } from '../forms.js';
 import {
   findArticle,
+  findNews,
   findSeries,
   findVideo,
   queryArticles,
@@ -29,7 +30,7 @@ import { createMockData } from './data.js';
  * mock adapter: იგივე კონტრაქტი, რაც CMS-ს ექნება. პასუხი ყოველთვის ასლია — UI-მ
  * მონაცემი რომც შეცვალოს, mock-ის მდგომარეობა არ იცვლება.
  * @param {MockOptions} [options]
- * @returns {ContentAdapter & { snapshot: ContentSnapshot, subscribers: ReadonlySet<string> }}
+ * @returns {ContentAdapter & { snapshot: ContentSnapshot, subscribers: ReadonlySet<string>, contacts: () => number }}
  */
 export function createMockAdapter(options = {}) {
   const { now = Date.now, delay = 0, fail = null } = options;
@@ -37,6 +38,7 @@ export function createMockAdapter(options = {}) {
   /** @type {Set<string>} */
   const subscribers = new Set();
   let contactCount = 0;
+  let dropped = 0;
 
   /**
    * @template T
@@ -53,6 +55,8 @@ export function createMockAdapter(options = {}) {
     source: 'mock',
     snapshot,
     subscribers,
+    /** მიღებული (honeypot-ის გარეშე) შეტყობინებების რაოდენობა — ტესტებისთვის. */
+    contacts: () => contactCount,
 
     listArticles: (params = {}) => respond(() => queryArticles(snapshot.articles, params, now())),
     getArticle: (slug) => respond(() => findArticle(snapshot.articles, slug, now())),
@@ -64,6 +68,7 @@ export function createMockAdapter(options = {}) {
     getVideo: (slug) => respond(() => findVideo(snapshot.videos, slug, now())),
 
     listNews: (params = {}) => respond(() => queryNews(snapshot.news, params, now())),
+    getNews: (slug) => respond(() => findNews(snapshot.news, slug, now())),
     listEvents: (params = {}) => respond(() => queryEvents(snapshot.events, params, now())),
 
     getTeam: () => respond(() => [...snapshot.team].sort((a, b) => a.order - b.order)),
@@ -81,6 +86,11 @@ export function createMockAdapter(options = {}) {
 
     sendContact: (payload) =>
       respond(() => {
+        // honeypot: ბოტს ჩვეულებრივი წარმატება ხვდება, შეტყობინება კი არ ინახება
+        if (isHoneypotFilled(payload ?? {})) {
+          dropped += 1;
+          return /** @type {const} */ ({ ok: true, id: `mock-dropped-${dropped}` });
+        }
         const fields = validateContact(payload ?? {});
         if (Object.keys(fields).length) throw new ContentError('validation', { fields });
         contactCount += 1;

@@ -33,7 +33,7 @@ export default function Select({
   const message = errorMessage(error);
   return (
     <div className={cx('mc-field', className)}>
-      <FieldLabel htmlFor={ids.id} optional={optional}>
+      <FieldLabel htmlFor={ids.id} optional={optional} required={Boolean(selectProps.required)}>
         {label}
       </FieldLabel>
       <div className="mc-select-wrap">

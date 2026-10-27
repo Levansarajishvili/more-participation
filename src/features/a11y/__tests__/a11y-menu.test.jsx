@@ -301,9 +301,11 @@ describe('ხმოვანი რეჟიმი', () => {
     await user.keyboard('{Escape}');
     expect(cancel).toHaveBeenCalled();
 
+    const before = spoken.length;
     await act(() => router.navigate('/news'));
     await screen.findByRole('heading', { level: 1, name: 'სიახლეები' });
-    await waitFor(() => expect(spoken.at(-1)?.text).toBe('სიახლეები'));
+    // F6: სიახლეების გვერდს შიგთავსი აქვს — ბილიკი, h1, ტექსტი… (ახალი წაკითხვა h1-ს შეიცავს)
+    await waitFor(() => expect(spoken.slice(before).map((u) => u.text)).toContain('სიახლეები'));
   });
 });
 

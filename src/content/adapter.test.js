@@ -328,6 +328,50 @@ describe('ორგანიზაცია და ფორმები', () =>
   });
 });
 
+describe('F6: სიახლის გვერდი და კონტაქტის ფორმის წესები', () => {
+  it('getNews: სრული ტექსტით; მონახაზი და არარსებული → not-found', async () => {
+    const adapter = mock();
+    const item = await adapter.getNews('tsipruli-unarebis-akademiis-akhali-nakadi-ikhsneba');
+    expect(item.body.length).toBeGreaterThan(0);
+    expect((await rejection(adapter.getNews('monakhazi-gundis-akhali-tsevri'))).code).toBe(
+      'not-found',
+    );
+    expect((await rejection(adapter.getNews('ar-arsebuli'))).code).toBe('not-found');
+    expect((await rejection(adapter.getNews('../x'))).code).toBe('not-found');
+  });
+
+  const valid = {
+    name: '[სახელი გვარი]',
+    contact: 'name@example.ge',
+    topic: /** @type {const} */ ('general'),
+    message: '',
+    replyVia: /** @type {const} */ ('email'),
+    consent: true,
+  };
+
+  it('sendContact: honeypot შევსებული → ok, მაგრამ შეტყობინება არ ინახება', async () => {
+    const adapter = mock();
+    const result = await adapter.sendContact({ ...valid, website: 'https://spam.example' });
+    expect(result.ok).toBe(true);
+    expect(adapter.contacts()).toBe(0);
+    await adapter.sendContact({ ...valid, website: '' });
+    expect(adapter.contacts()).toBe(1);
+  });
+
+  it('sendContact: საპასუხო არხი ↔ საკონტაქტო ველი; support ≤ 1000', async () => {
+    const adapter = mock();
+    const phone = await rejection(adapter.sendContact({ ...valid, contact: '+995 555 00 00 00' }));
+    expect(phone.fields?.replyVia.code).toBe('replyEmail');
+    const email = await rejection(adapter.sendContact({ ...valid, replyVia: 'call' }));
+    expect(email.fields?.replyVia.code).toBe('replyPhone');
+    await expect(
+      adapter.sendContact({ ...valid, contact: '+995 555 00 00 00', replyVia: 'sign-video' }),
+    ).resolves.toMatchObject({ ok: true });
+    const long = await rejection(adapter.sendContact({ ...valid, support: 'ა'.repeat(1001) }));
+    expect(long.fields?.support.code).toBe('tooLong');
+  });
+});
+
 describe('mock-ის ოფციები', () => {
   it('delay: პასუხი დაყოვნების შემდეგ მოდის', async () => {
     vi.useFakeTimers();

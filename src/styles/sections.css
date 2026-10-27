@@ -244,3 +244,122 @@
     display: none;
   }
 }
+
+/* ------------------------------------------------------------ F6: ღია თავი, ბლოკი, მჭიდრო სექცია */
+@layer components {
+  /* ArticlesPage / NewsPage / ContactPage: padding 64 (მობ. 36), ელემენტებს შორის 18 */
+  .mc-page-intro__inner {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.125rem;
+    padding-block: 36px 8px;
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 48rem) {
+    .mc-page-intro__inner {
+      padding-block: 64px 16px;
+    }
+  }
+  .mc-page-intro__inner > :is(h1, p) {
+    margin: 0;
+  }
+  .mc-page-intro__inner > .mc-lead {
+    max-width: 51.25rem; /* 820 */
+  }
+  .mc-page-intro__inner > * {
+    max-width: 100%;
+  }
+
+  /*
+   * სათაურის გარეშე ბლოკი გვერდის ბადეზე (რჩეული სტატია / სიახლე): საკუთარი კონტეინერი, რომ
+   * ბარათის container query შრიფტის მასშტაბს მიჰყვეს.
+   */
+  .mc-block {
+    container-type: inline-size;
+    padding-block: 1.5rem;
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 48rem) {
+    .mc-block {
+      padding-block: 2rem;
+    }
+  }
+
+  /* სექციებს შორის 48px (გვერდების დაფების main gap) — F5-ის 96px-ის ნაცვლად */
+  .mc-section--tight {
+    padding-block: 28px;
+  }
+  @media (min-width: 48rem) {
+    .mc-section--tight {
+      padding-block: 48px;
+    }
+  }
+  .mc-section--tight:last-child {
+    padding-bottom: 72px;
+  }
+  @media (min-width: 48rem) {
+    .mc-section--tight:last-child {
+      padding-bottom: 96px;
+    }
+  }
+}
+
+/* ------------------------------------------------------------ F6: ფილტრები, შედეგის სტატუსი */
+@layer components {
+  /* ArticlesPage / NewsPage: ძიება, ჩიპები და ჩამოსაშლელი ერთ ბლოკში; ვიწროზე ერთმანეთის ქვეშ */
+  .mc-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+    padding-top: 0.5rem;
+  }
+  .mc-filters__search {
+    display: block;
+  }
+  .mc-filters__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.25rem 1.5rem;
+  }
+  .mc-filters__row > .mc-chip-group {
+    flex: 1 1 26rem;
+    min-width: 0;
+  }
+  .mc-filters__select {
+    flex: 0 1 15rem;
+    min-width: min(100%, 12rem);
+  }
+  /* „ნაპოვნია 5 სტატია“ — role="status", სიის სათაურის გვერდით (NewsPage) */
+  .mc-result-status {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 700;
+    color: var(--mc-muted);
+  }
+  .mc-block--last {
+    padding-bottom: 72px;
+  }
+  @media (min-width: 48rem) {
+    .mc-block--last {
+      padding-bottom: 96px;
+    }
+  }
+}
+
+@layer components {
+  /* მუქი ზოლის (dark) შემდეგ ბლოკს ზედა დაშორება სჭირდება (NewsPage: ღონისძიებები → გამოწერა) */
+  .mc-block--after-band {
+    padding-top: 48px;
+  }
+  @media (min-width: 48rem) {
+    .mc-block--after-band {
+      padding-top: 96px;
+    }
+  }
+}

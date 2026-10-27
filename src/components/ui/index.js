@@ -14,6 +14,7 @@ export { default as GrowthStat } from './GrowthStat.jsx';
 export { default as Icon } from './Icon.jsx';
 export { BRAND_ICONS, ICONS } from './icon-sprite.js';
 export { default as LiveRegion } from './LiveRegion.jsx';
+export { default as LoadMore } from './LoadMore.jsx';
 export { default as Logo } from './Logo.jsx';
 export {
   LOGO_3D_MIN,
@@ -42,6 +43,8 @@ export { default as TeamCard } from './cards/TeamCard.jsx';
 export { default as VideoCard } from './cards/VideoCard.jsx';
 
 export { default as Checkbox } from './fields/Checkbox.jsx';
+export { default as ErrorSummary } from './fields/ErrorSummary.jsx';
+export { focusField } from './fields/field-utils.js';
 export { default as RadioGroup } from './fields/RadioGroup.jsx';
 export { default as Select } from './fields/Select.jsx';
 export { default as TextArea } from './fields/TextArea.jsx';

@@ -31,7 +31,7 @@ export default function TextField({
   const message = errorMessage(error);
   return (
     <div className={cx('mc-field', className)}>
-      <FieldLabel htmlFor={ids.id} optional={optional}>
+      <FieldLabel htmlFor={ids.id} optional={optional} required={Boolean(inputProps.required)}>
         {label}
       </FieldLabel>
       <input

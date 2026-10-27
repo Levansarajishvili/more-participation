@@ -490,3 +490,186 @@ SiteHeader (ზედა ზოლი, თავსებადობის მ�
 ### შემდეგი: F6 — სტატიები + სიახლეები + კონტაქტი
 
 3 გვერდი + სტატიის შაბლონი. Gate: ფორმა გადის კლავიატურით და ეკრანის მკითხველით. F5-იდან: `PageHero` / `PageSection`, `ContentState` + `SkeletonGroup`, `Breadcrumbs` (სტატიის გვერდი), `DateTile`, `PendingLink`, `mc-grid`; ფორმამ `?topic=` უნდა წაიკითხოს (`partnership`, `barrier`); სიახლის სრული ტექსტის გადაწყვეტა (`/news/:slug`?); `format.js`-ის ქართული fallback (§9.7) — სტატიებისა და სიახლეების გვერდებზე თარიღი მთავარია.
+
+## F6 — სტატიები + სიახლეები + კონტაქტი ✅ (2026-10-27)
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (24 ფაილი, 484 ტესტი: F5-ის 399 + F6-ის 85; console-ში React-ის გაფრთხილება 0) · `npm run build` ✓ + check-dist ✓ (22 JS chunk) · **Chromium 141.0.7390.37 + axe-core 4.14.0** (ფერის კონტრასტით):
+- `/articles`, `/articles/:slug`, `/news`, `/news/:slug`, `/contact` × 1440 / 390 × light / dark / contrast — **30 კომბინაცია, 0 დარღვევა, 0 incomplete**, ჰორიზონტალური სქროლი არ არის;
+- მდგომარეობები × 1440 / 390 × 3 თემა: ფორმის შეცდომების ჯამი, დადასტურება, „მეტის ჩატვირთვის“ შემდეგ — 18 კომბინაცია, 0 / 0;
+- `/__kit` (F6-ის სექციით) × 1440 / 390 × 3 თემა — 0 / 0; რეგრესია: `/`, `/about` × 6 — 0 / 0;
+- **ფორმა მხოლოდ კლავიატურით (Chromium, 1440 და 390):** Tab → სახელი → Enter (ცარიელი) → ფოკუსი ჯამზე (`role="alert"`, „ფორმაში 3 შეცდომაა…“) → Tab → ბმული → Enter → ველი → აკრეფა → Tab-ით ყველა ველი → ↓ (თემა) → → (რადიო: ელფოსტა → ზარი, ნატიური) → Space (თანხმობა) → Enter → ფოკუსი „შეტყობინება მიღებულია“-ზე (`role="status"`, რგოლის გარეშე) → „ახალი შეტყობინება“ → ფოკუსი სახელზე; honeypot Tab-ში არ ხვდება;
+- **ეკრანის მკითხველი (Chromium-ის ARIA snapshot):** ყოველ ველს სახელი „{ლეიბლი} (სავალდებულო | არასავალდებულო)“, მინიშნება და „შეცდომა: …“ — `aria-describedby`; ჯამი — `alert` + h3 + ბმულების სია; რადიო-ჯგუფი — `radiogroup` სახელით; honeypot ხეში არ არის;
+- **ფილტრის შედეგი ფოკუსის გადატანის გარეშე:** ჩიპი / წელი / ძიება → `role="status"` ტექსტი იცვლება, ფოკუსი ფილტრზე რჩება (jsdom-ის ტესტები + Chromium);
+- ფოკუსის რგოლი: `/articles`-ზე 40 Tab-გაჩერება — რგოლის გარეშე 0;
+- ჩატევა: შრიფტი 150 / 200% × განლაგება ჩართ./გამორთ. × 390 / 768 / 1440 × 5 გვერდი — 60 კომბინაცია, 0 სქროლი, 0 ეკრანს გასული ელემენტი (honeypot-ის გარდა — განზრახ);
+- reduced-motion: ახალი ანიმაცია არ არის (ჩონჩხი სტატიკურია, LoadMore-ის ტრიალი — F3-ის `mc-spinner`).
+
+### მატრიცა
+
+| | light | dark | contrast |
+|---|---|---|---|
+| `/articles` 1440 / 390 | ✓ 0/0 · ✓ 0/0 | ✓ · ✓ | ✓ · ✓ |
+| `/articles/:slug` 1440 / 390 | ✓ · ✓ | ✓ · ✓ | ✓ · ✓ |
+| `/news` 1440 / 390 | ✓ · ✓ | ✓ · ✓ | ✓ · ✓ |
+| `/news/:slug` 1440 / 390 | ✓ · ✓ | ✓ · ✓ | ✓ · ✓ |
+| `/contact` 1440 / 390 (+ შეცდომა, დადასტურება) | ✓ · ✓ | ✓ · ✓ | ✓ · ✓ |
+
+### სათაურების ხე
+
+- **სტატიები:** h1 „სტატიები“ → h2 [რჩეული სტატია] → h2 „ყველა სტატია“ (h3 × 6) → h2 „ახალი სტატიები — ელფოსტაზე“.
+- **სტატია:** h1 [სათაური] → h2 × 5–10 (h3 ქვეთავები) → h2 „მსგავსი სტატიები“ (h3 × 1–3).
+- **სიახლეები:** h1 → h2 [რჩეული სიახლე] → h2 „ყველა სიახლე“ (h3 × 6) → h2 „მომავალი ღონისძიებები“ (h3 × 4) → h2 „სიახლეები ელფოსტაზე“.
+- **სიახლე:** h1 [სათაური] → ტექსტის h2 / h3 (თუ აქვს).
+- **კონტაქტი:** h1 → h2 „დაკავშირების გზები“ (ეკრანის მკითხველისთვის; h3 × 5) → h2 „მოგვწერე“ (h3 ჯამი / „შეტყობინება მიღებულია“ → h4 „რა მოხდება შემდეგ“) → h2 „ოფისის ხელმისაწვდომობა“ → h2 „სამუშაო საათები“ → h2 „ხშირი კითხვები“ (h3 × 3).
+
+### კლავიატურის სცენარები
+
+**`/articles`**
+1. Tab გვერდის დასაწყისიდან: გარსი (F4) → ბილიკი „მთავარი“ → ძიების ველი → „ძიება“ → ჩიპები (6) → „დალაგება“ → რჩეულის სათაური (მთელი ბარათის ბმული) → „მოუსმინე“ → „შენახვა“ → [„ფილტრების გასუფთავება“, თუ ფილტრი ჩართულია] → 6 × (ბარათის სათაური → „შენახვა“) → „მეტის ჩატვირთვა“ → ელფოსტა → „გამოწერა“ → ფუტერი. **მოსალოდნელი:** ფოკუსის რიგი = ვიზუალური, რგოლი ყველგან ჩანს.
+2. ძიების ველში აკრეფა → 300ms-ის შემდეგ URL `?q=…` (replace), სტატუსი „ნაპოვნია {n} სტატია — „…““; ფოკუსი ველში რჩება. Enter / „ძიება“ — მყისიერად.
+3. ჩიპზე Enter / Space → `aria-pressed="true"` + ✓, URL `?category=career` (push), სტატუსი „ნაპოვნია 3 სტატია — კარიერა“; ფოკუსი ჩიპზე რჩება; რჩეული ბლოკი იმალება.
+4. „დალაგება“ — ისრები (ნატიური `<select>`) → `?sort=shortest`.
+5. „მეტის ჩატვირთვა“ → Enter: ღილაკი „იტვირთება…“ (`aria-busy`, ფოკუსი რჩება) → ფოკუსი მე-7 ბარათის სათაურზე, სტატუსი „დაემატა 6, სულ 12“; ბოლო გვერდზე ღილაკის ნაცვლად „ყველა ნაჩვენებია“.
+6. ბრაუზერის „უკან“ → წინა ფილტრი (ჩიპი, სია, სტატუსი).
+7. ცარიელი შედეგი → „ფილტრების გასუფთავება“ → Enter: ფილტრი სუფთავდება, ფოკუსი h2 „ყველა სტატია“-ზე.
+
+**`/articles/:slug`**
+1. ბარათზე Enter → ახალი გვერდი, ფოკუსი h1-ზე (ჩატვირთვის შემდეგ — სათაურით; ეკრანის მკითხველი სათაურს ისმენს).
+2. Tab: ბილიკი (მთავარი, სტატიები) → კატეგორია (`/articles?category=…`) → „მოუსმინე“ → „ბმულის კოპირება“ / „გაზიარება“ → „შენახვა“ → ტექსტის ბმულები → „სტატიების სიაში დაბრუნება“ → „ყველა სტატია — {კატეგორია}“ → მსგავსი სტატიები → ფუტერი.
+3. „მოუსმინე“ → Enter: სათაური, აღწერა და ტექსტი ქართული ხმით, ღილაკი → „შეჩერება“; Esc ნებისმიერ ადგილას აჩერებს. ქართული ხმის გარეშე ღილაკი ფოკუსს იღებს, `aria-disabled`, მიზეზი ტექსტით.
+4. „ბმულის კოპირება“ → სტატუსი „ბმული დაკოპირდა.“; კოპირება ვერ ხერხდება → ბმულის ველი, ფოკუსი და მონიშვნა მასზე (Ctrl+C).
+5. რჩეულის „მოუსმინე“ (`#listen`) → ფოკუსი მოსმენის ღილაკზე.
+
+**`/news`, `/news/:slug`**
+1. Tab: ბილიკი → ტიპის ჩიპები (5) → „წელი“ → რჩეულის სათაური → სიის 6 ბმული → „მეტის ჩატვირთვა“ → ელფოსტა → „გამოწერა“ (გათიშული „განაცხადი“ / „რეგისტრაცია“ — Tab-ში არ არის, `href: null`).
+2. ჩიპი / წელი → URL `?category=event&year=2025`, სტატუსი „ნაპოვნია {n} სიახლე — ღონისძიებები, 2025“; ფოკუსი ფილტრზე; „უკან“ ნაბიჯ-ნაბიჯ აბრუნებს.
+3. „მეტის ჩატვირთვა“ → ფოკუსი მე-7 სიახლეზე, „დაემატა 6, სულ 12“.
+4. სიახლეზე Enter → `/news/:slug`, ფოკუსი h1-ზე; Tab: ბილიკი → ტიპი → გაზიარება → „სიახლეების სიაში დაბრუნება“.
+
+**`/contact`**
+1. Tab: გარსი → (არხების მოქმედებები — ბმული მხოლოდ რეალურ ტელეფონზე / ელფოსტაზე / URL-ზე) → „სახელი და გვარი“ (1440-ზე მე-15 Tab, 390-ზე მე-8).
+2. ცარიელ ფორმაზე Enter → ფოკუსი ჯამზე: „ფორმაში 3 შეცდომაა. გაასწორე მონიშნული ველები.“ (`role="alert"`).
+3. Tab → „სახელი და გვარი: ეს ველი სავალდებულოა.“ → Enter → ფოკუსი ველზე, ეკრანის მკითხველი: სახელი + „შეცდომა: ეს ველი სავალდებულოა.“
+4. აკრეფა → Tab „ტელეფონი ან ელფოსტა“ → Tab „თემა“ (↑ ↓) → Tab „შეტყობინება“ → Tab „მხარდაჭერა“ → Tab „როგორ გიპასუხოთ?“ (← → ცვლის) → Tab თანხმობა (Space) → Tab „შეტყობინების გაგზავნა“ (Enter).
+5. წარმატება → ფოკუსი „შეტყობინება მიღებულია“-ზე (`role="status"`) → Tab „ახალი შეტყობინება“ → Enter → ფოკუსი სახელზე, ფორმა ცარიელია.
+6. ქსელის შეცდომა → ღილაკის ზემოთ `role="alert"`, ფოკუსი ღილაკზე რჩება, ტექსტი ადგილზეა.
+7. FAQ: კითხვის ღილაკი → Enter / Space (`aria-expanded`), ↑ ↓ Home End — კითხვებს შორის.
+
+### ფორმის შეცდომების ტექსტები
+
+| ველი | პირობა | შეტყობინება |
+|---|---|---|
+| სახელი და გვარი | ცარიელი | ეს ველი სავალდებულოა. |
+| სახელი და გვარი | > 100 სიმბოლო | ტექსტი ძალიან გრძელია — მაქსიმუმ 100 სიმბოლო. |
+| ტელეფონი ან ელფოსტა | ცარიელი | ეს ველი სავალდებულოა. |
+| ტელეფონი ან ელფოსტა | არც ტელეფონია (7–15 ციფრი), არც ელფოსტა | შეიყვანე ტელეფონის ნომერი ან ელფოსტა. |
+| თემა | უცნობი მნიშვნელობა | აირჩიე ერთ-ერთი ვარიანტი. |
+| შეტყობინება | > 4000 სიმბოლო | ტექსტი ძალიან გრძელია — მაქსიმუმ 4000 სიმბოლო. |
+| მხარდაჭერა | > 1000 სიმბოლო | ტექსტი ძალიან გრძელია — მაქსიმუმ 1000 სიმბოლო. |
+| როგორ გიპასუხოთ? | უცნობი მნიშვნელობა | აირჩიე ერთ-ერთი ვარიანტი. |
+| როგორ გიპასუხოთ? | ელფოსტა, საკონტაქტო — ტელეფონი | ელფოსტით პასუხისთვის „ტელეფონი ან ელფოსტა“ ველში ელფოსტა მიუთითე — ან აირჩიე სხვა არხი. |
+| როგორ გიპასუხოთ? | ზარი / SMS, საკონტაქტო — ელფოსტა | ზარისთვის ან მესიჯისთვის „ტელეფონი ან ელფოსტა“ ველში ტელეფონის ნომერი მიუთითე — ან აირჩიე სხვა არხი. |
+| თანხმობა | არ არის მონიშნული | გაგზავნისთვის საჭიროა თანხმობა მონაცემების დამუშავებაზე. |
+| ფორმა (ჯამი) | ≥ 1 შეცდომა | ფორმაში {n} შეცდომაა. გაასწორე მონიშნული ველები. — პუნქტი: „{ლეიბლი}: {შეტყობინება}“ |
+| ფორმა (გაგზავნა) | ქსელი / სერვერი | შეტყობინება ვერ გაიგზავნა. {ContentError.message} შეყვანილი ტექსტი ადგილზეა — სცადე ხელახლა. |
+| გამოწერა: ელფოსტა | ცარიელი | ეს ველი სავალდებულოა. |
+| გამოწერა: ელფოსტა | არასწორი | ელფოსტა ასე უნდა გამოიყურებოდეს: name@example.ge |
+| გამოწერა: ელფოსტა | ქსელი / სერვერი | {ContentError.message} |
+
+ხაზოვან შეცდომას ეკრანის მკითხველი „შეცდომა:“-ით იწყებს (`fields.errorPrefix`), ეკრანზე — ხატულა + ტექსტი, ველზე `aria-invalid` + 3px `--mc-error`.
+
+### შექმნილი ფაილები
+
+- `src/features/articles/`: `ArticleFilters.jsx`, `FeaturedArticle.jsx`, `ArticleList.jsx`, `filter-summary.js`, `ReadingHeader.jsx`, `ArticleBody.jsx`, `ListenControl.jsx`, `ShareButton.jsx`, `RelatedArticles.jsx`, `articles.css`, `reading.css`, `__tests__/{articles,article}.test.jsx`.
+- `src/features/news/`: `NewsFilters.jsx`, `FeaturedNews.jsx`, `NewsList.jsx`, `UpcomingEvents.jsx`, `news.css`, `__tests__/news.test.jsx`.
+- `src/features/contact/`: `ContactChannels.jsx`, `contact-channels.js`, `ContactForm.jsx`, `ContactConfirmation.jsx`, `contact-fields.js`, `OfficeInfo.jsx`, `ContactFaq.jsx`, `contact.css`, `__tests__/contact.test.jsx`.
+- `src/features/subscribe/`: `SubscribeForm.jsx`, `subscribe.css`, `__tests__/subscribe.test.jsx`.
+- `src/pages/NewsItemPage.jsx`; `src/components/layout/PageIntro.jsx`; `src/components/ui/LoadMore.jsx`, `src/components/ui/fields/ErrorSummary.jsx`; `src/hooks/useLoadMoreFocus.js`, `src/hooks/useHeadingRefocus.js`.
+- შეიცვალა: `pages/{Articles,Article,News,Contact,Kit}Page.jsx`, `routes.jsx` (+ `news/:slug`), `content/{model,forms,errors,query,adapter}.js`, `content/mock/{index,org}.js`, `i18n/{format,ka,en}.js`, `components/ui/index.js`, `fields/{Field,TextField,TextArea,Select,Checkbox,RadioGroup}.jsx`, `fields/field-utils.js`, `cards/{ArticleCard,NewsCard,EventCard}.jsx`, `assets/icons/icons.svg` (+6), `styles/{components,sections}.css`, `features/home/HomeNews.jsx` (ბმულები `/news/:slug`-ზე), `test/setup.js` (`<search>`-ის jsdom-გაფრთხილება); ტესტები: `routes.test.jsx`, `i18n.test.js`, `content/adapter.test.js`, `mock/mock.test.js`, `ui/__tests__/{axe,components}.test.jsx`, `a11y/__tests__/a11y-menu.test.jsx`, `features/__tests__/{page-helpers.jsx,pages.test.jsx}`; `CLAUDE.md` (რუკა + F6 კონვენციები), `docs/project-context.md` (§5, §6, §9, §10).
+
+### საჯარო API
+
+**adapter (+):** `getNews(slug) → Promise<NewsItem>` (არარსებული / მონახაზი → `not-found`); `ContentAdapter.getNews`. `sendContact`: honeypot (`payload.website`) შევსებული → `{ ok: true }`, შენახვის გარეშე; TODO — სერვერის rate limit. mock: `createMockAdapter().contacts()` — მიღებული შეტყობინებების რაოდენობა. query: `findNews(news, slug, now)`.
+
+**მოდელი (+):** `ContactPayload.support?: string`, `ContactPayload.website?: string` (honeypot); `SiteSettings.contacts.messenger.url: string | null`; `contacts.address.embedUrl: string | null`, `contacts.address.directions: string` (რუკის ტექსტური ალტერნატივა).
+
+**ფორმები (`@/content/forms.js`, +):** `SUPPORT_MAX` 1000, `CONTACT_FIELDS` (ველების რიგი), `telHref(phone)`, `isHoneypotFilled(payload)`; `validateContact` — `support`-ის სიგრძე და არხის შეუსაბამობა (`FieldErrorCode` + `replyEmail`, `replyPhone`).
+
+**ფორმატი (`@/i18n/format.js`):** იგივე ფუნქციები ICU-ის ქართული ლოკალის გარეშე; ახალი ექსპორტი `MONTHS`, `MONTHS_SHORT`, `WEEKDAYS`. `formatTimeRange` სხვადასხვა დღეზე — „5 მარტი, 2026, 10:00 – 6 მარტი, 2026, 16:00“. `formatNumber` — ICU-ის გარეშე ka-GE-ის დაჯგუფება (U+00A0, ხუთნიშნიდან).
+
+**UI ნაკრები (+):**
+
+| კომპონენტი | props |
+|---|---|
+| `LoadMore` | `status`, `hasMore`, `onLoadMore`, `shown`, `total`, `error`, **`label`** (სიის სახელი ღილაკის სახელში), `className` |
+| `ErrorSummary` | **`title`**, **`items: { id, label, message }[]`**, `headingLevel` = h3, `focusOnMount` = true, `className` |
+| `focusField(id)` | ველზე ფოკუსი (ჯგუფში — არჩეულ / პირველ ვარიანტზე), ველი ეკრანის შუაში |
+| `FieldLabel` (+) | `required` → „(სავალდებულო)“; TextField / TextArea / Select / RadioGroup / Checkbox ამას `required`-იდან თავად აკეთებს |
+| `ArticleCard` (+) | `variant: 'default' \| 'feature'`, `actions` |
+| `NewsCard` (+) | `variant: 'default' \| 'compact' \| 'feature' \| 'list'`, `to` |
+| `EventCard` | „რეგისტრაცია: {სათაური}“ — ხელმისაწვდომი სახელი |
+
+**გარსი (+):** `<PageIntro headingId className>{children}</PageIntro>` — ღია თავი (h1 გვერდისაა).
+
+**hook-ები (+):**
+- `useLoadMoreFocus(list: { firstNewIndex, items }, listRef) → string` — ფოკუსი ახალი გვერდის პირველ `a[href] | button`-ზე; დაბრუნებული ტექსტი („დაემატა {n}, სულ {n}“) `LiveRegion`-ში ედება.
+- `useHeadingRefocus(headingRef, status)` — h1-ის ხელახალი ფოკუსი ჩატვირთვის / შეცდომის შემდეგ (ან `#hash`-ის სამიზნე), თუ ფოკუსი გვერდის თავში იყო; პირველ ჩატვირთვაზე — არა.
+
+**ფიჩერები:** `ArticleFilters({ filters })`, `ArticleList({ list, statusText, filtered, onReset })`, `LIST_HEADING_ID`, `FeaturedArticle({ state })`, `ReadingHeader({ breadcrumbs, headingRef, headingId, title, category, lead, meta, tools, toolsLabel, children })`, `ArticleBody({ blocks, ref, className })`, `ListenControl({ audio, title, excerpt, bodyRef })` (`id="listen"`), `ShareButton({ title, fieldLabel })`, `RelatedArticles({ slug, category })`, `RELATED_LIMIT` 3, `articleFilterSummary`, `newsFilterSummary`; `NewsFilters({ filters, years })`, `NewsList(…)`, `NEWS_LIST_HEADING_ID`, `FeaturedNews`, `UpcomingEvents`; `ContactForm({ settings })`, `ContactConfirmation({ responseTime, replyVia, withSupport, onAnother })`, `OfficeInfo({ state })`, `ContactChannels({ state })`, `contactChannels(settings)`, `ContactFaq({ state })`, `FIELD_IDS`, `HONEYPOT_ID`, `FORM_HEADING_ID`, `summaryItems(errors)`; `SubscribeForm({ headingId, title, text, tone: 'dark' | 'card' })`.
+
+**როუტი (+):** `/news/:slug` (`handle.title: 'nav.news'`, დინამიკური სათაური `usePageTitle`).
+
+**ტოკენები:** ახალი არ არის. წარმატება — `--mc-growth` (#08704C 6.09:1 / #3DDC97 8.8:1 / #FFFFFF), შეცდომა — `--mc-error`, ჯამი / alert — 3px, surface ფონზე.
+
+**ხატულები (+):** `phone`, `mail` (ContactPage დაფა), `listen` (ArticlesPage დაფა), `share`, `link`, `search` (ზოგადი).
+
+**CSS კლასები:** `sections.css` — `.mc-page-intro__inner`, `.mc-block`, `--last`, `--after-band`, `.mc-section--tight`, `.mc-filters`, `__search`, `__row`, `__select`, `.mc-result-status`; `components.css` — `.mc-card--feature`, `--feature-even`, `.mc-card__eyebrow-sub`, `.mc-card--news-list`, `.mc-card--aside` (wrap), `.mc-error-summary*`, `.mc-load-more*`; გვერდებისა — `.mc-search-form`, `.mc-reading*`, `.mc-prose*`, `.mc-listen*`, `.mc-share*`, `.mc-news-list`, `.mc-news-events`, `.mc-subscribe*`, `.mc-contact-*`, `.mc-hp`, `.mc-form-alert`.
+
+**i18n (+):** `articles.{searchHint,listen*,audioPending,listTitle,total,found,foundIn,relatedEmpty,relatedAll,backToList,loadingTitle,errorTitle,notFoundTitle,notFoundText,shareLabel,tools}`, `news.{total,found,foundIn,eventsLead,backToList,loadingTitle,errorTitle,notFoundTitle,notFoundText,shareLabel,tools}`, `contact.{leadReply,channelsTitle,formNote,contactHint,messageHints.*,support,supportHint,consentFull,privacy,honeypot,sendKept,sendErrorTitle,successTitle,successText,nextTitle,next.*,another,mapPlaceholder,directions,faqEmpty}`, `common.{loadedMore,copyLink,shareManual}`, `fieldErrors.{replyEmail,replyPhone}`; ამოღებულია `articles.{shownIn,foundQuery}`, `news.{shown,shownIn}`, `contact.{success,consentLink}`; `contact.lead` — პასუხის ვადის გარეშე (ვადა — `leadReply`, პარამეტრებიდან).
+
+**ტესტის დამხმარე:** `page-helpers.jsx` — `getNews` adapter-ის მეთოდებში; `unbracketedFacts` ბლოკს მთლიანად ამოწმებს (ბმული / მუქი / `lang` ფრაგმენტები), გამოთვლადი — `.mc-card__time`, წლის `option`.
+
+**ბანდლი:** მთავარი JS 420.49 / **124.00 kB gzip** (F5: 120.37 — LoadMore, ErrorSummary, ბარათების ვარიანტები, format.js, ხატულები), CSS 68.56 / 13.83 kB gzip (F5: 12.79); გვერდები: ArticlesPage 1.81, ArticlePage 1.73, NewsPage 1.79, NewsItemPage 0.97, ContactPage 3.46 kB gzip.
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+1. **სიახლის გვერდი `/news/:slug`** (მომხმარებლის გადაწყვეტილება, §9.5) — სტატიის შაბლონით; ბარათები (სიახლეები, მთავარი) ბმულია.
+2. **ოქროსფერი მხოლოდ CTA-ზე:** რჩეულის „წაიკითხე“ / „სრულად“ (დაფაზე #FFB81C) ამოღებულია — მთელი ბარათი ერთი ბმულია; ღონისძიების თარიღის ოქროსფერი ბლოკი → `DateTile`; რადიოს `accent-color` #FFB81C → UI ნაკრების რადიო. CTA გვერდებზე: „გამოწერა“, „შეტყობინების გაგზავნა“.
+3. **მწვანე მხოლოდ ზრდა / წარმატება:** ოფისის ხელმისაწვდომობის მწვანე ✓ (#08704C) — `<dl>` ხატულების გარეშე (სტატუსი ჯერ დაუდასტურებელია, ✓ მას ფაქტად აჩვენებდა); დადასტურების ტინტი #E3F6EE / #0A2E22 → surface + 2px `--mc-growth` + ✓.
+4. **§2-ის გარეთა ფერები:** #DCE6F1 (ფოტოს ფონი, ზოლის ტექსტი), #12294A (ხატულის წრე), rgba-ჩრდილი → ტოკენები / F5-ის წესები.
+5. **„ყველაზე წაკითხული“ დალაგება არ არის** — ანალიტიკას საჭიროებს (§9.4).
+6. **„ყველა სტატია“ ხილული h2-ია** (დაფაზე სათაური არ არის) — h3 ბარათები რჩეულის h2-ის ქვეშ აღარ ექცევა; სიახლეების დაფას იგივე აქვს.
+7. **„(სავალდებულო)“** (prompt) — F3-ის „მხოლოდ (არასავალდებულო)“-ის ნაცვლად ორივე სტატუსი სიტყვით ჩანს; ყველა ფორმაზე, მათ შორის გამოწერაზე.
+8. **ახალი ველი „რა მხარდაჭერა დაგჭირდება კომუნიკაციისას?“** (prompt: მხარდაჭერის საჭიროება) — არასავალდებულო, მინიშნებით „ჯანმრთელობის მდგომარეობის ან დიაგნოზის შესახებ ინფორმაცია არ გვჭირდება“. დაფაზე არ არის.
+9. **არხის შეუსაბამობის შემოწმება** (ელფოსტით პასუხი → ელფოსტა; ზარი / SMS → ტელეფონი) — დაფაზე არ არის; ერთ ველზე ორი შეცდომა არ ჩნდება.
+10. **კონფიდენციალურობის ბმული ლეიბლიდან მინიშნებაში** — ბმული `<label>`-ის შიგნით დაწკაპებისას თანხმობასაც ცვლის; URL-ის გარეშე — „[ბმული მზადდება]“.
+11. **არხების სათაური** — ეკრანის მკითხველისთვის h2 „დაკავშირების გზები“ + h3 არხის სახელი (დაფაზე `<p>`); მოქმედება ბმული მხოლოდ რეალურ მნიშვნელობაზეა (F4-ის წესი).
+12. **სამუშაო საათები `[00:00–00:00]`** (prompt; დაფაზე [10:00–18:00]); მესენჯერისა და ჟესტური ზარის ტექსტი მთლიანად ფრჩხილებშია (`[ნომერი — ტექსტი, ხმა ან ვიდეო]`).
+13. **ღონისძიებები მუქ ზოლში, 2 სვეტად** (დაფაზე ლურჯი ბარათები, 3 სვეტი) — ნიშნები ბარათში ეტევა; მუქი ზოლი F5-ის პატერნია.
+14. **სტატიის h1 36 → 52px** (DesignSystem-ის 40 → 64-ის ნაცვლად) — 720px-იან სვეტში 64px-ზე ხაზზე ≈ 10 სიმბოლო ეტეოდა. სტატიის გვერდს დაფა არ აქვს: ცენტრში 45rem სვეტი, ტექსტი 20/1.75, H2 28/1.3.
+15. **„მოუსმინე“** — აუდიო ფაილი (`<audio controls preload="none">`) ან ქართული ხმა (`speech.js`); ქართული ხმის გარეშე `aria-disabled` + მიზეზი. რჩეულზე — ბმული `#listen`-ზე (დაფაზე ღილაკი სიაში).
+16. **„დალაგების“ ლეიბლი ველის ზემოთაა** (დაფაზე მარცხნივ) — UI ნაკრების `Select`; ძიების ღილაკი ველის გასწვრივ კონტეინერი ≥ 20rem-ზე.
+17. **რუკა:** iframe მხოლოდ `embedUrl` + `directions`-ით; ჩანაცვლების ჩარჩო `aria-hidden`, ტექსტური ალტერნატივა (მისამართი + როგორ მოგვაგნო + „რუკაზე ნახვა“) `figcaption`-ში ყოველთვის ჩანს.
+18. **390px** — მობილური დაფები არ არის: HomeMobile-ის პატერნები (კიდე 20, ერთი სვეტი, ჩიპები გადადის ხაზზე, სიახლის სიაში ფოტოს გარეშე — თარიღი | ტექსტი).
+19. **გამოწერის ზოლი მუქში** — ფონი `--mc-hero` #030B16 (დაფაზე surface #0F2440), F5-ის მუქი ზოლის წესით.
+20. **`.mc-card--aside` გადადის ხაზზე** — 390px-ზე 200%-ზე ღონისძიების ბარათის ტექსტი ბარათს სცდებოდა (F3-ის EventCard, F5-ის compact სიახლეც ამას იღებს; F5-ის გვერდების რეგრესია 0).
+21. **Chromium-ის ხელმისაწვდომი სახელი** „მეტის ჩატვირთვა : სტატიები“ — `sr-only` (absolute) დანართს ჰარი ემატება; უვნებელია, F5-ის „თავიდან ცდა: …“-ც ასეა.
+
+### ღია საკითხები
+
+1. **რჩეული ერთია:** სია ფილტრის გარეშე `featured: false`-ს ითხოვს — მეორე რჩეული სტატია / სიახლე იქ არ გამოჩნდება. F8-ის რედაქტორში ახალი რჩეულის მონიშვნამ წინა უნდა მოხსნას (ან adapter-მა `featured` ერთ ელემენტზე შეზღუდოს).
+2. **Safari / VoiceOver:** `list-style: none`-იანი `<ul>` / `<ol>` სიის როლს კარგავს (`.mc-grid`, `.mc-news-list`, F5-ის სიებიც) — F7-ის აუდიტში: `role="list"` ან მარკერის ხრიკი.
+3. **spam:** სერვერის rate limit — TODO (adapter.js); honeypot-ის ველის სახელი `website`; მოთხოვნის ნომერი (`ContactResult.id`) დადასტურებაში ჯერ არ ჩანს.
+4. **„რა მოხდება შემდეგ“** — პროცესის სამი ნაბიჯი `[ფრჩხილებშია]`; ორგანიზაციამ უნდა დაადასტუროს.
+5. **რუკის პროვაიდერი** (OpenStreetMap / Google), iframe-ის CSP და cookies — გადაუწყვეტელია; მესენჯერის ბმულის ფორმატი (`wa.me`, `viber://`) — ნომრის გამოჩენისას.
+6. **გათიშული მოქმედება** („განაცხადი“, „რეგისტრაცია“, `href: null`) — `disabled` ღილაკი Tab-ში არ არის და მიზეზს არ ამბობს (F3-ის წესი); F7-ში — `aria-disabled` + „[ბმული მზადდება]“.
+7. **კონტაქტის ველის `autocomplete="email"`** — რომელიც ტელეფონსაც იღებს (WCAG 1.3.5 — ორმნიშვნელოვანი დანიშნულება).
+8. **კონტაქტი 390px-ზე:** ხუთი არხი ერთმანეთის ქვეშ — ფორმამდე ≈ 1300px; მობილური დიზაინის დადასტურება (კომპაქტური row-ბარათი?).
+9. **ქართული ხმა** რეალურ მოწყობილობაზე (F4 #6) — „მოუსმინე“-საც ეხება; აუდიო ფაილის წყარო (CMS) — F2 #4 ნაწილობრივ დახურულია.
+10. **`<search>`** — jsdom 30-ს არ აქვს (ტესტის setup-ში ერთი გაფრთხილება ფილტრდება); ბრაუზერებში ✓.
+11. **დაფები გასასწორებელია:** ArticlesPage / NewsPage / ContactPage — ოქროსფერი „წაიკითხე“, „სრულად“, ღონისძიების თარიღი, რადიოს accent; მწვანე ✓ და ტინტები; #DCE6F1, #12294A, rgba-ჩრდილი; „ყველაზე წაკითხული“; „(სავალდებულო)“-ს ფორმატი; მხარდაჭერის ველი.
+12. **დახურულია:** §9.5 (სიახლის სრული ტექსტი), §9.7 (ICU — თარიღი), §9.8 (`?topic=`), F2 #2, F3 #4, F3 #5 (სიახლე), F5 #3, #4, #6. ძალაშია: F1 5, 7; F2 4–11; F3 1, 5 (ვიდეო), 6, 7; F4 1–3, 6–11; F5 1, 2, 5, 7–9.
+
+### შემდეგი: F7 — განვითარება + ვიდეოები + აუდიტი
+
+სლაიდერი (APG carousel, ← → Home End, PDF, ტექსტური / მარტივი ენის ვერსია) და ფლეიერი (CC ნაგულისხმევად, ჟესტური ენის PiP, აუდიოაღწერა, ტრანსკრიპტი დროის ნიშნულებით, `?video=`), აუდიტის მატრიცა. Gate: AA-ს ყველა ✗ გასწორებულია ან P1-შია. F6-იდან: `PageIntro`, ფილტრის პატერნი (`useUrlFilters` + ხილული სტატუსი), `LoadMore` + `useLoadMoreFocus`, `useHeadingRefocus` (ასინქრონული h1), `ShareButton` (სერიის გაზიარება), `speech.js`-ის ინტეგრაცია; აუდიტში — ღია საკითხები 2 და 6.

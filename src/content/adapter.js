@@ -15,6 +15,7 @@ import { normalizeError } from './errors.js';
 /** @typedef {import('./model.js').Video} Video */
 /** @typedef {import('./model.js').VideoSummary} VideoSummary */
 /** @typedef {import('./model.js').NewsPage} NewsPage */
+/** @typedef {import('./model.js').NewsItem} NewsItem */
 /** @typedef {import('./model.js').Event} Event */
 /** @typedef {import('./model.js').TeamMember} TeamMember */
 /** @typedef {import('./model.js').Partner} Partner */
@@ -43,6 +44,7 @@ import { normalizeError } from './errors.js';
  * @property {(params?: VideoQuery) => Promise<VideoSummary[]>} listVideos
  * @property {(slug: string) => Promise<Video>} getVideo
  * @property {(params?: NewsQuery) => Promise<NewsPage>} listNews
+ * @property {(slug: string) => Promise<NewsItem>} getNews
  * @property {(params?: EventQuery) => Promise<Event[]>} listEvents
  * @property {() => Promise<TeamMember[]>} getTeam
  * @property {() => Promise<Partner[]>} getPartners
@@ -165,6 +167,15 @@ export function listNews(params = {}) {
 }
 
 /**
+ * F6: სიახლე სრული ტექსტით (`/news/:slug`).
+ * @param {string} slug
+ * @returns {Promise<NewsItem>}  არარსებული ან გამოუქვეყნებელი → `not-found`
+ */
+export function getNews(slug) {
+  return call('getNews', slug);
+}
+
+/**
  * @param {EventQuery} [params]
  * @returns {Promise<Event[]>}
  */
@@ -201,6 +212,10 @@ export function subscribe(email) {
 }
 
 /**
+ * კონტაქტის ფორმა. spam-ისგან დაცვა CAPTCHA-ს გარეშეა: honeypot (`payload.website`) — შევსებულს
+ * სერვერი ჩუმად აგდებს და ჩვეულებრივ `{ ok: true }`-ს აბრუნებს.
+ * TODO(backend): სერვერის rate limit (IP + საკონტაქტო მისამართი, მაგ. 5 შეტყობინება / საათი) —
+ * ლიმიტის გადაჭარბებისას HTTP 429 → `server`-ის ტექსტი; დროის ლიმიტი ფორმაზე არ ედება.
  * @param {ContactPayload} payload
  * @returns {Promise<ContactResult>}  შეცდომისას → `validation` + `fields`
  */

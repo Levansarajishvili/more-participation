@@ -5,12 +5,15 @@ import VisuallyHidden from '../VisuallyHidden.jsx';
 import { cx } from '../utils.js';
 
 /**
- * ლეიბლი ველის ზემოთ (placeholder ლეიბლს არ ცვლის). სავალდებულო ველს ბრაუზერი `required`-ით
- * აცხადებს; ხილულად ინიშნება უმცირესობა — „(არასავალდებულო)“.
+ * ლეიბლი ველის ზემოთ (placeholder ლეიბლს არ ცვლის). F6: ველის სტატუსი ყოველთვის სიტყვით
+ * ჩანს — სავალდებულო (`required`) → „(სავალდებულო)“, არასავალდებულო (`optional`) →
+ * „(არასავალდებულო)“. სიტყვა ლეიბლის ნაწილია, ამიტომ ხელმისაწვდომ სახელშიც ისმის (ქართულად —
+ * ეკრანის მკითხველის „required“ ხშირად ინგლისურია); `required` ატრიბუტიც რჩება.
  *
  * @param {object} props
  * @param {string} [props.htmlFor]
  * @param {boolean} [props.optional=false]
+ * @param {boolean} [props.required=false]
  * @param {'label' | 'legend' | 'span'} [props.as='label']
  * @param {string} [props.id]
  * @param {boolean} [props.hidden=false]  ვიზუალურად დამალული (ეკრანის მკითხველისთვის რჩება)
@@ -19,6 +22,7 @@ import { cx } from '../utils.js';
 export function FieldLabel({
   htmlFor,
   optional = false,
+  required = false,
   as: Tag = 'label',
   id,
   hidden = false,
@@ -27,8 +31,26 @@ export function FieldLabel({
   return (
     <Tag htmlFor={htmlFor} id={id} className={cx('mc-label', hidden && 'sr-only')}>
       {children}
-      {optional && <span className="mc-label__optional"> ({t('common.optional')})</span>}
+      <FieldStatus required={required} optional={optional} />
     </Tag>
+  );
+}
+
+/**
+ * „(სავალდებულო)“ / „(არასავალდებულო)“ — ლეიბლის ბოლოს, უფრო მსუბუქი წონით და muted ფერით
+ * (#42526A თეთრზე 7.93:1, #B8C7D9 #0F2440-ზე 9.07:1). Checkbox-იც ამას იყენებს.
+ * @param {{ required?: boolean, optional?: boolean }} props
+ */
+export function FieldStatus({ required = false, optional = false }) {
+  if (!required && !optional) return null;
+  // ჰარი span-ის გარეთაა: ხელმისაწვდომი სახელი „სახელი (სავალდებულო)“ და არა „სახელი(სავალდებულო)“
+  return (
+    <>
+      {' '}
+      <span className="mc-label__optional">
+        ({t(required ? 'common.required' : 'common.optional')})
+      </span>
+    </>
   );
 }
 

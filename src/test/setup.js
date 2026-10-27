@@ -12,6 +12,19 @@ afterEach(() => {
   document.head.querySelectorAll('title').forEach((node) => node.remove());
 });
 
+// F6: jsdom 30-ს `<search>` ელემენტი ჯერ არ აქვს (HTMLUnknownElement; Chrome 118+, Safari 17+,
+// Firefox 118+ მას იცნობს) — React-ის მხოლოდ ამ გაფრთხილებას ვფილტრავთ, დანარჩენი რჩება.
+const consoleError = console.error;
+console.error = (...args) => {
+  if (
+    typeof args[0] === 'string' &&
+    args[0].startsWith('The tag <%s> is unrecognized') &&
+    args[1] === 'search'
+  )
+    return;
+  consoleError(...args);
+};
+
 // jsdom-ს matchMedia არ აქვს; ნაგულისხმევი — არცერთი media query არ ემთხვევა.
 if (!window.matchMedia) {
   window.matchMedia = (query) => ({

@@ -156,7 +156,8 @@ describe('Button', () => {
 describe('TextField', () => {
   it('ლეიბლი, მინიშნება და შეცდომა aria-describedby-ით; aria-invalid', () => {
     renderUi(<TextField label="ელფოსტა" hint="name@example.ge" error="შეამოწმე" required />);
-    const input = screen.getByLabelText('ელფოსტა');
+    // F6: სავალდებულო ველი ლეიბლში სიტყვით ინიშნება
+    const input = screen.getByLabelText('ელფოსტა (სავალდებულო)');
     expect(input).toBeRequired();
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(input).toHaveAccessibleDescription('name@example.ge შეცდომა: შეამოწმე');

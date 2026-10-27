@@ -108,9 +108,10 @@ describe('t()', () => {
     // CLDR ka: ოთხნიშნა რიცხვი დაჯგუფების გარეშე, ხუთნიშნა — უწყვეტი ჰარით (U+00A0)
     expect(t('common.shownOf', { shown: 12, total: 1250 })).toBe('ნაჩვენებია 12 / 1250');
     expect(t('common.shownOf', { shown: 12, total: 12500 })).toBe('ნაჩვენებია 12 / 12\u00a0500');
-    expect(t('articles.shownIn', { count: 3, category: 'კარიერა' })).toBe(
-      'ნაჩვენებია 3 სტატია — კარიერა',
+    expect(t('articles.foundIn', { count: 3, filters: 'კარიერა' })).toBe(
+      'ნაპოვნია 3 სტატია — კარიერა',
     );
+    expect(t('common.loadedMore', { added: 6, shown: 12 })).toBe('დაემატა 6, სულ 12');
   });
 
   it('უცნობი გასაღები → თავად გასაღები + dev-გაფრთხილება ერთხელ', () => {
@@ -157,6 +158,35 @@ describe('ფორმატირება (ka-GE, Asia/Tbilisi)', () => {
   it('formatTimeRange', () => {
     expect(formatTimeRange(date, '2026-03-05T16:00:00+04:00')).toBe('10:00–16:00');
     expect(formatTimeRange(date)).toBe('10:00');
+  });
+
+  it('F6 (§9.7): ICU-ის ქართული ლოკალის გარეშეც — სრული ICU-ის ka-GE-ს სიმბოლოსიმბოლო ემთხვევა', () => {
+    /** @param {Intl.DateTimeFormatOptions} options */
+    const icu = (options) =>
+      new Intl.DateTimeFormat('ka-GE', { timeZone: 'Asia/Tbilisi', ...options });
+    const styles = {
+      long: { day: 'numeric', month: 'long', year: 'numeric' },
+      weekday: { weekday: 'long', day: 'numeric', month: 'long' },
+      monthYear: { month: 'long', year: 'numeric' },
+      dayMonth: { day: 'numeric', month: 'long' },
+      dateTime: {
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      },
+    };
+    // 12 თვე × 7 კვირის დღე × შუაღამის მახლობლად (თბილისი UTC+4)
+    for (let i = 0; i < 84; i += 1) {
+      const date = new Date(Date.UTC(2026, i % 12, 1 + (i % 28), (i * 5) % 24, (i * 7) % 60));
+      for (const [style, options] of Object.entries(styles)) {
+        expect(formatDate(date, /** @type {never} */ (style))).toBe(
+          icu(/** @type {Intl.DateTimeFormatOptions} */ (options)).format(date),
+        );
+      }
+      expect(formatDateParts(date)?.monthShort).toBe(icu({ month: 'short' }).format(date));
+    }
   });
 
   it('formatDuration და formatDurationLabel', () => {

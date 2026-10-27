@@ -52,7 +52,7 @@ export default function RadioGroup({
       aria-describedby={describedBy(hint && ids.hint, message && ids.error)}
       className={cx('mc-field', 'mc-fieldset', className)}
     >
-      <FieldLabel as="span" id={legendId} optional={optional}>
+      <FieldLabel as="span" id={legendId} optional={optional} required={required}>
         {legend}
       </FieldLabel>
       <div className={cx('mc-radio-list', `mc-radio-list--${layout}`)}>

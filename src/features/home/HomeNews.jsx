@@ -8,7 +8,7 @@ const HEADING_ID = 'home-news-title';
 
 /**
  * სიახლეები: 3 უახლესი, `NewsCard variant="compact"` (თარიღის ბლოკი, ფოტოს გარეშე).
- * ბარათი ბმული არ არის — სიახლის გვერდის როუტი F6-ში წყდება (F2, ღია საკითხი 2).
+ * F6: ბარათი ბმულია სიახლის გვერდზე (`/news/:slug`, §9.5).
  *
  * @param {{ news: import('@/hooks/useContent.js').ContentState<import('@/content/model.js').NewsPage> }} props
  */
@@ -47,7 +47,7 @@ export default function HomeNews({ news }) {
           <ul className="mc-grid mc-home-limit-2 mc-home-brief">
             {items.map((item) => (
               <li key={item.slug}>
-                <NewsCard item={item} variant="compact" />
+                <NewsCard item={item} variant="compact" to={`/news/${item.slug}`} />
               </li>
             ))}
           </ul>

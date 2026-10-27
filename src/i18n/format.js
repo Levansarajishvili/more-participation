@@ -3,6 +3,12 @@
  * (`Asia/Tbilisi`, UTC+4, საზაფხულო დროის გარეშე) — ღონისძიება 10:00-ზე 10:00-ად ჩანს
  * ნებისმიერ დროის სარტყელში მყოფი სტუმრისთვისაც.
  *
+ * F6 (§9.7): თარიღი ICU-ის ქართულ ლოკალზე აღარ არის დამოკიდებული. შეკვეცილ ICU-ში (Playwright-ის
+ * Chromium, ზოგი Android WebView) `Intl.DateTimeFormat('ka-GE')` ინგლისურს აბრუნებდა („October 24,
+ * 2026“, „10:00 AM“). ახლა Intl მხოლოდ რიცხვით ნაწილებს იძლევა (`en-US` + დროის სარტყელი — ყველა
+ * ICU-შია), თვისა და კვირის დღის სახელები კი აქაა. შედეგი სრული ICU-ის `ka-GE`-ს სიმბოლოსიმბოლო
+ * ემთხვევა (ამოწმებს i18n.test.js); დროის სარტყლის გარეშე გარემოში — ფიქსირებული UTC+4.
+ *
  * შესავალი მნიშვნელობა: ISO 8601 სტრიქონი, Date ან ms. არასწორ მნიშვნელობაზე ფუნქცია
  * ცარიელ სტრიქონს აბრუნებს და შეცდომას არ აგდებს.
  */
@@ -13,31 +19,118 @@ export const TIME_ZONE = 'Asia/Tbilisi';
 /** @typedef {string | number | Date} DateInput */
 /** @typedef {'long' | 'weekday' | 'monthYear' | 'dayMonth' | 'dateTime'} DateStyle */
 
-/** @type {Record<DateStyle, Intl.DateTimeFormatOptions>} */
-const DATE_STYLES = {
-  long: { day: 'numeric', month: 'long', year: 'numeric' },
-  weekday: { weekday: 'long', day: 'numeric', month: 'long' },
-  monthYear: { month: 'long', year: 'numeric' },
-  dayMonth: { day: 'numeric', month: 'long' },
-  dateTime: { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' },
-};
+export const MONTHS = Object.freeze([
+  'იანვარი',
+  'თებერვალი',
+  'მარტი',
+  'აპრილი',
+  'მაისი',
+  'ივნისი',
+  'ივლისი',
+  'აგვისტო',
+  'სექტემბერი',
+  'ოქტომბერი',
+  'ნოემბერი',
+  'დეკემბერი',
+]);
 
-/** @type {Map<string, Intl.DateTimeFormat>} */
-const formatters = new Map();
+export const MONTHS_SHORT = Object.freeze([
+  'იან',
+  'თებ',
+  'მარ',
+  'აპრ',
+  'მაი',
+  'ივნ',
+  'ივლ',
+  'აგვ',
+  'სექ',
+  'ოქტ',
+  'ნოე',
+  'დეკ',
+]);
+
+/** 0 = კვირა (`Date#getUTCDay`). */
+export const WEEKDAYS = Object.freeze([
+  'კვირა',
+  'ორშაბათი',
+  'სამშაბათი',
+  'ოთხშაბათი',
+  'ხუთშაბათი',
+  'პარასკევი',
+  'შაბათი',
+]);
+
+/** თბილისი: UTC+4, საზაფხულო დროის გარეშე (2005 წლიდან) — Intl-ის დროის სარტყლის გარეშე. */
+const FIXED_OFFSET = 4 * 3_600_000;
+
+/** @type {Intl.DateTimeFormat | null | undefined} undefined — ჯერ არ შექმნილა, null — მიუწვდომელია */
+let partsFormatter;
 
 /**
- * @param {Intl.DateTimeFormatOptions} options
- * @returns {Intl.DateTimeFormat}
+ * @typedef {object} LocalParts
+ * @property {number} year
+ * @property {number} month    0–11
+ * @property {number} day      1–31
+ * @property {number} weekday  0 = კვირა
+ * @property {number} hour     0–23
+ * @property {number} minute
  */
-function dateFormatter(options) {
-  const key = JSON.stringify(options);
-  let formatter = formatters.get(key);
-  if (!formatter) {
-    formatter = new Intl.DateTimeFormat(LOCALE, { timeZone: TIME_ZONE, ...options });
-    formatters.set(key, formatter);
+
+/** @returns {Intl.DateTimeFormat | null} */
+function getPartsFormatter() {
+  if (partsFormatter === undefined) {
+    try {
+      partsFormatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: TIME_ZONE,
+        year: 'numeric',
+        month: 'numeric',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23',
+      });
+    } catch {
+      partsFormatter = null;
+    }
   }
-  return formatter;
+  return partsFormatter;
 }
+
+/**
+ * თარიღის ნაწილები თბილისის დროით.
+ * @param {Date} date
+ * @returns {LocalParts}
+ */
+function localParts(date) {
+  const formatter = getPartsFormatter();
+  let year;
+  let month;
+  let day;
+  let hour;
+  let minute;
+  if (formatter) {
+    /** @type {Record<string, number>} */
+    const parts = {};
+    for (const part of formatter.formatToParts(date)) {
+      if (part.type !== 'literal') parts[part.type] = Number(part.value);
+    }
+    ({ year, day, minute } = parts);
+    month = parts.month - 1;
+    hour = parts.hour % 24; // ზოგი ძრავა h23-ში შუაღამეს „24“-ად წერს
+  } else {
+    const local = new Date(date.getTime() + FIXED_OFFSET);
+    year = local.getUTCFullYear();
+    month = local.getUTCMonth();
+    day = local.getUTCDate();
+    hour = local.getUTCHours();
+    minute = local.getUTCMinutes();
+  }
+  const weekday = new Date(Date.UTC(year, month, day)).getUTCDay();
+  return { year, month, day, weekday, hour, minute };
+}
+
+/** @param {number} n */
+const pad2 = (n) => String(n).padStart(2, '0');
 
 /**
  * @param {DateInput | null | undefined} value
@@ -50,14 +143,30 @@ export function toDate(value) {
 }
 
 /**
- * „5 მარტი, 2026“ და სხვა წინასწარ განსაზღვრული სტილები.
+ * „5 მარტი, 2026“ და სხვა წინასწარ განსაზღვრული სტილები:
+ * long „5 მარტი, 2026“ · weekday „ხუთშაბათი, 5 მარტი“ · monthYear „მარტი, 2026“ ·
+ * dayMonth „5 მარტი“ · dateTime „5 მარტი, 2026, 10:00“.
  * @param {DateInput | null | undefined} value
  * @param {DateStyle} [style='long']
  * @returns {string}
  */
 export function formatDate(value, style = 'long') {
   const date = toDate(value);
-  return date ? dateFormatter(DATE_STYLES[style] ?? DATE_STYLES.long).format(date) : '';
+  if (!date) return '';
+  const p = localParts(date);
+  const dayMonth = `${p.day} ${MONTHS[p.month]}`;
+  switch (style) {
+    case 'weekday':
+      return `${WEEKDAYS[p.weekday]}, ${dayMonth}`;
+    case 'monthYear':
+      return `${MONTHS[p.month]}, ${p.year}`;
+    case 'dayMonth':
+      return dayMonth;
+    case 'dateTime':
+      return `${dayMonth}, ${p.year}, ${pad2(p.hour)}:${pad2(p.minute)}`;
+    default:
+      return `${dayMonth}, ${p.year}`;
+  }
 }
 
 /**
@@ -68,31 +177,30 @@ export function formatDate(value, style = 'long') {
 export function formatDateParts(value) {
   const date = toDate(value);
   if (!date) return null;
-  /** @param {Intl.DateTimeFormatOptions} options @param {Intl.DateTimeFormatPartTypes} type */
-  const part = (options, type) =>
-    dateFormatter(options)
-      .formatToParts(date)
-      .find((p) => p.type === type)?.value ?? '';
+  const p = localParts(date);
   return {
-    day: part({ day: '2-digit' }, 'day'),
-    month: part({ month: 'long' }, 'month'),
-    monthShort: part({ month: 'short' }, 'month'),
-    year: part({ year: 'numeric' }, 'year'),
+    day: pad2(p.day),
+    month: MONTHS[p.month],
+    monthShort: MONTHS_SHORT[p.month],
+    year: String(p.year),
   };
 }
 
 /**
- * „10:00“.
+ * „10:00“ (24-საათიანი).
  * @param {DateInput | null | undefined} value
  * @returns {string}
  */
 export function formatTime(value) {
   const date = toDate(value);
-  return date ? dateFormatter({ hour: '2-digit', minute: '2-digit' }).format(date) : '';
+  if (!date) return '';
+  const p = localParts(date);
+  return `${pad2(p.hour)}:${pad2(p.minute)}`;
 }
 
 /**
- * „10:00–16:00“; თუ დასასრული არ არის — მხოლოდ დასაწყისი.
+ * „10:00–16:00“; თუ დასასრული არ არის — მხოლოდ დასაწყისი. სხვადასხვა დღე —
+ * „5 მარტი, 2026, 10:00 – 6 მარტი, 2026, 16:00“.
  * @param {DateInput} start
  * @param {DateInput | null | undefined} [end]
  * @returns {string}
@@ -102,7 +210,10 @@ export function formatTimeRange(start, end) {
   const to = toDate(end);
   if (!from) return '';
   if (!to || to <= from) return formatTime(from);
-  return dateFormatter({ hour: '2-digit', minute: '2-digit' }).formatRange(from, to);
+  if (toDateAttribute(from) !== toDateAttribute(to)) {
+    return `${formatDate(from, 'dateTime')} – ${formatDate(to, 'dateTime')}`;
+  }
+  return `${formatTime(from)}–${formatTime(to)}`;
 }
 
 /**
@@ -112,8 +223,7 @@ export function formatTimeRange(start, end) {
  */
 export function getYear(value) {
   const date = toDate(value);
-  if (!date) return null;
-  return Number(formatDateParts(date)?.year) || null;
+  return date ? localParts(date).year : null;
 }
 
 /**
@@ -124,12 +234,8 @@ export function getYear(value) {
 export function toDateAttribute(value) {
   const date = toDate(value);
   if (!date) return '';
-  const parts = dateFormatter({ year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(
-    date,
-  );
-  /** @param {Intl.DateTimeFormatPartTypes} type */
-  const get = (type) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')}`;
+  const p = localParts(date);
+  return `${p.year}-${pad2(p.month + 1)}-${pad2(p.day)}`;
 }
 
 /**
@@ -143,19 +249,34 @@ export function formatDuration(seconds) {
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
-  const pad = (/** @type {number} */ n) => String(n).padStart(2, '0');
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  return h > 0 ? `${h}:${pad2(m)}:${pad2(s)}` : `${pad2(m)}:${pad2(s)}`;
 }
 
-/** @type {Intl.NumberFormat | null} */
-let numberFormatter = null;
+/** @type {((value: number) => string) | null} */
+let numberFormat = null;
 
 /**
- * 12345 → „12 345“.
+ * ka-GE-ის დაჯგუფება ICU-ის გარეშე: ოთხნიშნა — დაჯგუფების გარეშე, ხუთნიშნა და მეტი — U+00A0.
+ * @param {number} value
+ * @returns {string}
+ */
+function groupGeorgian(value) {
+  const [int, frac] = String(Math.abs(value)).split('.');
+  const grouped = int.length >= 5 ? int.replace(/\B(?=(\d{3})+(?!\d))/g, '\u00a0') : int;
+  return `${value < 0 ? '-' : ''}${grouped}${frac ? `,${frac}` : ''}`;
+}
+
+/**
+ * 12345 → „12 345“ (U+00A0), 1234 → „1234“.
  * @param {number} value
  * @returns {string}
  */
 export function formatNumber(value) {
-  numberFormatter ??= new Intl.NumberFormat(LOCALE);
-  return numberFormatter.format(value);
+  if (!numberFormat) {
+    const intl = new Intl.NumberFormat(LOCALE);
+    numberFormat = intl.resolvedOptions().locale.startsWith('ka')
+      ? (v) => intl.format(v)
+      : groupGeorgian;
+  }
+  return numberFormat(value);
 }

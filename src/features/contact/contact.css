@@ -1,0 +1,254 @@
+/*
+ * კონტაქტი (F6, ContactPage): არხები, ფორმა, დადასტურება, რუკა, ოფისი, საათები, FAQ.
+ * ფერი მხოლოდ --mc-* ტოკენით; HEX, --mc-cta და ანიმაცია აქ არ არის. მრავალსვეტიანი განლაგება —
+ * container query (შრიფტის მასშტაბს მიჰყვება).
+ */
+@layer components {
+  /* ------------------------------------------------------------ არხები: 1440-ზე 5 სვეტი */
+  .mc-contact-grid5 {
+    --mc-cols: 5;
+    --mc-min: 13rem;
+    --mc-gap: 1rem;
+  }
+  .mc-contact-channel .mc-card__body {
+    gap: 0.625rem;
+    padding: 1.5rem;
+  }
+  .mc-contact-channel .mc-card__title {
+    font-size: var(--text-body);
+    line-height: calc(1.35 * var(--mc-leading));
+  }
+  .mc-contact-channel .mc-card__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+  }
+  .mc-contact-channel .mc-card__actions {
+    margin-top: auto;
+  }
+
+  /* ------------------------------------------------------------ ფორმა | გვერდითი სვეტი (7fr | 5fr) */
+  .mc-contact-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2rem;
+    align-items: start;
+  }
+  @container (min-width: 60rem) {
+    .mc-contact-layout {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    }
+  }
+
+  .mc-contact-form {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 1.75rem 1.25rem;
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-block);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+  }
+  @media (min-width: 48rem) {
+    .mc-contact-form {
+      padding: 2.5rem; /* 40 — ContactPage */
+    }
+  }
+  .mc-contact-form__title {
+    margin: 0;
+    font-size: clamp(1.625rem, 1.5321rem + 0.381vw * var(--mc-font-scale), 1.875rem); /* 26 → 30 */
+    line-height: calc(1.2 * var(--mc-leading));
+    font-weight: 800;
+  }
+  .mc-contact-form__form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.375rem; /* 22 */
+  }
+  .mc-contact-form__note,
+  .mc-contact-form__nocaptcha {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-contact-form__pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.375rem 1.125rem;
+    align-items: start;
+  }
+  @container (min-width: 36rem) {
+    .mc-contact-form__pair {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+  }
+  .mc-contact-form__submit {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.125rem;
+    padding-top: 0.25rem;
+  }
+
+  /*
+   * honeypot: ეკრანს გარეთ (არა display: none — ზოგი ბოტი დამალულ ველს გამოტოვებს). aria-hidden +
+   * tabindex="-1" — ეკრანის მკითხველი და Tab ვერ აღწევს.
+   */
+  .mc-hp {
+    position: absolute;
+    left: -10000px;
+    top: auto;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  /* ქსელის / სერვერის შეცდომა: 3px --mc-error, ტინტის გარეშე (§2) */
+  .mc-form-alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 1rem 1.25rem;
+    border: 3px solid var(--mc-error);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+  }
+  .mc-form-alert__icon {
+    flex-shrink: 0;
+    color: var(--mc-error);
+  }
+
+  /* დადასტურება: 2px --mc-growth (წარმატება) + ✓ + ტექსტი, surface ფონზე */
+  .mc-contact-confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.5rem;
+    border: 2px solid var(--mc-growth);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+  }
+  .mc-contact-confirm__icon {
+    flex-shrink: 0;
+    color: var(--mc-growth);
+  }
+  .mc-contact-confirm__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  .mc-contact-confirm__body > p {
+    margin: 0;
+  }
+  .mc-contact-confirm__title {
+    margin: 0;
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    font-weight: 800;
+  }
+  .mc-contact-confirm__next {
+    margin: 0.5rem 0 0;
+    font-size: var(--text-body);
+    font-weight: 800;
+  }
+  .mc-contact-confirm__steps {
+    list-style-type: decimal;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0 0 0.5rem;
+    padding-left: 1.5em;
+  }
+
+  /* ------------------------------------------------------------ გვერდითი სვეტი */
+  .mc-contact-aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+  .mc-contact-map {
+    margin: 0;
+    overflow: hidden;
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+  }
+  .mc-contact-map__placeholder,
+  .mc-contact-map__frame {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: 16.25rem; /* 260 — ContactPage */
+    border: 0;
+    border-bottom: 2px solid var(--mc-card-border);
+    background-color: var(--mc-alt);
+    color: var(--mc-muted);
+    font-size: var(--text-small);
+    text-align: center;
+  }
+  .mc-contact-map__text {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1.25rem 1.5rem;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+  }
+  .mc-contact-map__text > p {
+    margin: 0;
+  }
+
+  .mc-contact-box {
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+  }
+  /* საათები: ფონი ძირეული თემის --mc-hero (ღია #0B2545), ტექსტი ქვეხის #EAF0F7 (13.41:1) */
+  .mc-contact-box--dark {
+    border-color: var(--mc-hero);
+    background-color: var(--mc-hero);
+  }
+  .mc-contact-box__inner {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.75rem;
+    border-radius: inherit;
+    color: var(--mc-ink);
+  }
+  .mc-contact-box__title {
+    margin: 0;
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    font-weight: 800;
+  }
+  .mc-contact-dl {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin: 0;
+  }
+  .mc-contact-dl dt {
+    font-weight: 700;
+  }
+  .mc-contact-dl dd {
+    margin: 0;
+    color: var(--mc-muted);
+  }
+
+  .mc-contact-faq {
+    max-width: 60rem;
+  }
+}

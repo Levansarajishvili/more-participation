@@ -29,7 +29,7 @@ export default function TextArea({
   const message = errorMessage(error);
   return (
     <div className={cx('mc-field', className)}>
-      <FieldLabel htmlFor={ids.id} optional={optional}>
+      <FieldLabel htmlFor={ids.id} optional={optional} required={Boolean(textareaProps.required)}>
         {label}
       </FieldLabel>
       <textarea

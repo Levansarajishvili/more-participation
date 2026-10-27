@@ -6,7 +6,10 @@ import { t } from '@/i18n/index.js';
  */
 
 /** @typedef {'not-found' | 'bad-request' | 'validation' | 'network' | 'server' | 'unknown'} ErrorCode */
-/** @typedef {'required' | 'email' | 'contact' | 'consent' | 'tooLong' | 'option'} FieldErrorCode */
+/**
+ * F6: `replyEmail` / `replyPhone` — არჩეული საპასუხო არხი საკონტაქტო ველს არ შეესაბამება.
+ * @typedef {'required' | 'email' | 'contact' | 'consent' | 'tooLong' | 'option' | 'replyEmail' | 'replyPhone'} FieldErrorCode
+ */
 /** @typedef {{ code: FieldErrorCode, message: string }} FieldError */
 
 /** @type {readonly ErrorCode[]} */

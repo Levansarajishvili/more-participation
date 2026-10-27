@@ -13,12 +13,14 @@ import {
   ChipGroup,
   ContentState,
   DateTile,
+  ErrorSummary,
   EventCard,
   GrowthStat,
   Icon,
   ICONS,
   IconButton,
   LiveRegion,
+  LoadMore,
   Logo,
   Media,
   NewsCard,
@@ -180,7 +182,7 @@ export default function KitPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-h1">UI ნაკრები</h1>
         <p className="max-w-article text-lead text-muted">
-          F3–F5: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
+          F3–F6: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
           მუშაობს; „Hover“, „ფოკუსი“ და „დაჭერილი“ სტატიკური ასლებია (data-force).
         </p>
       </div>
@@ -677,6 +679,109 @@ export default function KitPage() {
                 </ul>
                 <NewsCard item={news.items[0]} variant="compact" />
               </>
+            ) : (
+              <p className="text-muted">{t('common.loading')}</p>
+            )}
+          </>
+        )}
+      </KitSection>
+
+      <KitSection
+        id="kit-f6"
+        title="F6: ErrorSummary, LoadMore, ArticleCard / NewsCard feature, NewsCard list, „(სავალდებულო)“"
+        note="შეცდომების ჯამი (role=alert, აქ — ფოკუსის გარეშე); „მეტის ჩატვირთვა“ ოთხ მდგომარეობაში; რჩეული ბარათები (radius 32, ფართოზე ფოტო | ტექსტი); სიახლის სიის ბარათი (თარიღი | ფოტო | ტექსტი)."
+      >
+        {(theme) => (
+          <>
+            <State name="ErrorSummary + ველები">
+              <div className="flex flex-col gap-3">
+                <ErrorSummary
+                  focusOnMount={false}
+                  title={t('contact.errorSummary', { count: 2 })}
+                  items={[
+                    {
+                      id: `kit-${theme}-err-name`,
+                      label: t('contact.name'),
+                      message: t('fieldErrors.required'),
+                    },
+                    {
+                      id: `kit-${theme}-err-consent`,
+                      label: t('contact.consent'),
+                      message: t('fieldErrors.consent'),
+                    },
+                  ]}
+                />
+                <TextField
+                  id={`kit-${theme}-err-name`}
+                  label={t('contact.name')}
+                  required
+                  error={t('fieldErrors.required')}
+                />
+                <Checkbox
+                  id={`kit-${theme}-err-consent`}
+                  label={t('contact.consentFull')}
+                  required
+                  error={t('fieldErrors.consent')}
+                />
+              </div>
+            </State>
+            <State name="LoadMore: ნაგულისხმევი / იტვირთება / ყველა / შეცდომა">
+              <div className="flex flex-col gap-2">
+                <LoadMore
+                  status="success"
+                  hasMore
+                  onLoadMore={noop}
+                  shown={6}
+                  total={13}
+                  label="[სია]"
+                />
+                <LoadMore
+                  status="loading-more"
+                  hasMore
+                  onLoadMore={noop}
+                  shown={6}
+                  total={13}
+                  label="[სია]"
+                />
+                <LoadMore
+                  status="success"
+                  hasMore={false}
+                  onLoadMore={noop}
+                  shown={13}
+                  total={13}
+                  label="[სია]"
+                />
+                <LoadMore
+                  status="error"
+                  hasMore
+                  onLoadMore={noop}
+                  shown={6}
+                  total={13}
+                  error={new ContentError('network')}
+                  label="[სია]"
+                />
+              </div>
+            </State>
+            {articles && news ? (
+              <div className="mc-block flex flex-col gap-3">
+                <ArticleCard article={articles.items[0]} variant="feature" headingLevel="h4" />
+                <NewsCard
+                  item={news.items[0]}
+                  variant="feature"
+                  headingLevel="h4"
+                  to={`/news/${news.items[0].slug}`}
+                />
+                <ol className="mc-news-list">
+                  <li>
+                    <NewsCard
+                      item={news.items[0]}
+                      variant="list"
+                      headingLevel="h4"
+                      to={`/news/${news.items[0].slug}`}
+                    />
+                  </li>
+                </ol>
+              </div>
             ) : (
               <p className="text-muted">{t('common.loading')}</p>
             )}

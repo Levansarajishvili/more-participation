@@ -79,12 +79,22 @@ export function createSettings() {
     contacts: {
       phone: '[ტელეფონი]',
       email: '[ელფოსტა]',
-      messenger: { label: '[WhatsApp / Viber]', value: '[ნომერი] — ტექსტი, ხმა ან ვიდეო' },
-      signVideo: { schedule: '[დღე, საათი] — თარჯიმნით', bookingUrl: null },
-      address: { text: '[მისამართი]', mapUrl: null },
+      messenger: {
+        label: '[WhatsApp / Viber]',
+        value: '[ნომერი — ტექსტი, ხმა ან ვიდეო]',
+        url: null,
+      },
+      signVideo: { schedule: '[დღე, საათი — თარჯიმნით]', bookingUrl: null },
+      address: {
+        text: '[მისამართი]',
+        mapUrl: null,
+        embedUrl: null,
+        directions:
+          '[როგორ მოგვაგნო: უახლოესი გაჩერება და მანძილი, შესასვლელი ქუჩიდან, სართული და ორიენტირი შენობაში.]',
+      },
     },
     hours: [
-      { label: '[ორშაბათი–პარასკევი]', value: '[10:00–18:00]' },
+      { label: '[ორშაბათი–პარასკევი]', value: '[00:00–00:00]' },
       { label: '[ვიდეოზარი ჟესტურ ენაზე]', value: '[დღე, საათი]' },
     ],
     responseTime: '[2 სამუშაო დღეში]',

@@ -1,0 +1,45 @@
+/*
+ * სტატიების სია (F6, ArticlesPage): ძიების ფორმა. ფერი მხოლოდ --mc-* ტოკენით; HEX, --mc-cta და
+ * ანიმაცია გვერდის CSS-ში არ არის (src/features/__tests__/pages.test.jsx).
+ *
+ * ფორმის ბადე: `.mc-field` → `display: contents` — ლეიბლი, ველი, ღილაკი, მინიშნება და შეცდომა ერთ
+ * ბადეშია, ღილაკი ველის გასწვრივ დგას ნებისმიერ შრიფტის მასშტაბზე (SubscribeForm-ის პატერნი).
+ */
+@layer components {
+  .mc-search-form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'label' 'input' 'hint' 'error' 'submit';
+    gap: 0.5rem 0.75rem;
+    align-items: start;
+    width: 100%;
+    max-width: 44rem; /* ველი 560 + ღილაკი (ArticlesPage) */
+  }
+  @container (min-width: 20rem) {
+    .mc-search-form {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas: 'label .' 'input submit' 'hint hint' 'error error';
+    }
+  }
+  .mc-search-form > .mc-field {
+    display: contents;
+  }
+  .mc-search-form .mc-label {
+    grid-area: label;
+  }
+  .mc-search-form .mc-input {
+    grid-area: input;
+    border-radius: var(--radius-field-lg);
+  }
+  .mc-search-form .mc-hint {
+    grid-area: hint;
+  }
+  .mc-search-form .mc-error {
+    grid-area: error;
+  }
+  .mc-search-form__submit {
+    grid-area: submit;
+    justify-self: start;
+    min-height: 3.5rem;
+  }
+}

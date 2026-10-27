@@ -133,7 +133,7 @@ describe('mock: „რეალური მონაცემი არსა�
 
   it('მედიის src და გარე ბმულები null-ია — ფაილი და URL ჯერ არ არის', () => {
     expect(collectKey(data, 'src').every((src) => src === null)).toBe(true);
-    for (const key of ['url', 'mapUrl', 'bookingUrl', 'registrationUrl']) {
+    for (const key of ['url', 'mapUrl', 'embedUrl', 'bookingUrl', 'registrationUrl']) {
       expect(collectKey(data, key).every((value) => value === null)).toBe(true);
     }
     expect(Object.values(data.settings.links).every((value) => value === null)).toBe(true);

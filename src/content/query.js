@@ -405,6 +405,20 @@ export function queryNews(news, params, now) {
 }
 
 /**
+ * F6: სიახლის სრული ტექსტი (`/news/:slug`).
+ * @param {NewsItem[]} news
+ * @param {string} slug
+ * @param {number} now
+ * @returns {NewsItem}
+ */
+export function findNews(news, slug, now) {
+  if (!isSlug(slug)) throw new ContentError('not-found', { detail: `slug: ${String(slug)}` });
+  const item = news.find((n) => n.slug === slug && isPublic(n, now));
+  if (!item) throw new ContentError('not-found', { detail: `news: ${slug}` });
+  return item;
+}
+
+/**
  * @param {Event[]} events
  * @param {EventQuery} params
  * @param {number} now

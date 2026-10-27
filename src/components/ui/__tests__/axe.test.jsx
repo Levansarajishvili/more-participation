@@ -14,6 +14,7 @@ import {
   Checkbox,
   ContentState,
   DateTile,
+  ErrorSummary,
   Chip,
   ChipGroup,
   EventCard,
@@ -21,6 +22,7 @@ import {
   Icon,
   IconButton,
   LiveRegion,
+  LoadMore,
   Logo,
   Media,
   NewsCard,
@@ -284,6 +286,68 @@ const CASES = [
           </li>
         </ul>
         <NewsCard item={newsItem} variant="compact" />
+      </>
+    ),
+  ],
+  [
+    'F6: ErrorSummary + ველები (სავალდებულო / არასავალდებულო)',
+    () => (
+      <>
+        <ErrorSummary
+          focusOnMount={false}
+          title="ფორმაში 1 შეცდომაა. გაასწორე მონიშნული ველები."
+          items={[{ id: 'f6-name', label: 'სახელი', message: 'ეს ველი სავალდებულოა.' }]}
+        />
+        <TextField id="f6-name" label="სახელი" required error="ეს ველი სავალდებულოა." />
+        <TextArea label="შეტყობინება" optional />
+        <Checkbox label="ვეთანხმები" required />
+      </>
+    ),
+  ],
+  [
+    'F6: LoadMore — ნაგულისხმევი, იტვირთება, ყველა, შეცდომა',
+    () => (
+      <>
+        <LoadMore status="success" hasMore onLoadMore={() => {}} shown={6} total={13} label="სია" />
+        <LoadMore
+          status="loading-more"
+          hasMore
+          onLoadMore={() => {}}
+          shown={6}
+          total={13}
+          label="სია 2"
+        />
+        <LoadMore
+          status="success"
+          hasMore={false}
+          onLoadMore={() => {}}
+          shown={13}
+          total={13}
+          label="სია 3"
+        />
+        <LoadMore
+          status="error"
+          hasMore
+          onLoadMore={() => {}}
+          shown={6}
+          total={13}
+          error={new ContentError('network')}
+          label="სია 4"
+        />
+      </>
+    ),
+  ],
+  [
+    'F6: ArticleCard / NewsCard feature, NewsCard list',
+    () => (
+      <>
+        <ArticleCard article={article} variant="feature" headingLevel="h2" />
+        <NewsCard item={newsItem} variant="feature" headingLevel="h2" to="/news/x" />
+        <ol>
+          <li>
+            <NewsCard item={{ ...newsItem, slug: 'list-demo' }} variant="list" to="/news/y" />
+          </li>
+        </ol>
       </>
     ),
   ],

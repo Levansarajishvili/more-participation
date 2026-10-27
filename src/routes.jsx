@@ -77,6 +77,12 @@ export function createRoutes() {
               lazy: page(() => import('@/pages/NewsPage.jsx')),
             },
             {
+              // F6: სიახლის სრული ტექსტი (§9.5 — ახალი როუტი, სტატიის შაბლონით)
+              path: 'news/:slug',
+              handle: { title: 'nav.news' },
+              lazy: page(() => import('@/pages/NewsItemPage.jsx')),
+            },
+            {
               path: 'contact',
               handle: { title: 'nav.contact' },
               lazy: page(() => import('@/pages/ContactPage.jsx')),

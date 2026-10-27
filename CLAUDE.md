@@ -127,19 +127,28 @@ src/
     about/                F5: AboutHero, AboutMission, AboutValues, AboutPath, AboutTeam (#team),
                           AboutPartners (#partners); PillarList (+ pillars.css, მთავარიც იყენებს);
                           about-media.js (ჰეროს ფოტოები); about.css
+    articles/             F6: ArticleFilters (<search>, ჩიპები, დალაგება), FeaturedArticle, ArticleList
+                          (სტატუსი, ბადე, LoadMore), filter-summary.js; სტატიის შაბლონი — ReadingHeader,
+                          ArticleBody (ბლოკები), ListenControl (audio / speech.js), ShareButton,
+                          RelatedArticles; articles.css (ძიება), reading.css (სვეტი, .mc-prose)
+    news/                 F6: NewsFilters (ტიპი + წელი), FeaturedNews, NewsList (<ol>), UpcomingEvents; news.css
+    contact/              F6: ContactChannels (+ contact-channels.js), ContactForm, ContactConfirmation,
+                          OfficeInfo (რუკა, ოფისი, საათები), ContactFaq, contact-fields.js; contact.css
+    subscribe/            F6: SubscribeForm (dark | card) + subscribe.css — სტატიები და სიახლეები
     __tests__/            F5: page-helpers.jsx (renderPage, adapter-ები: ok/failing/empty/pending/
                           switchable, headingTree, unbracketedFacts), pages.test.jsx (CSS, gate-ის თვითტესტი)
   components/
     ui/                   F3: index.js (შესასვლელი), Button, Chip, Card, Media, Accordion, SaveToggle,
                           A11yBadge, GrowthStat, SectionHeading, Quote, Icon (+ icon-sprite.js), Logo
                           (+ logo-geometry.js), VisuallyHidden, LiveRegion, UiLink, Switch (F4), utils.js;
-                          F5: ContentState, Skeleton (+ SkeletonGroup), Breadcrumbs, DateTile, PendingLink
+                          F5: ContentState, Skeleton (+ SkeletonGroup), Breadcrumbs, DateTile, PendingLink;
+                          F6: LoadMore, fields/ErrorSummary (+ focusField — field-utils.js)
       cards/              Article, Series, Video, News, Event, Team, PartnerCard
       fields/             TextField, TextArea, Select, Checkbox, RadioGroup, Field.jsx, field-utils.js
       __tests__/          axe, კლავიატურა, ლოგო, components.css (fixtures.jsx — mock-ის summary-ები)
     layout/               F4: RootLayout (Provider + PageShell + ScrollRestoration), PageShell, SiteHeader,
                           SiteFooter, site-nav.js (ბმულები), useShellLayout.js, usePageTitle.js, __tests__/;
-                          F5: PageSection, PageHero
+                          F5: PageSection, PageHero; F6: PageIntro (ღია თავი)
     media/                F7: slider, player
   pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
   content/
@@ -158,11 +167,14 @@ src/
     useLoadMore.js        cursor-ით „მეტის ჩატვირთვა“, firstNewIndex ფოკუსისთვის
     useUrlFilters.js      category / q (300ms) / year / series / sort URL-ში
     useSaved.js           localStorage['mc-saved'], ტაბებს შორის სინქრონი
+    useLoadMoreFocus.js   F6: „მეტის“ შემდეგ ფოკუსი პირველ ახალ ელემენტზე + „დაემატა {n}, სულ {n}“
+    useHeadingRefocus.js  F6: ასინქრონული გვერდის h1 — ჩატვირთვის შემდეგ ფოკუსი (ან #hash-ის სამიზნე)
   i18n/
     ka.js                 ინტერფეისის ყველა სტრიქონი
     en.js                 იგივე გასაღებები, [EN] placeholder-ები (გენერირდება)
     index.js              t(), createT(), formatDurationLabel + format.js-ის რეექსპორტი
-    format.js             ka-GE, Asia/Tbilisi: formatDate, formatTimeRange, formatDuration…
+    format.js             ka-GE, Asia/Tbilisi: formatDate, formatTimeRange, formatDuration… (F6: თვეები
+                          და დღეები ფაილშია — ICU-ის ქართულ ლოკალზე აღარ არის დამოკიდებული)
   assets/logo/            ლოგო LogoSynergy-დან: mark-{3d,flat,tiny}[-inverse], mark-mono, wordmark-{horizontal,vertical}
   assets/icons/icons.svg  ხატულების ერთადერთი წყარო (<symbol>, class main | accent | dot | fill)
   test/
@@ -260,3 +272,34 @@ src/
   `failingAdapter` + `switchableAdapter` → ფოკუსი h2-ზე, `emptyAdapter`), `skippedLevels(headingTree(main))`
   = `[]`, `unbracketedFacts(main)` = `[]`, axe (jsdom). Chromium-ის axe — gate (1440 / 390 × 3 თემა).
 
+## კოდის კონვენციები (F6)
+
+- გვერდის ღია თავი (ArticlesPage / NewsPage / ContactPage დაფები) — `PageIntro` (`<section aria-labelledby>`
+  h1-ზე; h1-ს, ბილიკს, lead-ს და ფილტრებს გვერდი ხატავს). მუქი თავი — F5-ის `PageHero`.
+- ფილტრი = `useUrlFilters`: ჩიპი / select — push, ძიება — 300ms + replace; სიახლის ტიპი `?category=`-ითაა
+  (§10-ის პარამეტრები). შედეგის რაოდენობა — ხილული `LiveRegion` სიის სათაურის გვერდით; ტექსტი მხოლოდ
+  ახალ შედეგზე იცვლება (ჩატვირთვისას ძველი რჩება), ფოკუსი ფილტრზე რჩება. ცარიელ შედეგზე და ჩართულ
+  ფილტრზე — „ფილტრების გასუფთავება“, დაჭერის შემდეგ ფოკუსი სიის h2-ზე.
+- „მეტის ჩატვირთვა“ — `LoadMore` + `useLoadMoreFocus(list, listRef)` (ფოკუსი ახალი გვერდის პირველ
+  ბმულზე, დამალული სტატუსი „დაემატა {n}, სულ {n}“). „მეტის“ შეცდომისას ბლოკი `success`-ად რჩება.
+- ფილტრის გარეშე რჩეული ცალკე ბლოკია (`featured: true, limit: 1`), სია — `featured: false`; ფილტრისას
+  რჩეული ჩვეულებრივ შედეგშია.
+- ასინქრონული გვერდი (სტატია, სიახლე): h1 პირველივე რენდერზე („… იტვირთება…“) და ერთი DOM-კვანძია
+  ყველა მდგომარეობაში; `useHeadingRefocus(headingRef, status)` — ჩატვირთვის შემდეგ ფოკუსი (#hash →
+  სამიზნეზე). `<main>`-ში `<header>` არ იწერება (banner) — `div[data-heading-scope]`.
+- სტატიის / სიახლის ტექსტი — `ArticleBody` (`.mc-prose`: 20/1.75, 36em, H2 28/1.3); სვეტი
+  `.mc-reading__column` (45rem). გაზიარება — `ShareButton` (Web Share → კოპირება → ხელით, მისამართი
+  როუტერიდან: `useHref`). მოსმენა — `ListenControl` (audio ფაილი ან `speech.js`).
+- ფორმა: `noValidate` + ვალიდაცია მხოლოდ გაგზავნისას (`validateContact` / `validateSubscribe` — adapter-ის
+  იგივე წესი); რამდენიმე ველზე — `ErrorSummary` ფორმის თავში (`key={attempt}`, ბმულები ველის id-ებზე,
+  `focusField`) + ველის `error`. ერთველიან ფორმაში ჯამი არ ჩნდება — ფოკუსი ველზე. სავალდებულო ველი
+  `required`-ით ავტომატურად იღებს „(სავალდებულო)“-ს, არასავალდებულო — `optional`. placeholder არ არის.
+- ფორმის წარმატება — დადასტურება ფორმის ადგილას (`role="status"`, ფოკუსი h3-ზე, `--mc-growth` ჩარჩო +
+  ✓); ქსელის შეცდომა — `role="alert"` ღილაკის ზემოთ, მონაცემი რჩება. spam — honeypot (`.mc-hp`,
+  `aria-hidden`, `tabindex="-1"`), CAPTCHA და დროის ლიმიტი არ არის.
+- რუკის iframe მხოლოდ `address.embedUrl` + `address.directions`-ით (ტექსტური ალტერნატივა ხილულია
+  `figcaption`-ში); placeholder-ი `aria-hidden`.
+- user-event-ში `[` და `{` გასაღების აღწერაა — `[ფრჩხილებიანი]` ტექსტი ტესტში `literal()`-ით იკრიფება
+  (`[[`). `getByLabelText` aria-hidden-ს არ ითვალისწინებს — დამალულის შესამოწმებლად `getByRole`.
+- `unbracketedFacts` ბლოკს (p, li, h…, dd) მთლიანად ამოწმებს, თუ ის რამდენიმე ფრაგმენტისგანაა;
+  გამოთვლილი მნიშვნელობა (`time`, `.mc-card__time`, წლის `option`) — არ ითვლება ფაქტად.

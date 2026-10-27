@@ -10,7 +10,9 @@ import VisuallyHidden from '../VisuallyHidden.jsx';
 /**
  * ღონისძიების ბარათი (`Event`): თარიღის ბლოკი, სათაური, დრო (Asia/Tbilisi), ადგილი,
  * ხელმისაწვდომობის ნიშნები (ეტლი, თარჯიმანი, სუბტიტრები, ფორმატი) და რეგისტრაცია.
- * ბარათს რამდენიმე მოქმედება აქვს, ამიტომ stretched-link არ ედება.
+ * ბარათს რამდენიმე მოქმედება აქვს, ამიტომ stretched-link არ ედება. F6: „რეგისტრაცია“-ს ხელმისაწვდომ
+ * სახელს ღონისძიების სათაური ემატება („რეგისტრაცია: {სათაური}“) — სიაში რამდენიმე ერთნაირი
+ * სახელის ბმული აღარ არის.
  *
  * @param {object} props
  * @param {import('@/content/model.js').Event} props.event
@@ -26,7 +28,7 @@ export default function EventCard({ event, headingLevel = 'h3', className, ...re
       aside={<DateTile date={start} format="weekday" />}
       meta={
         <>
-          <span>{formatTimeRange(start, end)}</span>
+          <span className="mc-card__time">{formatTimeRange(start, end)}</span>
           <span className="mc-card__meta-icon">
             <Icon name="location" size="1.25em" />
             {location}
@@ -51,6 +53,7 @@ export default function EventCard({ event, headingLevel = 'h3', className, ...re
             disabled={!registrationUrl}
           >
             {t('news.register')}
+            <VisuallyHidden>: {title}</VisuallyHidden>
           </Button>
         </>
       }

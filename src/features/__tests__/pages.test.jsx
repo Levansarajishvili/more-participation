@@ -11,6 +11,12 @@ const PAGE_CSS = [
   'src/features/home/home.css',
   'src/features/about/about.css',
   'src/features/about/pillars.css',
+  // F6
+  'src/features/articles/articles.css',
+  'src/features/articles/reading.css',
+  'src/features/news/news.css',
+  'src/features/contact/contact.css',
+  'src/features/subscribe/subscribe.css',
 ];
 
 /** @param {string} file */
@@ -41,5 +47,13 @@ describe('unbracketedFacts (gate-ის თვითშემოწმება)
       <p>120 მონაწილე</p>
       <time datetime="2026-10-24">24 ოქტომბერი, 2026</time>`;
     expect(unbracketedFacts(main)).toEqual(['ორგანიზაცია 2019 წელს დაარსდა.', '120 მონაწილე']);
+  });
+
+  it('F6: რამდენიმე ფრაგმენტის ბლოკი მთლიანად მოწმდება (ბმული, მუქი, lang="en")', () => {
+    const main = document.createElement('main');
+    main.innerHTML = `
+      <p>[ტექსტი <a href="/x">ბმული</a>, <strong>ტერმინი</strong> და <span lang="en">term</span>.]</p>
+      <p>დაარსდა <a href="/x">ბმული</a> 2019 წელს.</p>`;
+    expect(unbracketedFacts(main)).toEqual(['დაარსდა', 'ბმული', '2019 წელს.']);
   });
 });

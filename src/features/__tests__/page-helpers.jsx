@@ -28,6 +28,7 @@ const METHODS = /** @type {const} */ ([
   'listVideos',
   'getVideo',
   'listNews',
+  'getNews',
   'listEvents',
   'getTeam',
   'getPartners',
@@ -176,9 +177,13 @@ const TERMS = new Set(Object.values(SERIES_TOPIC_TERMS).map((term) => term.text)
 
 /**
  * გამოთვლილი მნიშვნელობა (და არა გამოგონილი ფაქტი): თარიღი `<time>`-ში (ISO — adapter-იდან),
- * ხანგრძლივობა კადრზე, მასალების რაოდენობა — მონაცემებიდან ითვლება.
+ * ხანგრძლივობა კადრზე, მასალების რაოდენობა — მონაცემებიდან ითვლება. F6: ღონისძიების დრო
+ * (`formatTimeRange`) და წლის ფილტრის ვარიანტები (`listNews().years`).
  */
-const COMPUTED = 'time, .mc-thumb-badge--time, .mc-entry__count';
+const COMPUTED =
+  'time, .mc-thumb-badge--time, .mc-entry__count, .mc-card__time, .mc-filters__select option';
+/** ტექსტის ბლოკი, რომლის მთლიანი ტექსტი შეიძლება ერთი `[placeholder]` იყოს. */
+const BLOCK = 'p, li, h1, h2, h3, h4, blockquote, figcaption, dt, dd';
 
 /** @param {string} text */
 function isUiOrBracketed(text) {
@@ -209,7 +214,12 @@ export function unbracketedFacts(main) {
     const parent = node.parentElement;
     if (!text || !parent) continue;
     if (parent.closest(COMPUTED) || parent.closest('.mc-hero-title')) continue;
-    if (!isUiOrBracketed(text)) found.push(text);
+    if (isUiOrBracketed(text)) continue;
+    // F6: ბლოკი რამდენიმე ფრაგმენტისგანაა (ტექსტი + ბმული + `lang="en"` + მუქი) — ფრჩხილები
+    // პირველ ფრაგმენტში იხსნება და ბოლოში იხურება: მთელი ბლოკი ერთ placeholder-ად მოწმდება
+    const whole = (parent.closest(BLOCK)?.textContent ?? '').replace(/\s+/g, ' ').trim();
+    if (whole && BRACKETED.test(whole)) continue;
+    found.push(text);
   }
   return found;
 }

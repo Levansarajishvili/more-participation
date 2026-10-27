@@ -1,11 +1,12 @@
 import { cx } from '../utils.js';
 
-import { FieldError, FieldHint } from './Field.jsx';
+import { FieldError, FieldHint, FieldStatus } from './Field.jsx';
 import { describedBy, errorMessage, useFieldIds } from './field-utils.js';
 
 /**
  * მოსანიშნი ველი: 24px კვადრატი (რადიუსი 6), მონიშნული — ink ფონი და ✓; ლეიბლი მთლიანად
  * დაწკაპებადია (სამიზნე ≥ 44px სიმაღლით). forced-colors-ში ბრაუზერის ნატიური ველი ბრუნდება.
+ * F6: `required` → ლეიბლის ბოლოს „(სავალდებულო)“.
  *
  * @param {object} props
  * @param {import('react').ReactNode} props.label
@@ -28,7 +29,10 @@ export default function Checkbox({ label, hint, error, id, className, ...inputPr
           aria-describedby={describedBy(hint && ids.hint, message && ids.error)}
           {...inputProps}
         />
-        <span>{label}</span>
+        <span>
+          {label}
+          <FieldStatus required={Boolean(inputProps.required)} />
+        </span>
       </label>
       {hint && <FieldHint id={ids.hint}>{hint}</FieldHint>}
       {message && <FieldError id={ids.error}>{message}</FieldError>}

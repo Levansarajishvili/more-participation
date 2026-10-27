@@ -1,0 +1,88 @@
+/*
+ * გამოწერის ბლოკი (F6): ArticlesPage — მუქი ზოლი, NewsPage — ბარათი. ორი სვეტი (ტექსტი | ფორმა)
+ * კონტეინერი ≥ 48rem-ზე; ვიწროზე ერთმანეთის ქვეშ. ფერი მხოლოდ --mc-* ტოკენით.
+ *
+ * ფორმის ბადე: `.mc-field` → `display: contents`, რომ ლეიბლი, ველი, ღილაკი და შეცდომა ერთ ბადეში
+ * დალაგდეს — ღილაკი ველის გასწვრივ დგას მაშინაც, როცა ქვემოთ შეცდომა ჩნდება (შრიფტის ნებისმიერ
+ * მასშტაბზე, ლეიბლის სიმაღლის „გამოცნობის“ გარეშე).
+ */
+@layer components {
+  .mc-subscribe {
+    container-type: inline-size;
+    border-radius: var(--radius-block);
+  }
+  .mc-subscribe--dark {
+    background-color: var(--mc-hero);
+  }
+  .mc-subscribe--card {
+    border: 2px solid var(--mc-card-border);
+    background-color: var(--mc-surface);
+  }
+  .mc-subscribe__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 2rem 1.5rem;
+    border-radius: inherit;
+    color: var(--mc-ink);
+    overflow-wrap: anywhere;
+  }
+  @container (min-width: 48rem) {
+    .mc-subscribe__inner {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 2.5rem;
+      align-items: center;
+      padding: 3rem 3.5rem;
+    }
+  }
+  .mc-subscribe__intro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  .mc-subscribe__title {
+    margin: 0;
+    font-size: clamp(1.625rem, 1.3929rem + 0.9524vw * var(--mc-font-scale), 2.25rem); /* 26 → 36 */
+    line-height: calc(1.15 * var(--mc-leading));
+    font-weight: 800;
+  }
+  .mc-subscribe__text {
+    margin: 0;
+    color: var(--mc-muted);
+  }
+
+  .mc-subscribe__form {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'label' 'input' 'error' 'submit' 'status';
+    gap: 0.5rem 0.75rem;
+    align-items: start;
+  }
+  @container (min-width: 36rem) {
+    .mc-subscribe__form {
+      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-areas: 'label .' 'input submit' 'error error' 'status status';
+    }
+  }
+  .mc-subscribe__form > .mc-field {
+    display: contents;
+  }
+  .mc-subscribe__form .mc-label {
+    grid-area: label;
+  }
+  .mc-subscribe__form .mc-input {
+    grid-area: input;
+  }
+  .mc-subscribe__form .mc-error {
+    grid-area: error;
+  }
+  .mc-subscribe__submit {
+    grid-area: submit;
+    justify-self: start;
+  }
+  .mc-subscribe__status {
+    grid-area: status;
+    margin: 0;
+    font-weight: 700;
+  }
+}

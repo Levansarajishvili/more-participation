@@ -1433,3 +1433,223 @@
     text-decoration-thickness: 2px;
   }
 }
+
+/*
+ * F6: UI ნაკრების გაფართოება — რჩეული ბარათი (სტატია / სიახლე), სიახლის სიის ბარათი, შეცდომების
+ * ჯამი, „მეტის ჩატვირთვა“. ფერი მხოლოდ --mc-* ტოკენით; მრავალსვეტიანი განლაგება — container
+ * query-ით (შრიფტის მასშტაბს მიჰყვება, §3).
+ */
+@layer components {
+  /* ------------------------------------------------------------ წარწერა: „რჩეული · კატეგორია“ */
+  .mc-card__eyebrow:has(.mc-card__eyebrow-sub) {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0 0.75rem;
+  }
+  .mc-card__eyebrow-sub {
+    color: var(--mc-muted);
+  }
+
+  /* ------------------------------------------------------------ რჩეული ბარათი (feature) */
+  /*
+   * ArticlesPage / NewsPage დაფები: ვიწროზე ფოტო ზემოთ, კონტეინერი ≥ 60rem — ფოტო 7fr | ტექსტი
+   * 5fr (სიახლე: 6fr | 6fr). რადიუსი 32 — დიდი ბლოკი. შენახვის ღილაკი ფოტოს კუთხეშია (grid-ის
+   * იგივე უბანი), რომ ფართოზე ტექსტს არ დაეფაროს.
+   */
+  .mc-card--feature {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'media' 'body';
+    border-radius: var(--radius-block);
+  }
+  .mc-card--feature .mc-card__link::after {
+    border-radius: var(--radius-block);
+  }
+  .mc-card--feature .mc-card__media {
+    grid-area: media;
+    border-radius: calc(var(--radius-block) - 2px) calc(var(--radius-block) - 2px) 0 0;
+  }
+  .mc-card--feature .mc-card__body {
+    grid-area: body;
+    justify-content: center;
+    gap: 0.75rem;
+    padding: 1.5rem 1.5rem 1.75rem;
+  }
+  .mc-card--feature .mc-card__overlay {
+    position: relative;
+    grid-area: media;
+    justify-self: end;
+    align-self: start;
+    top: auto;
+    right: auto;
+    margin: 0.875rem;
+  }
+  /* 28 → 36px (ArticlesPage / NewsPage: 36/1.2, 900) */
+  .mc-card--feature .mc-card__title {
+    font-size: clamp(1.75rem, 1.5644rem + 0.7619vw * var(--mc-font-scale), 2.25rem);
+    line-height: calc(1.2 * var(--mc-leading));
+    font-weight: 900;
+  }
+  .mc-card--feature .mc-card__text {
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+  .mc-card--feature .mc-card__meta {
+    margin-top: 0;
+  }
+  @container (min-width: 60rem) {
+    .mc-card--feature {
+      grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+      grid-template-areas: 'media body';
+    }
+    .mc-card--feature-even {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    }
+    .mc-card--feature .mc-card__media {
+      border-radius: calc(var(--radius-block) - 2px) 0 0 calc(var(--radius-block) - 2px);
+    }
+    /* სიგანეც და სიმაღლეც განსაზღვრულია → aspect-ratio აღარ ზრდის სიგანეს სვეტზე მეტად */
+    .mc-card--feature .mc-card__media > .mc-media {
+      width: 100%;
+      height: 100%;
+      min-height: 23.75rem; /* 380–420 (დაფები) */
+    }
+    .mc-card--feature .mc-card__media > .mc-media--placeholder {
+      border-width: 0 2px 0 0;
+    }
+    .mc-card--feature .mc-card__body {
+      padding: 2.75rem; /* 44 */
+    }
+  }
+
+  /* ------------------------------------------------------------ სიახლე: სიის ბარათი (list) */
+  /* NewsPage დაფა: თარიღი 110 | ფოტო 220 | ტექსტი; ვიწროზე (HomeMobile) — თარიღი | ტექსტი */
+  .mc-card--news-list {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'date body';
+    align-items: start;
+  }
+  .mc-card--news-list .mc-card__aside {
+    grid-area: date;
+    padding: 1.25rem 0 1.25rem 1.25rem;
+  }
+  .mc-card--news-list .mc-card__media {
+    display: none;
+  }
+  .mc-card--news-list .mc-card__body {
+    grid-area: body;
+    padding: 1.25rem 1.25rem 1.25rem 1rem;
+  }
+  @container (min-width: 48rem) {
+    .mc-card--news-list {
+      grid-template-columns: 6.875rem 13.75rem minmax(0, 1fr);
+      grid-template-areas: 'date media body';
+      align-items: center;
+      column-gap: 1.5rem;
+      padding: 1.25rem 1.5rem;
+    }
+    .mc-card--news-list .mc-card__aside,
+    .mc-card--news-list .mc-card__body {
+      padding: 0;
+    }
+    .mc-card--news-list .mc-date-tile {
+      width: 100%;
+    }
+    .mc-card--news-list .mc-card__media {
+      display: block;
+      grid-area: media;
+      border-radius: var(--radius-field-lg);
+    }
+    .mc-card--news-list .mc-card__media .mc-media--placeholder {
+      border-width: 2px;
+      border-radius: var(--radius-field-lg);
+    }
+  }
+
+  /*
+   * ბარათი გვერდითი ბლოკით (ღონისძიება, სიახლე compact): 390px-ზე 200%-იან შრიფტზე თარიღის ბლოკი
+   * (≥ 4.5rem) და ტექსტი ერთ ხაზზე აღარ ეტევა — ტექსტი ბლოკის ქვეშ გადადის, ბარათს არ სცდება.
+   */
+  .mc-card--aside {
+    flex-wrap: wrap;
+  }
+  .mc-card--aside > .mc-card__body {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+
+  /* ------------------------------------------------------------ შეცდომების ჯამი */
+  /* 3px --mc-error surface-ზე: #B3261E 6.54:1 · #F2B8B5 #0F2440-ზე 9.13:1 · კონტრასტში 12.30:1 */
+  .mc-error-summary {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1.25rem 1.5rem;
+    border: 3px solid var(--mc-error);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+  }
+  .mc-error-summary__icon {
+    flex-shrink: 0;
+    margin-top: 0.125rem;
+    color: var(--mc-error);
+  }
+  .mc-error-summary__body {
+    min-width: 0;
+  }
+  .mc-error-summary__title {
+    margin: 0;
+    font-size: var(--text-body);
+    line-height: calc(1.4 * var(--mc-leading));
+    font-weight: 800;
+  }
+  .mc-error-summary__list {
+    display: flex;
+    flex-direction: column;
+    margin: 0.5rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-error-summary__list a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--mc-error);
+    font-weight: 700;
+    text-decoration-line: underline;
+    text-decoration-thickness: 2px;
+    text-underline-offset: 0.2em;
+  }
+
+  /* ------------------------------------------------------------ „მეტის ჩატვირთვა“ */
+  .mc-load-more {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem 1.25rem;
+    padding-top: 1rem;
+  }
+  .mc-load-more__count,
+  .mc-load-more__done {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-load-more__done {
+    font-weight: 700;
+    color: var(--mc-ink);
+  }
+  .mc-load-more__error {
+    display: flex;
+    flex-basis: 100%;
+    justify-content: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-weight: 700;
+    color: var(--mc-error);
+  }
+}
