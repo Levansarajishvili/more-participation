@@ -171,7 +171,6 @@ export default function ContactForm({ settings }) {
             <TextField
               id={FIELD_IDS.contact}
               name="contact"
-              autoComplete="email"
               spellCheck={false}
               required
               label={t('contact.contactField')}

@@ -81,6 +81,7 @@ export default function NewsCard({
             href={action.href ?? undefined}
             newTab={Boolean(action.href?.startsWith('http'))}
             disabled={!action.href}
+            disabledReason={t('footer.linkPending')}
           >
             {action.text}
           </Button>

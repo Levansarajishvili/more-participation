@@ -271,8 +271,13 @@ describe('სიახლის გვერდი (/news/:slug)', () => {
       '/news?category=announcement',
     );
     expect(main.querySelector('article time')?.getAttribute('datetime')).toMatch(/^\d{4}-/);
-    // href: null → გათიშული ღილაკი (NewsCard-ის F3-ის წესი)
-    expect(within(main).getByText('[განაცხადის შევსება]').closest('button')).toBeDisabled();
+    // href: null → მიუწვდომელი მოქმედება (F7): ფოკუსს იღებს, მიზეზი ხილულია და ისმის
+    const action = /** @type {HTMLElement} */ (
+      within(main).getByText('[განაცხადის შევსება]').closest('button')
+    );
+    expect(action).toHaveAttribute('aria-disabled', 'true');
+    expect(action).not.toBeDisabled();
+    expect(action).toHaveAccessibleDescription('[ბმული მზადდება]');
     expect(main.querySelector('.mc-prose p')).not.toBeNull();
     expect(skippedLevels(headingTree(main))).toEqual([]);
     expect(unbracketedFacts(main)).toEqual([]);

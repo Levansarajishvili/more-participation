@@ -15,15 +15,17 @@ import { t } from '@/i18n/index.js';
  * @param {object} props
  * @param {string} props.title
  * @param {string} props.fieldLabel   წასაკითხი ველის ლეიბლი („სტატიის ბმული“)
+ * @param {string} [props.path]       F7: გასაზიარებელი მისამართი query-ით
+ *   (`/development?series=…`); ნაგულისხმევი — მიმდინარე pathname
  */
-export default function ShareButton({ title, fieldLabel }) {
+export default function ShareButton({ title, fieldLabel, path }) {
   const [status, setStatus] = useState('');
   const [manual, setManual] = useState(false);
   const fieldRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const canShare = typeof navigator !== 'undefined' && typeof navigator.share === 'function';
   // როუტერის მისამართი (basename-ით) და არა window.location — ტესტის memory router-შიც სწორია
   const { pathname } = useLocation();
-  const href = useHref(pathname);
+  const href = useHref(path ?? pathname);
   const url = typeof window === 'undefined' ? href : new URL(href, window.location.origin).href;
 
   useEffect(() => {

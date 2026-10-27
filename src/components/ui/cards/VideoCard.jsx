@@ -31,6 +31,7 @@ import VisuallyHidden from '../VisuallyHidden.jsx';
  * @param {boolean} [props.feature=false]
  * @param {'stack' | 'row'} [props.layout='stack']
  * @param {boolean} [props.showExcerpt=true]
+ * @param {boolean} [props.current=false]  F7: ვიდეო ფლეიერშია — წარწერა „ფლეიერში“ + `aria-current`
  * @param {string} [props.className]
  */
 export default function VideoCard({
@@ -42,6 +43,7 @@ export default function VideoCard({
   feature = false,
   layout = 'stack',
   showExcerpt = true,
+  current = false,
   className,
   ...rest
 }) {
@@ -77,7 +79,16 @@ export default function VideoCard({
       onSelect={onSelect}
       title={title}
       headingLevel={headingLevel}
-      eyebrow={eyebrow ?? label('videoCategory', category)}
+      eyebrow={
+        current ? (
+          <>
+            <Icon name="play" size="1em" /> {t('videos.nowPlaying')}
+          </>
+        ) : (
+          (eyebrow ?? label('videoCategory', category))
+        )
+      }
+      current={current}
       media={media}
       layout={layout}
       meta={

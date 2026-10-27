@@ -98,6 +98,9 @@ scripts/
   check-dist.mjs          postbuild: mc-boot პირველია, /__kit და validate.js არ არის, შრიფტი არ არის base64
   contrast-report.mjs     ტოკენების კონტრასტის ცხრილი
   i18n-stub.mjs           en.js-ის გენერაცია ka.js-იდან (`npm run i18n:stub`)
+  placeholders.mjs        F7: [placeholder]-ები ტიპების მიხედვით (`npm run placeholders`, `--json`)
+  audit.py                F7: Chromium-ის აუდიტი (`npm run build && npm run audit`; Python Playwright,
+                          axe-core node_modules-იდან, ffmpeg — fixture-ები `.audit-fixtures/`-ში)
 src/
   main.jsx                შრიფტები, სტილები, RouterProvider
   routes.jsx              createRoutes() (ყოველ router-ს საკუთარი lazy-ობიექტები), routes, pageRoutes;
@@ -135,6 +138,10 @@ src/
     contact/              F6: ContactChannels (+ contact-channels.js), ContactForm, ContactConfirmation,
                           OfficeInfo (რუკა, ოფისი, საათები), ContactFaq, contact-fields.js; contact.css
     subscribe/            F6: SubscribeForm (dark | card) + subscribe.css — სტატიები და სიახლეები
+    development/          F7: SeriesDeck (სერია სლაიდერში, PdfButton, TextVersion), SeriesGrid
+                          („სხვა სერიები“), series-links.js (seriesHref); development.css
+    videos/               F7: VideoStage (ფლეიერი + ინფორმაცია), VideoGrid (კატეგორიები + 6 ბარათი),
+                          ShareStoryBand (/contact?topic=story), useVideoParam.js (?video= / ?v=); videos.css
     __tests__/            F5: page-helpers.jsx (renderPage, adapter-ები: ok/failing/empty/pending/
                           switchable, headingTree, unbracketedFacts), pages.test.jsx (CSS, gate-ის თვითტესტი)
   components/
@@ -149,7 +156,11 @@ src/
     layout/               F4: RootLayout (Provider + PageShell + ScrollRestoration), PageShell, SiteHeader,
                           SiteFooter, site-nav.js (ბმულები), useShellLayout.js, usePageTitle.js, __tests__/;
                           F5: PageSection, PageHero; F6: PageIntro (ღია თავი)
-    media/                F7: slider, player
+    media/                F7: index.js (შესასვლელი), Slider (+ useSwipe.js), VideoPlayer, ProgressSlider,
+                          Transcript (+ transcript-utils.js), NativeMedia + sources.js (VideoSourceAdapter),
+                          native-controller.js (PlaybackController), player-prefs.js (mc-player),
+                          usePlayback.js (usePlayback, usePlayerLayout), media.css (lazy, გვერდთან ერთად);
+                          __tests__/fake-source.jsx — ტესტისა და /__kit-ის წყარო
   pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
   content/
     adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk
@@ -303,3 +314,33 @@ src/
   (`[[`). `getByLabelText` aria-hidden-ს არ ითვალისწინებს — დამალულის შესამოწმებლად `getByRole`.
 - `unbracketedFacts` ბლოკს (p, li, h…, dd) მთლიანად ამოწმებს, თუ ის რამდენიმე ფრაგმენტისგანაა;
   გამოთვლილი მნიშვნელობა (`time`, `.mc-card__time`, წლის `option`) — არ ითვლება ფაქტად.
+
+## კოდის კონვენციები (F7)
+
+- სლაიდერი და ფლეიერი მხოლოდ `@/components/media/index.js`-დან. `media.css` კომპონენტთან ერთად
+  იტვირთება (გვერდის lazy chunk); HEX მხოლოდ §2-იდან, ოქროსფერი — მხოლოდ დაკვრაზე (ტესტი).
+- სლაიდერი = WAI-ARIA APG carousel, ავტოდაკვრის გარეშე: `<section aria-roledescription="კარუსელი">`,
+  სლაიდი `role="group"` „3 / 6“, DOM-ში მხოლოდ მიმდინარე; ← → Home End — მხოლოდ შიგნიდან (listener
+  root-ზე, `useEffectEvent`); ბოლოებში `aria-disabled`; მრიცხველი — `LiveRegion` („სლაიდი 3 / 6: …“);
+  სხვა სერია = `key={series.slug}`. ყდა `tone`-ის ფიქსირებული წყვილია (თემით არ იცვლება); ზომები
+  `cqi` × `--mc-font-scale`-ით rem-ის ფარგლებში, `aspect-ratio` მინიმუმია (დიდ შრიფტზე იზრდება).
+- ფლეიერი მედიას პირდაპირ არ ეხება: `VideoSourceAdapter { id, canPlay(video), Media }` → `Media`
+  `onController`-ით `PlaybackController`-ს აბრუნებს (play / pause / seek / setVolume / setMuted / setRate /
+  setCaptions / setSignLanguage / setAudioDescription / subscribe / onCaption). ახალი პლატფორმა (YouTube) —
+  ახალი adapter `sources.js`-ში, UI უცვლელია. ტესტში — `createFakeSource()`.
+- ფლეიერის მალსახმობები `KeyboardEvent.code`-ით (ქართულ განლაგებაზეც), მხოლოდ ფლეიერის შიგნით; Space
+  — მხოლოდ რეგიონზე / კადრზე (ღილაკზე ღილაკისაა); ველსა და ჩამოსაშლელში — არაფერი.
+- განლაგება, რომელიც DOM-ს ცვლის (ფლეიერის „მეტი“), — JS-ით რეალური სიგანიდან და rem-იდან
+  (`usePlayerLayout`, ზღვარი 34rem), არა media query-ით.
+- ფაილის გარეშე (`src: null`) ფლეიერი ჩანაცვლების ჩარჩოს, „ვიდეო ფაილი მზადდება“-ს და ღია ტრანსკრიპტს
+  აჩვენებს; ფუნქციის ფაილი აკლია → ღილაკი `aria-disabled` + ხილული მიზეზი (`aria-describedby`).
+- მიუწვდომელი მოქმედება (PDF, „რეგისტრაცია“, „განაცხადი“) — `Button disabled disabledReason`:
+  ფოკუსს იღებს, მიზეზი ხილულია და ისმის. უბრალო `disabled` მხოლოდ დროებით მდგომარეობაზე (ფორმა იგზავნება).
+- სტილიანი სია (`list-style: none`) — `role="list"` (Safari / VoiceOver); ESLint ul / ol-ზე ამას უშვებს.
+- query-ით არჩეული ობიექტი (`?series=`, `?video=`): ჩატვირთვის შემდეგ ფოკუსი ბლოკის h2-ზე / ფლეიერზე,
+  მხოლოდ მომხმარებლის ცვლილებისას (პირველ ჩატვირთვაზე — არა); h2 ერთი კვანძია ყველა მდგომარეობაში.
+- ხელმისაწვდომი სახელი ხილულ ტექსტს თავში შეიცავს: `{ხილული}{' '}<VisuallyHidden>{დანართი}</VisuallyHidden>`
+  (ჰარი span-ის გარეთ — jsdom და Chromium ერთნაირად ითვლის).
+- აუდიტი: `npm run build && npm run audit` → audit.json (axe ყველა როუტზე × 3 თემა × 1440 / 390, Tab-ით
+  გავლა, reduced-motion, reflow 320 / 720 / შრიფტი 200%, ფლეიერი ფაილით, bundle). Gate — axe 0 / 0.
+

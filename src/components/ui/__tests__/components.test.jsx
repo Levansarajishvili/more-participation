@@ -188,6 +188,25 @@ describe('components.css', () => {
     expect(used.filter((hex) => !allowed.has(hex))).toEqual([]);
   });
 
+  it('F7: media.css-ის HEX §2-იდანაა; ოქროსფერი მხოლოდ დაკვრაზე; ძვრა — მხოლოდ no-preference', () => {
+    const raw = readFileSync(resolve('src/components/media/media.css'), 'utf8');
+    const css = raw.replace(/\/\*[\s\S]*?\*\//g, '');
+    const allowed = allowedHexFromContext(readFileSync(resolve('docs/project-context.md'), 'utf8'));
+    const used = [...css.matchAll(/#[0-9a-f]{6}\b/gi)].map(([hex]) => hex.toLowerCase());
+    expect(used.filter((hex) => !allowed.has(hex))).toEqual([]);
+    const gold = [...css.matchAll(/([^{}]+)\{([^{}]*var\(--mc-cta[^{}]*)\}/g)].map(([, sel]) =>
+      sel.trim(),
+    );
+    for (const selector of gold) expect(selector).toMatch(/mc-player__play|mc-player__big-play/);
+    // animation / transition translate-ით და scale-ით — მხოლოდ @media (prefers-reduced-motion: no-preference)
+    const outside = css.replace(
+      /@media \(prefers-reduced-motion: no-preference\)\s*\{[\s\S]*?\n {2}\}/g,
+      '',
+    );
+    expect(outside).not.toMatch(/animation:/);
+    expect(outside).not.toMatch(/transition:\s*(transform|inset-inline-start)/);
+  });
+
   it('ოქროსფერი ტოკენი მხოლოდ CTA-ს და დაკვრის ნიშანშია', () => {
     const css = readFileSync(resolve('src/styles/components.css'), 'utf8');
     const rules = [...css.matchAll(/([^{}]+)\{([^{}]*var\(--mc-cta\)[^{}]*)\}/g)].map(([, sel]) =>

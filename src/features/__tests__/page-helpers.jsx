@@ -181,7 +181,9 @@ const TERMS = new Set(Object.values(SERIES_TOPIC_TERMS).map((term) => term.text)
  * (`formatTimeRange`) და წლის ფილტრის ვარიანტები (`listNews().years`).
  */
 const COMPUTED =
-  'time, .mc-thumb-badge--time, .mc-entry__count, .mc-card__time, .mc-filters__select option';
+  'time, .mc-thumb-badge--time, .mc-entry__count, .mc-card__time, .mc-filters__select option, ' +
+  // F7: სლაიდის ნომერი (`slide.number`), დაკვრის სიჩქარე და ხმის მნიშვნელობა
+  '.mc-slide__num, .mc-player__select option, .mc-player__more option';
 /** ტექსტის ბლოკი, რომლის მთლიანი ტექსტი შეიძლება ერთი `[placeholder]` იყოს. */
 const BLOCK = 'p, li, h1, h2, h3, h4, blockquote, figcaption, dt, dd';
 

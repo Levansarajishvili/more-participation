@@ -144,6 +144,24 @@
   .mc-btn[aria-busy='true'] {
     cursor: progress;
   }
+  /* F7: მიუწვდომელი მოქმედება + ხილული მიზეზი (Button `disabledReason`) */
+  .mc-btn-pending {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    max-width: 100%;
+  }
+  .mc-btn-pending--full {
+    display: flex;
+    width: 100%;
+  }
+  .mc-btn-pending__reason {
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 500;
+    color: var(--mc-muted);
+  }
 
   /* კონტრასტის თემაში ფონი თითქმის არ იცვლება — hover-ს ხაზგასმა აჩვენებს */
   [data-theme='contrast']
@@ -395,26 +413,30 @@
     transition-duration: var(--mc-dur-chip);
     transition-timing-function: var(--ease-out);
   }
-  .mc-chip:is(:hover, [data-force~='hover']):not(:disabled) {
+  .mc-chip:is(:hover, [data-force~='hover']):not(:disabled, [aria-disabled='true']) {
     background-color: var(--mc-hover);
     border-color: var(--mc-ink);
   }
-  .mc-chip:is(:active, [data-force~='active']):not(:disabled) {
+  .mc-chip:is(:active, [data-force~='active']):not(:disabled, [aria-disabled='true']) {
     background-color: var(--mc-pressed);
     color: var(--mc-pressed-ink);
   }
-  .mc-chip[aria-pressed='true'] {
+  /* F7: გასაშლელი ჩიპი (ფლეიერის „ტრანსკრიპტი“) — გახსნილი = არჩეულის სახე */
+  .mc-chip:is([aria-pressed='true'], [aria-expanded='true']) {
     background-color: var(--mc-ink);
     border-color: var(--mc-ink);
     color: var(--mc-surface);
     font-weight: 700;
   }
-  .mc-chip[aria-pressed='true']:is(:hover, [data-force~='hover']):not(:disabled) {
+  .mc-chip:is([aria-pressed='true'], [aria-expanded='true']):is(:hover, [data-force~='hover']):not(
+      :disabled,
+      [aria-disabled='true']
+    ) {
     background-color: var(--mc-muted);
     border-color: var(--mc-muted);
     color: var(--mc-surface);
   }
-  .mc-chip:disabled {
+  .mc-chip:is(:disabled, [aria-disabled='true']) {
     border-style: dashed;
     background-color: var(--mc-alt);
     color: var(--mc-muted);
@@ -436,6 +458,13 @@
     transition-property: box-shadow, translate;
     transition-duration: var(--mc-dur-base);
     transition-timing-function: var(--ease-out);
+  }
+  /* F7: მიმდინარე ობიექტი (ვიდეო ფლეიერშია) — ჩარჩო 4px (2px + inset), ტექსტი „ფლეიერში“ */
+  .mc-card--current {
+    border-color: var(--mc-ink);
+    box-shadow:
+      inset 0 0 0 2px var(--mc-ink),
+      var(--mc-shadow);
   }
   .mc-card--link:is(:hover, :focus-within, [data-force~='hover'], [data-force~='focus']) {
     --mc-shadow: 0 4px 0 var(--mc-card-border);

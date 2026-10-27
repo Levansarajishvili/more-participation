@@ -1,0 +1,676 @@
+/*
+ * მედია (F7): სლაიდერი (SlidesPage დაფა) და ვიდეოფლეიერი (VideosPage დაფა, ContentKit).
+ * იტვირთება Slider.jsx / VideoPlayer.jsx-თან ერთად (გვერდის lazy chunk). ფერი — --mc-* ტოკენები;
+ * HEX მხოლოდ §2-იდან (ამოწმებს components.test.jsx): სლაიდის ფიქსირებული წყვილები (ყდა თემით არ
+ * იცვლება) და კადრზე დადებული ელემენტები (სუბტიტრი, ჟესტური ენის ჩარჩო) — ფოტოსგან დამოუკიდებლად.
+ * ოქროსფერი მხოლოდ დაკვრის ღილაკზეა (დაკვრა = CTA, F3).
+ * გადაადგილება (translate, scale) მხოლოდ prefers-reduced-motion: no-preference-ში.
+ */
+@layer components {
+  /* ================================================================ სლაიდერი */
+  .mc-slider {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+  }
+  .mc-slider__viewport {
+    container-type: inline-size;
+    touch-action: pan-y;
+  }
+
+  /*
+   * სლაიდი 620 × 620, კიდე 44 (ContentKit). ზომები cqi-ით მცირდება ვიწრო სლაიდზე, rem-ის ფარგლებში —
+   * ამიტომ თავსებადობის მენიუს მასშტაბს მიჰყვება. aspect-ratio მინიმუმია (overflow: visible):
+   * დიდ შრიფტზე სლაიდი იზრდება, ტექსტი არ იჭრება. დეკორი ცალკე ფენაშია (overflow: hidden).
+   */
+  .mc-slide {
+    --mc-slide-accent: currentColor;
+    --mc-slide-soft: currentColor;
+    --mc-slide-frame: transparent;
+    --mc-slide-ring: #2b4a70;
+    --mc-slide-arc: #f26a1f;
+    position: relative;
+    isolation: isolate;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: clamp(1rem, 4cqi, 1.5rem);
+    aspect-ratio: 1 / 1;
+    padding: clamp(1.25rem, 7.1cqi, 2.75rem);
+    border: 2px solid var(--mc-slide-frame);
+    border-radius: var(--radius-block);
+    /* დეკორი კიდეს სცდება; clip-path განლაგებას არ ცვლის (overflow: visible რჩება) */
+    clip-path: inset(0 round var(--radius-block));
+    overflow-wrap: anywhere;
+  }
+  .mc-slide--ratio-tall {
+    aspect-ratio: 4 / 5;
+  }
+  @container (max-width: 30rem) {
+    .mc-slide--ratio-auto {
+      aspect-ratio: 4 / 5;
+    }
+  }
+  /* მუქი / კონტრასტი: ყდა უცვლელია, ემატება 2px ჩარჩო (#8FA3BC 7.11:1 / #FFFFFF) */
+  [data-theme='dark'] .mc-slide,
+  [data-theme='contrast'] .mc-slide {
+    --mc-slide-frame: var(--mc-border);
+  }
+  /* ღიაში alt-ყდა (#E9EFF6) paper-ს ერწყმის — ჩარჩო ყოველთვის */
+  .mc-slide.mc-tone--alt {
+    --mc-slide-frame: var(--mc-border);
+  }
+
+  /* წყვილები (ფონი / ტექსტი — components.css `.mc-tone--*`): აქცენტი = kicker + ნომერი */
+  .mc-slide.mc-tone--navy {
+    --mc-slide-accent: #ff8a3d; /* 6.56:1 */
+    --mc-slide-soft: #b8c7d9; /* 8.95:1 */
+  }
+  .mc-slide.mc-tone--navy-deep {
+    --mc-slide-accent: #ff8a3d; /* 7.19:1 */
+    --mc-slide-soft: #b8c7d9; /* 9.80:1 */
+  }
+  .mc-slide.mc-tone--petrol {
+    --mc-slide-accent: #ffffff; /* 7.59:1 — #FF8A3D აქ 3.24:1-ია */
+    --mc-slide-soft: #ffffff;
+    --mc-slide-ring: #0b2545;
+    --mc-slide-arc: #ff8a3d;
+  }
+  .mc-slide.mc-tone--orange {
+    --mc-slide-accent: #0a1d38; /* 7.19:1 */
+    --mc-slide-soft: #0a1d38;
+    --mc-slide-ring: #a8430c;
+    --mc-slide-arc: #0a1d38;
+  }
+  .mc-slide.mc-tone--alt {
+    --mc-slide-accent: #a8430c; /* 5.22:1 */
+    --mc-slide-soft: #0b2545; /* 13.29:1 */
+    --mc-slide-ring: #c8d2df;
+    --mc-slide-arc: #155a78;
+  }
+
+  /*
+   * დეკორი: რგოლი + რკალი (SlidesPage დაფის ორბიტა) ზედა მარჯვენა კუთხეში, ბრენდის ზოლის გასწვრივ —
+   * ტექსტის ქვეშ არასოდეს ხვდება (რკალი #F26A1F თეთრ ტექსტთან 3:1-ზე ნაკლებია; დაფაზე ქვედა
+   * კუთხეში მრიცხველსა და ტექსტს ფარავდა). ვიწრო / დიდშრიფტიან სლაიდზე (< 30rem) არ ჩანს.
+   */
+  .mc-slide__deco {
+    /* კუთხის ბლოკი სლაიდის შიგნითაა (overflow: hidden) — გვერდის სქროლის არეს არ ზრდის */
+    position: absolute;
+    top: 0;
+    right: 0;
+    z-index: -1;
+    width: 24%;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-start-end-radius: var(--radius-block);
+    pointer-events: none;
+  }
+  .mc-slide__deco::before,
+  .mc-slide__deco::after {
+    content: '';
+    position: absolute;
+    top: -41.7%;
+    right: -41.7%;
+    width: 141.7%;
+    aspect-ratio: 1;
+    border-radius: var(--radius-circle);
+  }
+  .mc-slide__deco::before {
+    border: max(3px, 0.8cqi) solid var(--mc-slide-ring);
+  }
+  .mc-slide__deco::after {
+    border: max(5px, 1.6cqi) solid transparent;
+    border-bottom-color: var(--mc-slide-arc);
+    border-left-color: var(--mc-slide-arc);
+  }
+  @container (max-width: 30rem) {
+    .mc-slide__deco {
+      display: none;
+    }
+  }
+  [data-theme='contrast'] .mc-slide__deco {
+    display: none;
+  }
+
+  .mc-slide__brand {
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    font-size: var(--text-small);
+    line-height: 1.3;
+    font-weight: 800;
+  }
+  .mc-slide__content {
+    display: flex;
+    flex-direction: column;
+    gap: clamp(0.5rem, 2.3cqi, 0.875rem);
+    max-width: 30em;
+  }
+  .mc-slide__content > * {
+    margin: 0;
+  }
+  .mc-slide__kicker {
+    font-size: clamp(1rem, calc(3.23cqi * var(--mc-font-scale)), 1.25rem);
+    line-height: 1.3;
+    font-weight: 800;
+    color: var(--mc-slide-accent);
+  }
+  .mc-slide__num {
+    font-size: clamp(3rem, calc(13.55cqi * var(--mc-font-scale)), var(--text-slide-num));
+    line-height: var(--text-slide-num--line-height);
+    font-weight: 900;
+    color: var(--mc-slide-accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .mc-slide__title {
+    font-size: clamp(1.75rem, calc(7.42cqi * var(--mc-font-scale)), var(--text-slide-title));
+    line-height: var(--text-slide-title--line-height);
+    font-weight: 900;
+  }
+  .mc-slide__body {
+    font-size: clamp(1.125rem, calc(3.87cqi * var(--mc-font-scale)), var(--text-slide-text));
+    line-height: var(--text-slide-text--line-height);
+    font-weight: 500;
+  }
+  .mc-slide__foot {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.25rem 1rem;
+    font-size: var(--text-small);
+    line-height: 1.3;
+    font-weight: 700;
+    color: var(--mc-slide-soft);
+  }
+
+  /* მართვა: [წინა]  სლაიდი 3 / 6  [შემდეგი] / წერტილები ქვემოთ — DOM-ის რიგი = ვიზუალური */
+  .mc-slider__controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .mc-slider__status {
+    flex: 1 1 8rem;
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 700;
+    text-align: center;
+    color: var(--mc-ink);
+  }
+  .mc-slider__dots {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .mc-slider__dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.75rem;
+    height: 2.75rem;
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background-color: transparent;
+    cursor: pointer;
+  }
+  /* არააქტიური — --mc-border (3.97 paper-ზე / 7.11 მუქში), აქტიური — ink + 28px (ფერის გარეშეც ჩანს) */
+  .mc-slider__pip {
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-border);
+    transition:
+      width var(--mc-dur-base) var(--ease-out),
+      background-color var(--mc-dur-base) var(--ease-out);
+  }
+  .mc-slider__dot:is(:hover, [data-force~='hover']) .mc-slider__pip {
+    background-color: var(--mc-ink);
+  }
+  .mc-slider__dot[aria-current='true'] .mc-slider__pip {
+    width: 28px;
+    background-color: var(--mc-ink);
+  }
+  [data-theme='contrast'] .mc-slider__dot[aria-current='true'] .mc-slider__pip {
+    background-color: var(--mc-accent-text);
+  }
+  .mc-slider__hint {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    text-align: center;
+    color: var(--mc-muted);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .mc-slide--from-next {
+      animation: mc-slide-in-next var(--mc-dur-slide) var(--ease-out) both;
+    }
+    .mc-slide--from-prev {
+      animation: mc-slide-in-prev var(--mc-dur-slide) var(--ease-out) both;
+    }
+  }
+  @keyframes mc-slide-in-next {
+    from {
+      opacity: 0;
+      translate: 8px 0;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+  @keyframes mc-slide-in-prev {
+    from {
+      opacity: 0;
+      translate: -8px 0;
+    }
+    to {
+      opacity: 1;
+      translate: 0 0;
+    }
+  }
+
+  /* ================================================================ ფლეიერი */
+  /*
+   * ჩარჩო და მართვის ზოლი ყოველთვის მუქია: ფონი ძირეული თემის --mc-footer (ღია #0A1D38, მუქი
+   * #030B16, კონტრასტი #000000) — wrap-ზე გამოითვლება და მუქ ქვეხეს (`data-theme="dark"`) ფერად
+   * გადაეცემა. ტრანსკრიპტი ძირეულ თემაშია.
+   */
+  .mc-player-wrap {
+    --mc-player-bg: var(--mc-footer);
+    --mc-player-frame: transparent;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 0;
+  }
+  [data-theme='dark'] .mc-player-wrap,
+  [data-theme='contrast'] .mc-player-wrap {
+    --mc-player-frame: var(--mc-card-border);
+  }
+  .mc-player {
+    container-type: inline-size;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 2px solid var(--mc-player-frame);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-player-bg);
+    color: var(--mc-ink);
+  }
+  .mc-player:fullscreen {
+    border: 0;
+    border-radius: 0;
+  }
+  .mc-player:fullscreen .mc-player__stage {
+    flex: 1 1 auto;
+    aspect-ratio: auto;
+  }
+
+  .mc-player__stage {
+    position: relative;
+    aspect-ratio: 16 / 9;
+    background-color: #000000;
+    color: #ffffff;
+  }
+  .mc-player__video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background-color: #000000;
+  }
+  .mc-player__poster {
+    width: 100%;
+    height: 100%;
+  }
+  .mc-player__surface {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+  /* დიდი დაკვრის ნიშანი: ოქროსფერი (დაკვრა = CTA), rgba-ნათების გარეშე */
+  .mc-player__big-play {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 6.5rem;
+    height: 6.5rem;
+    border: 2px solid var(--mc-cta-frame);
+    border-radius: var(--radius-circle);
+    background-color: var(--mc-cta);
+    color: var(--mc-cta-ink);
+  }
+  @container (max-width: 34rem) {
+    .mc-player__big-play {
+      width: 4.5rem;
+      height: 4.5rem;
+    }
+  }
+
+  /* ჟესტური ენა: ქვედა მარჯვენა კუთხე, კადრის 25% (ContentKit), 3px თეთრი ჩარჩო */
+  .mc-player__sign {
+    position: absolute;
+    right: 3%;
+    bottom: 3%;
+    width: 25%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    border: 3px solid #ffffff;
+    border-radius: var(--radius-field);
+    background-color: #0a1d38;
+  }
+  .mc-player__sign[hidden] {
+    display: none;
+  }
+
+  /* სუბტიტრი: საკუთარი overlay, rem — მენიუს შრიფტს მიჰყვება; #0A1D38 / #FFFFFF 16.86:1 */
+  .mc-player__captions {
+    position: absolute;
+    right: 4%;
+    bottom: 5%;
+    left: 4%;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .mc-player__captions[data-sign] {
+    right: 31%;
+  }
+  .mc-player__caption {
+    max-width: 36em;
+    margin: 0;
+    padding: 0.375rem 1rem;
+    border-radius: var(--radius-field);
+    background-color: #0a1d38;
+    color: #ffffff;
+    font-size: 1.25rem;
+    line-height: calc(1.4 * var(--mc-leading));
+    font-weight: 600;
+    text-align: center;
+    white-space: pre-line;
+  }
+  @container (max-width: 34rem) {
+    .mc-player__caption {
+      font-size: 1.125rem;
+    }
+  }
+  [data-theme='contrast'] .mc-player__caption {
+    background-color: #000000;
+    color: #ffffff;
+    outline: 2px solid #ffffff;
+  }
+
+  /* მართვის ზოლი */
+  .mc-player__controls {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem 0.875rem;
+  }
+  .mc-player__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.625rem;
+  }
+  .mc-player__row--main {
+    flex-wrap: nowrap;
+  }
+  .mc-player__row--pending {
+    justify-content: space-between;
+  }
+  .mc-player__spacer {
+    flex: 1 1 0;
+  }
+  .mc-player__time {
+    flex-shrink: 0;
+    font-size: var(--text-small);
+    line-height: 1.3;
+    font-weight: 700;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  .mc-player__pending {
+    flex: 1 1 14rem;
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  /* დაკვრა: ოქროსფერი წრე 48px (VideosPage დაფა) */
+  .mc-icon-btn.mc-player__play {
+    border-color: var(--mc-cta-frame);
+    background-color: var(--mc-cta);
+    color: var(--mc-cta-ink);
+  }
+  .mc-icon-btn.mc-player__play:is(:hover, [data-force~='hover']):not([aria-disabled='true']) {
+    background-color: var(--mc-cta-hover);
+  }
+  .mc-player__chip {
+    min-height: 2.75rem;
+    padding-inline: 0.875rem;
+    font-size: var(--text-small);
+  }
+  .mc-player__chevron {
+    transition: rotate var(--mc-dur-base) var(--ease-out);
+  }
+  [aria-expanded='true'] > .mc-player__chevron,
+  [aria-expanded='true'] .mc-icon:last-child {
+    rotate: 180deg;
+  }
+  .mc-player__volume-group {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.25rem;
+  }
+  .mc-player__volume {
+    width: 6rem;
+    height: 2.75rem;
+    margin: 0;
+    accent-color: var(--mc-graphic);
+    cursor: pointer;
+  }
+  .mc-player__speed {
+    display: inline-flex;
+  }
+  .mc-player__select {
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 2px solid var(--mc-border);
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    font: inherit;
+    font-size: var(--text-small);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .mc-player__more {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+    padding-top: 1rem;
+    border-top: 2px solid var(--mc-line);
+  }
+  .mc-player__more[hidden] {
+    display: none;
+  }
+  .mc-player__more > .mc-field,
+  .mc-player__more > .mc-switch {
+    width: 100%;
+  }
+  .mc-player__notes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-player__hint {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+
+  /* პროგრესი: ზოლი 8px (#FF8A4C ბილიკზე #2B4A70 3.9:1, ფონზე 7.22:1), ბურთულა 20px, სამიზნე 44px */
+  .mc-progress {
+    position: relative;
+    display: flex;
+    flex: 1 1 8rem;
+    align-items: center;
+    min-width: 5rem;
+    height: 2.75rem;
+    border-radius: var(--radius-pill);
+    cursor: pointer;
+    touch-action: none;
+  }
+  .mc-progress[aria-disabled='true'] {
+    cursor: not-allowed;
+  }
+  .mc-progress__track {
+    position: relative;
+    width: 100%;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-line);
+  }
+  .mc-progress__fill {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    background-color: var(--mc-graphic);
+  }
+  .mc-progress__thumb {
+    position: absolute;
+    top: 50%;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin: -0.625rem 0 0 -0.625rem;
+    border: 2px solid var(--mc-player-bg);
+    border-radius: var(--radius-circle);
+    background-color: var(--mc-ink);
+  }
+  [data-theme='contrast'] .mc-progress__track {
+    background-color: transparent;
+    box-shadow: inset 0 0 0 2px var(--mc-border);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .mc-progress:not([data-scrubbing]) .mc-progress__fill {
+      transition: transform var(--mc-dur-progress) var(--ease-out);
+    }
+    .mc-progress:not([data-scrubbing]) .mc-progress__thumb {
+      transition: inset-inline-start var(--mc-dur-progress) var(--ease-out);
+    }
+  }
+
+  /* ================================================================ ტრანსკრიპტი */
+  .mc-transcript {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1.5rem;
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    overflow-wrap: anywhere;
+  }
+  .mc-transcript[hidden] {
+    display: none;
+  }
+  .mc-transcript__title {
+    margin: 0;
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    font-weight: 800;
+  }
+  .mc-transcript__hint {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-transcript__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-transcript__line {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.75rem;
+    padding-inline-start: 0.75rem;
+    border-inline-start: 4px solid transparent;
+  }
+  .mc-transcript__line[aria-current='true'] {
+    border-inline-start-color: var(--mc-ink);
+  }
+  .mc-transcript__line[aria-current='true'] .mc-transcript__text {
+    font-weight: 600;
+  }
+  .mc-transcript__time {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 0.625rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: var(--mc-ink);
+    font: inherit;
+    font-size: var(--text-small);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+  }
+  button.mc-transcript__time {
+    border-color: var(--mc-border);
+    color: var(--mc-link);
+    cursor: pointer;
+    transition: background-color var(--mc-dur-base) var(--ease-out);
+  }
+  button.mc-transcript__time:is(:hover, [data-force~='hover']) {
+    background-color: var(--mc-hover);
+    color: var(--mc-ink);
+  }
+  [data-theme='contrast'] button.mc-transcript__time:hover {
+    text-decoration-line: underline;
+  }
+  .mc-transcript__text {
+    margin: 0;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+  .mc-transcript__prefix {
+    font-weight: 800;
+  }
+  .mc-transcript__line--description .mc-transcript__prefix {
+    color: var(--mc-accent-text);
+  }
+}

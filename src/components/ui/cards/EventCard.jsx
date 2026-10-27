@@ -51,6 +51,7 @@ export default function EventCard({ event, headingLevel = 'h3', className, ...re
             href={registrationUrl ?? undefined}
             newTab
             disabled={!registrationUrl}
+            disabledReason={t('footer.linkPending')}
           >
             {t('news.register')}
             <VisuallyHidden>: {title}</VisuallyHidden>

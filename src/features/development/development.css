@@ -1,0 +1,84 @@
+/*
+ * პიროვნული განვითარება (F7, SlidesPage დაფა): სერია სლაიდერში — ორი სვეტი კონტეინერი ≥ 60rem-ზე
+ * (სლაიდერი 620px | ინფორმაცია), ვიწროზე ერთმანეთის ქვეშ. ფერი მხოლოდ --mc-* ტოკენით.
+ */
+@layer components {
+  .mc-deck {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'head' 'slider' 'tools' 'text';
+    gap: 1.5rem 3.5rem;
+    align-items: start;
+  }
+  @container (min-width: 60rem) {
+    .mc-deck--ready {
+      grid-template-columns: minmax(0, 38.75rem) minmax(0, 1fr);
+      grid-template-rows: auto auto 1fr;
+      grid-template-areas: 'slider head' 'slider tools' 'slider text';
+    }
+  }
+  .mc-deck__head {
+    grid-area: head;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-deck__head > * {
+    margin: 0;
+  }
+  .mc-deck__eyebrow {
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 800;
+    color: var(--mc-accent-text);
+  }
+  .mc-deck__title {
+    font-size: var(--text-h2);
+    line-height: var(--text-h2--line-height);
+    font-weight: 900;
+  }
+  .mc-deck__lead {
+    max-width: 38rem;
+    font-size: var(--text-lead);
+    line-height: var(--text-lead--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-deck__slider,
+  .mc-deck__fallback {
+    grid-area: slider;
+    width: 100%;
+    max-width: 38.75rem;
+  }
+  .mc-deck__tools {
+    grid-area: tools;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.75rem 1rem;
+  }
+  .mc-deck__file {
+    font-weight: 600;
+  }
+  .mc-deck__text {
+    grid-area: text;
+  }
+
+  .mc-text-version {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .mc-text-version__lead {
+    margin: 0;
+    color: var(--mc-muted);
+  }
+  .mc-text-version__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    margin: 0;
+    padding-inline-start: 1.75rem;
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+  }
+}

@@ -330,6 +330,29 @@ const ka = {
     textVersion: 'ტექსტური ვერსია',
     downloadPdf: 'PDF-ის გადმოწერა',
     pdfPending: 'PDF მზადდება',
+    /** F7: სლაიდერი (WAI-ARIA APG carousel) */
+    carousel: 'კარუსელი',
+    slideRole: 'სლაიდი',
+    slideOf: '{index} / {total}',
+    dotTitle: 'სლაიდი {index}: {title}',
+    dotsLabel: 'სლაიდის არჩევა',
+    prevSlide: 'წინა',
+    nextSlide: 'შემდეგი',
+    slideWord: 'სლაიდი',
+    keyboardHint:
+      'გადაფურცვლა: ← → ისრები, Home / End — პირველი და ბოლო სლაიდი; ეკრანზე — თითით გასმა.',
+    pdfMeta: '(PDF, {size})',
+    pdfSizeUnknown: '[00 KB]',
+    shareLabel: 'სერიის ბმული',
+    tools: 'სერიის მოქმედებები',
+    textVersionLead: 'ყველა სლაიდი ერთ სიაში — მოკლე წინადადებებით, მარტივი ენით.',
+    loadingTitle: 'სერია იტვირთება…',
+    errorTitle: 'სერია ვერ ჩაიტვირთა',
+    notFoundTitle: 'სერია ვერ მოიძებნა',
+    notFoundText: 'ამ მისამართზე სერია არ არის — შესაძლოა, ბმული შეიცვალა. აირჩიე თემა ქვემოთ.',
+    backToFeatured: 'რჩეულ სერიაზე დაბრუნება',
+    seriesEmpty: 'სერია ჯერ არ გამოქვეყნებულა. ახალი თემები აქ გამოჩნდება.',
+    otherEmpty: 'სხვა სერია ჯერ არ გამოქვეყნებულა.',
   },
 
   videos: {
@@ -349,6 +372,16 @@ const ka = {
     shareStoryText:
       'გადაღებას ჩვენ ვუზრუნველყოფთ — შენი თანხმობით, შენი ტემპით და შენი წესებით. საბოლოო ვერსიას გამოქვეყნებამდე შენ ამტკიცებ.',
     shareStoryCta: 'ისტორიის გაზიარება',
+    /** F7 */
+    nowPlaying: 'ფლეიერში',
+    person: '{name} — {role}',
+    languageKa: 'ქართული',
+    loadingTitle: 'ვიდეო იტვირთება…',
+    errorTitle: 'ვიდეო ვერ ჩაიტვირთა',
+    notFoundTitle: 'ვიდეო ვერ მოიძებნა',
+    notFoundText: 'ამ ბმულით ვიდეო არ არის — შესაძლოა, ბმული შეიცვალა. აირჩიე ისტორია ქვემოთ.',
+    backToWeekly: 'კვირის ვიდეოზე დაბრუნება',
+    listEmpty: 'ვიდეო-ისტორია ჯერ არ გამოქვეყნებულა.',
   },
 
   player: {
@@ -373,6 +406,32 @@ const ka = {
     progress: 'პროგრესი',
     time: '{current} / {total}',
     assetPending: 'ვიდეო ფაილი მზადდება',
+    /** F7: ფლეიერი */
+    region: 'ვიდეოფლეიერი: {title}',
+    stage: 'ვიდეო: {title}',
+    captionsShort: 'CC',
+    pendingText: 'ვიდეო ფაილი მზადდება. ისტორია უკვე შეგიძლია წაიკითხო ტრანსკრიპტში.',
+    mediaError: 'ვიდეო ვერ ჩაიტვირთა. სცადე გვერდის განახლება ან წაიკითხე ტრანსკრიპტი.',
+    captionsMissing: 'სუბტიტრების ფაილი მზადდება.',
+    signMissing: 'ჟესტური ენის ვერსია მზადდება.',
+    adMissing: 'აუდიოაღწერის ფაილი მზადდება.',
+    moreLabel: 'მეტი პარამეტრი',
+    transcriptTitle: 'ტრანსკრიპტი',
+    transcriptHint: 'დროის ნიშნულზე დაჭერა ვიდეოს იმ წამზე გადაიყვანს.',
+    transcriptPendingHint: 'დროის ნიშნულები ვიდეოს ჩატვირთვის შემდეგ გახდება აქტიური.',
+    speaker: '{name}:',
+    volumeValue: '{value}%',
+    keyboardHint:
+      'კლავიატურა, როცა ფოკუსი ფლეიერშია: Space ან K — ჩართვა / პაუზა, ← → — 5 წამით, M — ხმა, C — სუბტიტრები.',
+    announce: {
+      playing: 'ვიდეო ჩაირთო',
+      paused: 'ვიდეო დაპაუზდა',
+      captionsOn: 'სუბტიტრები ჩართულია',
+      captionsOff: 'სუბტიტრები გამორთულია',
+      muted: 'ხმა გათიშულია',
+      unmuted: 'ხმა ჩართულია',
+      seek: 'გადასვლა: {time}',
+    },
   },
 
   news: {
@@ -601,6 +660,7 @@ const ka = {
       partnership: 'პარტნიორობა',
       media: 'მედია',
       barrier: 'ხელმისაწვდომობის ბარიერი',
+      story: 'ისტორიის გაზიარება',
     },
     replyChannel: {
       email: 'ელფოსტა',

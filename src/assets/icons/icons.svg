@@ -173,4 +173,39 @@
   <symbol id="search" viewBox="0 0 24 24" data-label="ძიება">
     <path class="main" d="M17 10.5a6.5 6.5 0 1 1-13 0a6.5 6.5 0 1 1 13 0zM15.2 15.2L20 20" />
   </symbol>
+
+  <!-- F7: სლაიდერი და ვიდეოფლეიერი (SlidesPage / VideosPage დაფები; pause და download — დაფებიდან) -->
+  <symbol id="pause" viewBox="0 0 24 24" data-label="პაუზა">
+    <path class="fill" d="M7 5h4v14H7zM13 5h4v14h-4z" />
+  </symbol>
+  <symbol id="volume-off" viewBox="0 0 24 24" data-label="ხმა გათიშულია">
+    <path class="main" d="M4 9h4l5-4v14l-5-4H4z" />
+    <path class="accent" d="M16 9.5l5 5M21 9.5l-5 5" />
+  </symbol>
+  <symbol id="fullscreen" viewBox="0 0 24 24" data-label="სრული ეკრანი">
+    <path class="main" d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5" />
+  </symbol>
+  <symbol id="fullscreen-exit" viewBox="0 0 24 24" data-label="სრული ეკრანიდან გასვლა">
+    <path class="main" d="M9 4v5H4M20 9h-5V4M15 20v-5h5M4 15h5v5" />
+  </symbol>
+  <symbol id="audio-description" viewBox="0 0 24 24" data-label="აუდიოაღწერა">
+    <path class="main" d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z" />
+    <path class="accent" d="M6.5 15l2-6 2 6M7.2 13h2.6M13 9v6h1.5a3 3 0 0 0 0-6z" />
+  </symbol>
+  <symbol id="transcript" viewBox="0 0 24 24" data-label="ტრანსკრიპტი">
+    <path class="main" d="M6 3h9l4 4v14H6z" />
+    <path class="accent" d="M9 11h7M9 14h7M9 17h4" />
+  </symbol>
+  <symbol id="more" viewBox="0 0 24 24" data-label="მეტი">
+    <path class="dot" d="M6 12h.01M12 12h.01M18 12h.01" />
+  </symbol>
+  <symbol id="chevron-left" viewBox="0 0 24 24" data-label="წინა">
+    <path class="main" d="M15 6l-6 6 6 6" />
+  </symbol>
+  <symbol id="chevron-right" viewBox="0 0 24 24" data-label="შემდეგი">
+    <path class="main" d="M9 6l6 6-6 6" />
+  </symbol>
+  <symbol id="download" viewBox="0 0 24 24" data-label="გადმოწერა">
+    <path class="main" d="M12 4v11M7 10l5 5 5-5M5 20h14" />
+  </symbol>
 </svg>

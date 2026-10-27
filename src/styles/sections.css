@@ -363,3 +363,29 @@
     }
   }
 }
+
+/* ------------------------------------------------------------ F7: სტატიკური ნიშნები (pills) */
+@layer components {
+  /* „6 სლაიდი“, „04:30“, „ქართული + ჟესტური“ (SlidesPage / VideosPage) — არაინტერაქტიული */
+  .mc-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-pills > li {
+    padding: 0.3125rem 0.75rem;
+    border: 2px solid transparent;
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-alt);
+    color: var(--mc-ink);
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 600;
+  }
+  [data-theme='contrast'] .mc-pills > li {
+    border-color: var(--mc-border);
+  }
+}

@@ -673,3 +673,158 @@ SiteHeader (ზედა ზოლი, თავსებადობის მ�
 ### შემდეგი: F7 — განვითარება + ვიდეოები + აუდიტი
 
 სლაიდერი (APG carousel, ← → Home End, PDF, ტექსტური / მარტივი ენის ვერსია) და ფლეიერი (CC ნაგულისხმევად, ჟესტური ენის PiP, აუდიოაღწერა, ტრანსკრიპტი დროის ნიშნულებით, `?video=`), აუდიტის მატრიცა. Gate: AA-ს ყველა ✗ გასწორებულია ან P1-შია. F6-იდან: `PageIntro`, ფილტრის პატერნი (`useUrlFilters` + ხილული სტატუსი), `LoadMore` + `useLoadMoreFocus`, `useHeadingRefocus` (ასინქრონული h1), `ShareButton` (სერიის გაზიარება), `speech.js`-ის ინტეგრაცია; აუდიტში — ღია საკითხები 2 და 6.
+
+## F7 — პიროვნული განვითარება + ვიდეოები + საბოლოო აუდიტი ✅ (2026-10-27)
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (29 ფაილი, 537 ტესტი: F6-ის 484 + F7-ის 53; ერთხელ, Chromium-ის აუდიტთან პარალელურ გაშვებაზე, 2 ტესტი დროში ჩავარდა — ცალკე და თავიდან 537/537) · `npm run build` ✓ + check-dist ✓ (25 JS chunk) · **Chromium 141.0.7390.37 + axe-core 4.14.0** (`scripts/audit.py`, ფერის კონტრასტით):
+- 12 როუტი (`/`, `/about`, `/articles`, `/articles/:slug`, `/development`, `/development?series=`, `/videos`, `/videos?video=`, `/news`, `/news/:slug`, `/contact`, 404) × light / dark / contrast × 1440 / 390 = 72 + `/__kit` × 2 — **0 დარღვევა, 0 incomplete**, ჰორიზონტალური სქროლი 0;
+- ფლეიერი **რეალური ფაილით** (ffmpeg-ის VP9 / Opus WebM + VTT, Range-ით) × 3 თემა × 1440 (full) / 390 (compact, გახსნილი „მეტით“) — 0 / 0;
+- **WCAG 2.2 AA-ს ✗ არ დარჩა** (P1 ცარიელია) — აუდიტში ნაპოვნი ოთხი ხარვეზი გასწორდა (იხ. „აუდიტში გასწორებული“).
+
+### აუდიტის მატრიცა
+
+| გვერდი | axe (3 თემა × 2) | კლავიატურა (Tab-ები 1440 / 390) | 390 | მუქი | კონტრასტი | reduced-motion | reflow 320 / 720 / 200% |
+|---|---|---|---|---|---|---|---|
+| `/` | ✓ 0/0 | ✓ 49 / 38 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/about` | ✓ | ✓ 25 / 18 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/articles` | ✓ | ✓ 51 / 44 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/articles/:slug` | ✓ | ✓ 41 / 34 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/development` (+ `?series=`) | ✓ | ✓ 41 / 34 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/videos` (+ `?video=`, ფაილით) | ✓ | ✓ 39 / 32 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/news` | ✓ | ✓ 45 / 38 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/news/:slug` | ✓ | ✓ 30 / 23 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `/contact` | ✓ | ✓ 35 / 28 | ✓ | ✓ | ✓ | ✓ | ✓ |
+| 404 | ✓ | — | ✓ | ✓ | ✓ | ✓ | — |
+| `/__kit` (dev) | ✓ | — | ✓ | ✓ | ✓ | ✓ | ✗ 200%-ზე (P3, საჯარო არ არის) |
+
+- **კლავიატურა:** ყოველი Tab-გაჩერება 9 გვერდზე × 2 სიგანე — რგოლი ჩანს (ბარათზე `:has`-ით), ელემენტი ეკრანზეა და არაფერი ფარავს (WCAG 2.4.11), სამიზნე ≥ 44px (2.5.8), ციკლი იკვრება; ფოკუსის ხაფანგი არ არის.
+- **reduced-motion:** no-preference — სლაიდი `mc-slide-in-next` 240ms, წერტილი 200ms, CTA 120ms; reduce — ანიმაცია `none`, ყველა transition 0s (მთავარზე მოძრავი ელემენტი 0), ფლეიერის პროგრესი 0s.
+- **reflow:** 320px (100%), 720px (= 1440 × 200% zoom), შრიფტი 200% 1440 და 390 — ჰორიზონტალური სქროლი 0 ყველა საჯარო გვერდზე; ტექსტი არ იჭრება (overflow-ის შემოწმება).
+
+### სცენარები (Chromium)
+
+- **სლაიდერი:** ფოკუსი გარეთ → → არაფერს ცვლის; „შემდეგი“-ზე → „სლაიდი 2 / 6“, End → 6 / 6, Home → 1 / 6; წერტილზე → ფოკუსი ახალ წერტილზე (`aria-current`); touch swipe მარცხნივ → შემდეგი; სერიის ბარათი → ფოკუსი სერიის h2-ზე.
+- **ფლეიერი (ფაილით):** ავტოდაკვრა არ არის; სუბტიტრის ბილიკი `hidden` (ბრაუზერი არ ხატავს), overlay-ში „[პირველი ფრაზა — სუბტიტრი]“; K → დაკვრა, ჟესტური ენის ვიდეო მიჰყვება (დრიფტი 0.06 წმ); → +5 წმ; M → ხმა გათიშულია; C → overlay ქრება; აუდიოაღწერა → მთავარი ჩუმდება, აუდიო უკრავს (დრიფტი 0.09 წმ); ტრანსკრიპტის „გადასვლა: 00:04“ → 4.2 წმ; პროგრესი `aria-valuetext` „00:04 / 00:20“, Home → 0; სრული ეკრანი → რეგიონი; 390 — „მეტი“, Esc → ფოკუსი „მეტი“-ზე.
+- **ფაილის გარეშე (mock):** ბარათი → ფოკუსი ფლეიერზე („ვიდეოფლეიერი: …“), ჩართვა `aria-disabled` + „ვიდეო ფაილი მზადდება…“, ტრანსკრიპტი ღიაა.
+
+### აუდიტში გასწორებული
+
+1. **სლაიდის დეკორი ტექსტის ქვეშ** (axe incomplete 6 კვანძზე, `/development` ღია / მუქი): რკალი #F26A1F თეთრ ტექსტთან < 3:1 იყო — დეკორი ზედა მარჯვენა კუთხეშია (`overflow: hidden` ბლოკში), ვიწრო / დიდშრიფტიან სლაიდზე (< 30rem) არ ჩანს.
+2. **დეკორი 200%-ზე გვერდს სქროლავდა** (`/development`, 1440 × 200%, 2px) — იგივე გასწორებით.
+3. **label-in-name** (`label-content-name-mismatch`, კომპაქტური „CC“): `aria-label="სუბტიტრები (CC)"` → ხილული „CC“ + დამალული „სუბტიტრები“ (სახელი „CC სუბტიტრები“).
+4. **`landmark-unique` + ორჯერ `id="kit-media"`** `/__kit`-ში (jsdom-ის axe-მა დაიჭირა).
+- წინა ნაბიჯების ღია საკითხები: F6 #2 (Safari-ს სიები → `role="list"`), F6 #6 (მიუწვდომელი მოქმედება Tab-ში არ იყო → `disabledReason`), F6 #7 (`autocomplete="email"` ორმნიშვნელოვან ველზე → ამოღებულია, WCAG 1.3.5).
+
+### დარჩენილი ხარვეზები
+
+**P1** (WCAG 2.2 AA ✗) — არ არის.
+
+**P2**
+1. რეალური ასისტიური ტექნოლოგია: NVDA / JAWS (Windows), VoiceOver (macOS, iOS), TalkBack — `aria-roledescription="კარუსელი"`-ის გამოცხადება, ფლეიერის `role="slider"`, `aria-pressed` ჩიპები, Safari-ში `role="list"`; ქართული ხმა (F4 #6).
+2. iPhone Safari: ელემენტის სრული ეკრანი არ არსებობს → ღილაკი იმალება (`fullscreenEnabled`); native `webkitEnterFullscreen` საკუთარ სუბტიტრს ვერ აჩვენებს — გადაწყვეტა (ნატიური `<track>` ამ რეჟიმში?) ღიაა.
+3. ჟესტური ენის / აუდიოაღწერის სინქრონი ნელ ქსელზე (ლოკალურად 0.06–0.09 წმ); `waiting`-ზე მიმყოლი ჩერდება, მაგრამ მიმყოლის საკუთარი ბუფერი მთავარს არ აჩერებს.
+4. ერთი სუბტიტრის ენა (ka): რამდენიმე ბილიკის არჩევა (`subtitles` en) UI-ში არ არის.
+5. დაფების გასწორება (project-context §9.18).
+
+**P3**
+1. `/__kit` 200%-იან შრიფტზე ჰორიზონტალურად სქროლავს (სამი თემის სვეტი media query-ით; მხოლოდ dev).
+2. ფლეიერის პარამეტრები (`mc-player`) თავსებადობის მენიუში არ ჩანს — UX-ის გადაწყვეტილება.
+3. მთავარი JS 123.71 kB gzip: mock (11.1 kB) და ლოგოს ნიშნები ჯერ bundle-შია (F2 #6, F4 #9).
+4. ტრანსკრიპტი მიმდინარე სტრიქონზე თავისით არ სქროლავს (განზრახ — ფოკუსს და გვერდს არ ამოძრავებს).
+
+### დარჩენილი `[placeholder]`-ები
+
+**გვერდებზე ნაჩვენები** (Chromium, 9 გვერდი + 404, ტექსტი + `alt` / `aria-label`; უნიკალური — 230):
+
+| ტიპი | რაოდენობა | მაგალითი |
+|---|---|---|
+| ფოტო / ვიდეოს კადრი | 41 | „[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — …]“ |
+| სახელი | 18 | „[ავტორის სახელი გვარი]“, „[პარტნიორი 01]“ |
+| თარიღი / დრო | 7 | „[00:00–00:00]“, „[2 სამუშაო დღეში]“ |
+| კონტაქტი | 5 | „[ელფოსტა]“, „[მისამართი]“, „[@მეტიჩართულობა]“ |
+| რიცხვი | 1 | „[00 KB]“ |
+| ბმული / URL | 1 | „[ბმული მზადდება]“ |
+| ტექსტი (სათაური, აღწერა, ტექსტის ბლოკი) | 157 | სტატიების / სერიების / ვიდეოების ტექსტები |
+
+გვერდების მიხედვით: `/` 44 · `/about` 53 · `/articles` 34 · სტატია 41 · `/development` 33 · `/videos` 36 · `/news` 43 · სიახლე 12 · `/contact` 26 · 404 4.
+
+**წყაროში** (`npm run placeholders`; mock + ka.js + UI, ტესტებისა და en.js-ის გარეშე): 277 უნიკალური / 302 შემთხვევა — ფოტო / კადრი 11, სახელი 8, თარიღი / დრო 7, კონტაქტი 5, ბმული 2, რიცხვი 2, ფაილი 1, ტექსტი 241 (mock 221, i18n 5, UI 17). ფოტოს აღწერების დიდი ნაწილი mock-ის დამხმარე ფუნქციით იქმნება, ამიტომ წყაროში ნაკლებია, ვიდრე გვერდზე.
+
+### შექმნილი ფაილები
+
+- `src/components/media/`: `index.js`, `Slider.jsx`, `useSwipe.js`, `VideoPlayer.jsx`, `ProgressSlider.jsx`, `Transcript.jsx`, `transcript-utils.js`, `NativeMedia.jsx`, `sources.js`, `native-controller.js`, `player-prefs.js`, `usePlayback.js`, `media.css`, `__tests__/{fake-source.jsx,slider.test.jsx,player.test.jsx,controller.test.js}`; წაიშალა `.gitkeep`.
+- `src/features/development/`: `SeriesDeck.jsx`, `SeriesGrid.jsx`, `series-links.js`, `development.css`, `__tests__/development.test.jsx`.
+- `src/features/videos/`: `VideoStage.jsx`, `VideoGrid.jsx`, `ShareStoryBand.jsx`, `useVideoParam.js`, `videos.css`, `__tests__/videos.test.jsx`.
+- `scripts/audit.py`, `scripts/placeholders.mjs`.
+- შეიცვალა: `pages/{Development,Videos,Kit,NewsItem}Page.jsx`; `components/ui/{Button,Card}.jsx`, `cards/{Video,Event,News}Card.jsx`; `features/articles/ShareButton.jsx`; `features/contact/ContactForm.jsx`; `content/taxonomy.js` (`story`); `i18n/{ka,en,format,index}.js`; `assets/icons/icons.svg` (+10); `styles/{components,sections}.css`; ტესტები: `routes.test.jsx`, `features/__tests__/{page-helpers.jsx,pages.test.jsx}`, `ui/__tests__/components.test.jsx`, `news/__tests__/news.test.jsx`, `articles/__tests__/article.test.jsx`; `eslint.config.js`, `package.json` (`placeholders`, `audit`), `.gitignore` (`.audit-fixtures`, `audit.json`), `CLAUDE.md` (რუკა + F7 კონვენციები), `docs/project-context.md` (§2, §5, §6, §7, §9, §10).
+
+### საჯარო API
+
+**მედია** (`@/components/media/index.js`):
+
+| ექსპორტი | API |
+|---|---|
+| `Slider` | `slides: Slide[]`, **`title`**, `tone: SeriesTone` = navy, `handle`, `ratio: 'auto' \| '1:1' \| '4:5'` = auto, `initialIndex` = 0, `onChange(index)`, `headingLevel` = h3, `className` |
+| `VideoPlayer` | **`video: Video`**, `source: VideoSourceAdapter` (ნაგულისხმევი `resolveSource()`), `layout: 'full' \| 'compact'` (ნაგულისხმევად სიგანით), `playerRef` (ფოკუსისთვის), `transcriptHeadingLevel` = h3, `className` |
+| `ProgressSlider` | `currentTime`, `duration`, `onSeek(seconds)`, `disabled`, `describedBy`, `className` |
+| `Transcript` | `id`, `lines: TranscriptLine[]`, `currentTime`, `highlight`, `onSeek \| null`, `hidden`, `headingLevel`, `className` |
+| `VideoSourceAdapter` | `{ id, canPlay(video) → boolean, Media: ComponentType<{ video, onController(controller \| null), signVisible }> }`; `nativeSource`, `resolveSource()` |
+| `PlaybackController` | `getState() → PlaybackState`, `subscribe(fn) → unsubscribe`, `onCaption(fn(text)) → unsubscribe`, `play()`, `pause()`, `seek(s)`, `setVolume(0…1)`, `setMuted(b)`, `setRate(r)`, `setCaptions(b)`, `setSignLanguage(b)`, `setAudioDescription(b)`, `destroy()` |
+| `PlaybackState` | `{ ready, started, paused, ended, waiting, currentTime, duration, volume, muted, rate, error }`; `IDLE_STATE` |
+| `createNativeController({ video, sign?, audio?, fallbackDuration? })` | native რეალიზაცია; `cueText(track)`, `stripCueTags(text)` |
+| hook-ები | `usePlayback(controller \| null) → PlaybackState`; `usePlayerLayout(ref, forced?) → 'full' \| 'compact'`, `playerLayoutFor(widthPx, remPx)`, `PLAYER_COMPACT_REM` 34; `usePlayerPrefs() → [prefs, update(patch)]`; `useSwipe({ onPrev, onNext }) → pointer handlers`, `SWIPE_MIN` 48 |
+| კონსტანტები | `SEEK_STEP` 5, `PAGE_STEP` 30, `DRIFT_TOLERANCE` 0.3, `RATES` [0.5, 0.75, 1, 1.25, 1.5, 2], `PLAYER_STORAGE_KEY` 'mc-player', `DEFAULT_PLAYER_PREFS` `{ captions: true, sign: true, audioDescription: false, rate: 1 }`, `parsePlayerPrefs(raw)`, `durationAttribute(s)` → „PT1M23S“, `currentLineIndex(lines, t)` |
+| ტესტი / kit | `createFakeSource(options) → { controller, source }`, `createFakeController`, `withFiles(video)` — `__tests__/fake-source.jsx` |
+
+**ფიჩერები:** `SeriesDeck({ state, empty, handle, headingRef })`, `PdfButton({ pdf })`, `TextVersion({ slides })`, `DECK_HEADING_ID` 'deck-title', `SeriesGrid({ state, currentSlug })`, `OTHER_HEADING_ID`, `seriesHref(slug)`; `VideoStage({ state, empty, headingRef, playerRef })`, `STAGE_HEADING_ID` 'video-title', `VideoGrid({ state, category, onCategory, currentSlug })`, `GRID_HEADING_ID`, `ShareStoryBand`, `SHARE_STORY_HREF` '/contact?topic=story', `useVideoParam() → slug | null` (`?v=` → `?video=`, replace), `videoHref(slug, category?)`.
+
+**UI ნაკრები (+):** `Button` — `disabledReason` (`disabled`-თან: `aria-disabled`, ფოკუსი, ხილული მიზეზი `aria-describedby`; ბმული — `<a role="link" tabindex="0">`); `Card` — `current` (`aria-current="true"` + 4px ჩარჩო); `VideoCard` — `current` („▶ ფლეიერში“); `ShareButton` — `path` (query-ით); `Chip`-ს `aria-disabled` / `aria-expanded` სტილი.
+
+**ფორმატი:** `formatFileSize(bytes)` → „240 KB“ / „1,5 MB“ ('' — უცნობი).
+
+**ტაქსონომია:** `CONTACT_TOPICS` + `story` („ისტორიის გაზიარება“).
+
+**ხატულები (+10):** `pause`, `volume-off`, `fullscreen`, `fullscreen-exit`, `audio-description`, `transcript`, `more`, `chevron-left`, `chevron-right`, `download` (ხმა — არსებული `listen`).
+
+**ტოკენები:** ახალი არ არის. `media.css`-ის HEX — §2-ის ფიქსირებული წყვილები (სლაიდი, სუბტიტრი, კადრი).
+
+**CSS კლასები:** `media.css` — `.mc-slider`, `__viewport`, `__controls`, `__status`, `__dots`, `__dot`, `__pip`, `__hint`, `.mc-slide`, `--ratio-auto | -square | -tall`, `--from-next | -prev`, `__deco`, `__brand`, `__content`, `__kicker`, `__num`, `__title`, `__body`, `__foot`, `.mc-player-wrap`, `.mc-player` (`data-layout`), `__stage`, `__video`, `__poster`, `__surface`, `__big-play`, `__sign`, `__captions`, `__caption`, `__controls`, `__row(--main | --tools | --pending)`, `__time`, `__pending`, `__play`, `__chip`, `__volume`, `__select`, `__more`, `__notes`, `__hint`, `.mc-progress*`, `.mc-transcript*`; `sections.css` — `.mc-pills`; `components.css` — `.mc-btn-pending*`, `.mc-card--current`; გვერდებისა — `.mc-deck*`, `.mc-text-version*`, `.mc-video-stage*`, `.mc-story*`.
+
+**i18n (+):** `development.{carousel,slideRole,slideOf,dotTitle,dotsLabel,prevSlide,nextSlide,slideWord,keyboardHint,pdfMeta,pdfSizeUnknown,shareLabel,tools,textVersionLead,loadingTitle,errorTitle,notFoundTitle,notFoundText,backToFeatured,seriesEmpty,otherEmpty}`, `videos.{nowPlaying,person,languageKa,loadingTitle,errorTitle,notFoundTitle,notFoundText,backToWeekly,listEmpty}`, `player.{region,stage,captionsShort,pendingText,mediaError,captionsMissing,signMissing,adMissing,moreLabel,transcriptTitle,transcriptHint,transcriptPendingHint,speaker,volumeValue,keyboardHint,announce.*}`, `taxonomy.contactTopic.story`.
+
+**სკრიპტები:** `npm run placeholders` (`--json`), `npm run audit` (`python3 scripts/audit.py --out audit.json [--only axe,keyboard,motion,reflow,placeholders,media,bundle] [--fixtures DIR]`; build უნდა იყოს; fixture-ებს ffmpeg-ით თავად ქმნის).
+
+**ბანდლი:** მთავარი JS 421.21 / **123.71 kB gzip** (F6: 124.00), CSS 71.17 / 14.15 kB gzip (F6: 13.83 — `.mc-pills`, `.mc-btn-pending`, ჩიპის მდგომარეობები); `media` chunk 21.63 / 7.22 kB + CSS 2.72 kB (მხოლოდ `/development`, `/videos`, `/__kit`); DevelopmentPage 1.95 kB + CSS 0.49, VideosPage 2.03 kB + CSS 0.62 kB.
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+1. **ვიდეოს პარამეტრი `?video=`** (prompt: `?v=`) — F5-ის VideoCard და §9.13; `?v=` მიიღება და `replace`-ით გადაიწერება.
+2. **`/development`-ის თემის ჩიპები ამოღებულია** — თითო თემას ერთი სერია აქვს (ჩიპი ბარათების ბადეს იმეორებდა), „ყველა“ კი ერთ სლაიდერზე აზრს კარგავდა; სერიას ბადე ირჩევს.
+3. **სლაიდის ფერები** (SlidesPage): kicker #FFB81C → tone-ის აქცენტი, ტექსტი #DCE6F1 → tone-ის ტექსტი (§2 „მედია“); წერტილი #C8D2DF (1.41:1) → `--mc-border`, მუქში ოქროსფერი → ink; ჩარჩო #2B4A70 → `--mc-border`; რადიუსი 28 → 32.
+4. **წერტილები ღილაკების რიგის ქვემოთ** (დაფაზე შუაში): Tab-ის რიგი = ვიზუალური, 9+ სლაიდი და 200% შრიფტი ეტევა; მრიცხველი („სლაიდი 3 / 6“) ღილაკებს შორისაა.
+5. **„წინა“ / „შემდეგი“ 44px** (prompt; დაფაზე 52), ბოლოებში `aria-disabled` (დაფაზე `disabled` + opacity — ფოკუსი იკარგებოდა).
+6. **სლაიდის დეკორი ზედა კუთხეშია** (დაფაზე ქვედა, ტექსტისა და მრიცხველის ქვეშ — < 3:1), ვიწრო სლაიდზე არ ჩანს.
+7. **სლაიდი იზრდება** დიდ შრიფტზე (1:1 / 4:5 მინიმუმია) — ტექსტი არ იჭრება; ვიწრო კონტეინერში ავტომატურად 4:5.
+8. **ფლეიერის ფერები** (VideosPage): პროგრესი #FFB81C → `--mc-graphic`, სუბტიტრი rgba(0,0,0,.82) → #0A1D38, დაკვრის rgba-ნათება ამოღებულია, გადამრთველის რადიუსი 10 → 999 (ჩიპი, ✓-ით), ჩარჩო მუქში `--mc-card-border`.
+9. **ფლეიერის განლაგება:** სრული — ორი რიგი (დაკვრა · პროგრესი · დრო · ხმა / ხელმისაწვდომობის ჩიპები · სიჩქარე · სრული ეკრანი; დაფაზე ერთი რიგი — 8fr-ში არ ეტეოდა); კომპაქტური — §10 + ხმის გათიშვა „მეტში“; ზღვარი ფლეიერის სიგანით (34rem), არა ეკრანით.
+10. **ტრანსკრიპტის გადამრთველი ფლეიერის ზოლშია** (დაფაზე ინფორმაციის სვეტში) — prompt-ის მიხედვით ფლეიერის კონტროლია და 390-ზე „მეტშია“; ფაილის გარეშე ღიაა.
+11. **აუდიოაღწერა = ცალკე სრული მიქსის ფაილი** (ჩართვისას მთავარი ვიდეო ჩუმდება).
+12. **ჟესტური ენა ნაგულისხმევად ჩართულია** (VideosPage-ის საწყისი მდგომარეობა); არჩევანი ინახება (`mc-player`).
+13. **მალსახმობები `KeyboardEvent.code`-ით** — ქართულ განლაგებაზე „კ“ / „მ“ / „ც“-ც მუშაობს; Space — მხოლოდ რეგიონზე / კადრზე.
+14. **„ფლეიერში“ ბარათზე** (დაფაზე არ არის) — მიმდინარე ვიდეო სიაში რჩება და `aria-current`-ით ინიშნება.
+15. **ისტორიის ზოლის CTA ისრის გარეშე** (შიდა ბმულია); მუქში ფონი `--mc-hero` (F5-ის წესი).
+16. **ახალი კონტაქტის თემა `story`** — prompt-ის `/contact?topic=story`-სთვის.
+17. **მიუწვდომელი მოქმედება ფოკუსს იღებს** (F3-ის „გათიშული ბმული ფოკუსს არ იღებს“ შეიცვალა) — F6 #6.
+
+### ღია საკითხები
+
+1. P2 1–5 და P3 1–4 (ზემოთ) — project-context §9.18–19.
+2. **ვიდეოს პლატფორმა** (§9.4): YouTube-ის adapter `VideoSource`-ს `provider` / `id` ველებს და ჟესტური ენის ცალკე ვიდეოს საჭიროებს.
+3. **აუდიოაღწერის ფორმატი** (სრული მიქსი თუ მხოლოდ აღწერის ბილიკი) — გადაღების გუნდთან.
+4. **სერიის PDF** — ატვირთული ფაილი `DocumentFile.size`-ით (F2 #5 დახურულია ამ გადაწყვეტილებით); ფაილის ზომა CMS-მა უნდა შეავსოს.
+5. **`[@მეტიჩართულობა]`** — სოციალური ქსელის სახელი სლაიდზე (`SiteSettings.socialHandle`).
+6. **დახურულია:** §9.13 (`?video=`), §9.15 (Safari-ს სიები), F2 #3 (ნაწილობრივ — adapter-ის ფენა), F2 #5, F3 #5 (VideoCard-ის ბმული), F6 #2, #6, #7. ძალაშია: F1 5, 7; F2 4, 6–11; F3 1, 6, 7; F4 1–3, 6–11; F5 1, 2, 5, 7–9; F6 1, 3–5, 8–11.
+
+### შემდეგი: F8 — ადმინ პანელი
+
+შესვლა / რეგისტრაცია (მოწვევის კოდით), `AdminShell` (sidebar 268 + header 76), დაფა, სიები, რედაქტორი ხელმისაწვდომობის ჩეკლისტით (`validateContent`-ის წესები: alt, სათაურები, ბმულები, სუბტიტრი + ტრანსკრიპტი + აუდიოაღწერა, ჟესტური ენა — გაფრთხილება), ბიბლიოთეკა (მედია, დოკუმენტები: `DocumentFile.size`). Gate: ადმინის კოდი საჯარო bundle-ში არ ხვდება; alt-ის გარეშე გამოქვეყნება შეუძლებელია. F7-იდან: `Button disabledReason`, `role="list"`, `npm run audit` (ადმინის როუტები დასამატებელია), `npm run placeholders` (კონტენტის ჩეკლისტი).

@@ -35,6 +35,9 @@ export default [
       'no-unused-vars': ['error', { ignoreRestSiblings: true }],
       // useContent / useLoadMore-ის deps იგივე წესით მოწმდება, რაც useEffect-ის
       'react-hooks/exhaustive-deps': ['error', { additionalHooks: '^(useContent|useLoadMore)$' }],
+      // F7: Safari / VoiceOver `list-style: none`-იან სიას სიის როლს აცლის — `role="list"` იქ
+      // განზრახ წერია (F6 ღია საკითხი 2); სხვა ზედმეტი როლი კვლავ შეცდომაა
+      'jsx-a11y/no-redundant-roles': ['error', { nav: ['navigation'], ul: ['list'], ol: ['list'] }],
     },
   },
   {

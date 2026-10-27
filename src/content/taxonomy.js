@@ -14,7 +14,7 @@ import { t } from '@/i18n/index.js';
 /** @typedef {'announcement' | 'event' | 'program' | 'media'} NewsType */
 /** @typedef {'in-person' | 'online' | 'hybrid'} EventFormat */
 /** @typedef {'yes' | 'no' | 'on-request' | 'not-applicable'} AccessLevel */
-/** @typedef {'general' | 'programs' | 'volunteering' | 'partnership' | 'media' | 'barrier'} ContactTopic */
+/** @typedef {'general' | 'programs' | 'volunteering' | 'partnership' | 'media' | 'barrier' | 'story'} ContactTopic */
 /** @typedef {'email' | 'call' | 'message' | 'sign-video'} ReplyChannel */
 /** @typedef {'entrance' | 'elevator' | 'restroom' | 'parking' | 'transit' | 'guide-dog'} OfficeFeature */
 /** @typedef {'company' | 'donor' | 'organization'} PartnerKind */
@@ -81,7 +81,11 @@ export const EVENT_FORMATS = Object.freeze(['in-person', 'online', 'hybrid']);
 /** @type {readonly AccessLevel[]} */
 export const ACCESS_LEVELS = Object.freeze(['yes', 'no', 'on-request', 'not-applicable']);
 
-/** კონტაქტის ფორმის თემები (ContactPage). @type {readonly ContactTopic[]} */
+/**
+ * კონტაქტის ფორმის თემები (ContactPage). F7: `story` — „გაგვიზიარე შენი ისტორია“
+ * (VideosPage → `/contact?topic=story`).
+ * @type {readonly ContactTopic[]}
+ */
 export const CONTACT_TOPICS = Object.freeze([
   'general',
   'programs',
@@ -89,6 +93,7 @@ export const CONTACT_TOPICS = Object.freeze([
   'partnership',
   'media',
   'barrier',
+  'story',
 ]);
 
 /** „როგორ გიპასუხოთ?“ (ContactPage). @type {readonly ReplyChannel[]} */

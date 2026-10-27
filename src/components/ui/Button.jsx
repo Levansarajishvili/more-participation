@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 import { t } from '@/i18n/index.js';
 
 import Icon from './Icon.jsx';
@@ -20,6 +22,10 @@ import { cx } from './utils.js';
  * - `link` — ბმულის სახე, 44px სამიზნე.
  *
  * `to` → Router `Link`, `href` → `<a>`; გათიშული ბმული ფოკუსს არ იღებს.
+ * F7: `disabledReason` — მიუწვდომელი მოქმედება („PDF მზადდება“, „[ბმული მზადდება]“): ღილაკი
+ * ფოკუსს იღებს (`aria-disabled`, Tab-ში რჩება), მიზეზი ხილულია ქვემოთ და `aria-describedby`-ით
+ * ისმის (Switch-ის F4-ის წესი). ბმული (`to` / `href` null-ით) — `<a role="link" aria-disabled
+ * tabindex="0">`, ღილაკი — `<button aria-disabled>`; დაჭერა არაფერს აკეთებს.
  * `loading` — ტრიალი + ტექსტი, `aria-busy="true"`, დაჭერა იბლოკება, ფოკუსი რჩება.
  * reduced-motion: ძვრა არ ხდება, ფერი იცვლება მყისიერად.
  *
@@ -31,6 +37,7 @@ import { cx } from './utils.js';
  * @param {boolean} [props.newTab=false]
  * @param {'button' | 'submit' | 'reset'} [props.type='button']
  * @param {boolean} [props.disabled=false]
+ * @param {import('react').ReactNode} [props.disabledReason]  F7: ხილული ახსნა (`disabled`-თან ერთად)
  * @param {boolean} [props.loading=false]
  * @param {string} [props.loadingLabel]             ნაგულისხმევი: „იტვირთება…“
  * @param {string} [props.icon]                     ხატულა ტექსტის წინ
@@ -48,6 +55,7 @@ export default function Button({
   newTab = false,
   type = 'button',
   disabled = false,
+  disabledReason,
   loading = false,
   loadingLabel,
   icon,
@@ -58,6 +66,7 @@ export default function Button({
   children,
   ...rest
 }) {
+  const reasonId = useId();
   const classes = cx(
     'mc-btn',
     `mc-btn--${variant}`,
@@ -77,6 +86,34 @@ export default function Button({
       {iconEnd && <Icon name={iconEnd} size="1.25em" />}
     </>
   );
+
+  if (disabled && disabledReason) {
+    const isLink = to != null || href != null;
+    /** @param {import('react').SyntheticEvent} event */
+    const block = (event) => event.preventDefault();
+    const shared = {
+      'aria-disabled': /** @type {const} */ ('true'),
+      'aria-describedby': reasonId,
+      className: classes,
+      onClick: block,
+    };
+    return (
+      <span className={cx('mc-btn-pending', fullWidth && 'mc-btn-pending--full')}>
+        {isLink ? (
+          <a role="link" tabIndex={0} {...shared} {...rest}>
+            {content}
+          </a>
+        ) : (
+          <button type="button" {...shared} {...rest}>
+            {content}
+          </button>
+        )}
+        <span id={reasonId} className="mc-btn-pending__reason">
+          {disabledReason}
+        </span>
+      </span>
+    );
+  }
 
   if (to != null || href != null) {
     if (disabled) {

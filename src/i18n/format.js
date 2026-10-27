@@ -280,3 +280,19 @@ export function formatNumber(value) {
   }
   return numberFormat(value);
 }
+
+/**
+ * F7: ფაილის ზომა ბმულის გვერდით (PDF): 245 760 → „240 KB“, 1 572 864 → „1,5 MB“. ერთეული ლათინურად
+ * (KB / MB — ფაილის მენეჯერის ენა), ათობითი — მძიმით (ka-GE). 1 KB = 1024 ბაიტი.
+ * არარიცხვი / უარყოფითი → '' (ზომა უცნობია — გვერდი `[00 KB]`-ს აჩვენებს).
+ * @param {number | null | undefined} bytes
+ * @returns {string}
+ */
+export function formatFileSize(bytes) {
+  if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return '';
+  if (bytes < 1024) return `${Math.round(bytes)} B`;
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${formatNumber(Math.max(1, Math.round(kb)))} KB`;
+  const mb = Math.round((kb / 1024) * 10) / 10;
+  return `${formatNumber(mb)} MB`;
+}

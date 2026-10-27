@@ -7,6 +7,7 @@ export {
   formatDate,
   formatDateParts,
   formatDuration,
+  formatFileSize,
   formatNumber,
   formatTime,
   formatTimeRange,

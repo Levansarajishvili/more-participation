@@ -1,5 +1,8 @@
 import { useState } from 'react';
 
+import { Slider, VideoPlayer } from '@/components/media/index.js';
+import { createFakeSource, withFiles } from '@/components/media/__tests__/fake-source.jsx';
+
 import {
   A11yBadge,
   Accordion,
@@ -42,7 +45,9 @@ import {
 } from '@/components/ui/index.js';
 import {
   getPartners,
+  getSeries,
   getTeam,
+  getVideo,
   listArticles,
   listEvents,
   listNews,
@@ -99,6 +104,20 @@ const UI_GLYPHS = [
   'slides',
   'video',
 ];
+
+/** F7: სლაიდის ყდა თითო თემის სვეტში (ყველა წყვილის ჩვენება). */
+const KIT_TONES = /** @type {const} */ ({ light: 'navy', dark: 'orange', contrast: 'alt' });
+
+/**
+ * F7: ფლეიერი სატესტო წყაროთი — მართვის ყველა ელემენტი ფაილის გარეშე (ტრანსკრიპტი, სუბტიტრი).
+ * @param {{ video: import('@/content/model.js').Video }} props
+ */
+function KitPlayer({ video }) {
+  const [{ source }] = useState(() =>
+    createFakeSource({ currentTime: 83, started: true, caption: '[სუბტიტრი: მონაწილის სიტყვები]' }),
+  );
+  return <VideoPlayer video={withFiles(video)} source={source} />;
+}
 
 /** F5: ContentState-ის შეცდომის მაგალითი. */
 const KIT_ERROR = new ContentError('network');
@@ -164,6 +183,11 @@ export default function KitPage() {
       ]),
     [],
   );
+  // F7: რჩეული სერია და კვირის ვიდეო (mock-ის slug-ები — F2)
+  const media = useContent(
+    () => Promise.all([getSeries('chveva-5-nabiji'), getVideo('rogor-gavkhdi-veb-developeri')]),
+    [],
+  );
   const [category, setCategory] = useState(/** @type {string | null} */ (null));
   const [topics, setTopics] = useState(/** @type {string[]} */ ([]));
   const [reply, setReply] = useState('email');
@@ -182,7 +206,7 @@ export default function KitPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-h1">UI ნაკრები</h1>
         <p className="max-w-article text-lead text-muted">
-          F3–F6: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
+          F3–F7: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
           მუშაობს; „Hover“, „ფოკუსი“ და „დაჭერილი“ სტატიკური ასლებია (data-force).
         </p>
       </div>
@@ -787,6 +811,30 @@ export default function KitPage() {
             )}
           </>
         )}
+      </KitSection>
+
+      <KitSection
+        id="kit-f7-media"
+        title="F7: Slider, VideoPlayer"
+        note="სლაიდერი: ← → Home End ფოკუსისას, ყდის tone თემით არ იცვლება (ღია — navy, მუქი — orange, კონტრასტი — alt). ფლეიერი: სატესტო წყარო (ფაილის გარეშე, სუბტიტრი ჩართულია) და „ვიდეო ფაილი მზადდება“; ვიწრო სვეტში კომპაქტური განლაგებაა."
+      >
+        {(theme) =>
+          media.data ? (
+            <>
+              <Slider
+                slides={media.data[0].slides}
+                title={`${media.data[0].title} (${theme})`}
+                tone={KIT_TONES[theme]}
+                handle="[@მეტიჩართულობა]"
+              />
+              {/* landmark-unique: სამი სვეტის რეგიონებს თემის სახელი განასხვავებს */}
+              <KitPlayer video={{ ...media.data[1], title: `${media.data[1].title} (${theme})` }} />
+              {theme === 'light' && <VideoPlayer video={media.data[1]} />}
+            </>
+          ) : (
+            <p className="text-muted">{t('common.loading')}</p>
+          )
+        }
       </KitSection>
 
       <KitSection id="kit-live" title="VisuallyHidden, LiveRegion">

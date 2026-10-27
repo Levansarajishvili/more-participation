@@ -35,6 +35,8 @@ import { cx } from './utils.js';
  * @param {import('react').ReactNode} [props.children]  მოკლე ტექსტი
  * @param {import('react').ReactNode} [props.icon]    F5: ხატულა წრეში (`<Icon … accent />`)
  * @param {'stack' | 'row'} [props.layout='stack']  F5
+ * @param {boolean} [props.current=false]  F7: ბარათის ობიექტი უკვე გახსნილია (ფლეიერში მიმდინარე
+ *   ვიდეო) — ბმულს `aria-current="true"`, ბარათს 4px ჩარჩო
  * @param {'article' | 'div' | 'li'} [props.as='article']
  * @param {string} [props.className]
  */
@@ -54,6 +56,7 @@ export default function Card({
   aside,
   icon,
   layout = 'stack',
+  current = false,
   children,
   as: Tag = 'article',
   className,
@@ -63,7 +66,13 @@ export default function Card({
   let heading = title;
   if (to != null || href != null) {
     heading = (
-      <UiLink to={to} href={href} newTab={newTab} className="mc-card__link">
+      <UiLink
+        to={to}
+        href={href}
+        newTab={newTab}
+        aria-current={current ? 'true' : undefined}
+        className="mc-card__link"
+      >
         {title}
       </UiLink>
     );
@@ -82,6 +91,7 @@ export default function Card({
         linked && 'mc-card--link',
         aside && 'mc-card--aside',
         layout === 'row' && 'mc-card--row',
+        current && 'mc-card--current',
         className,
       )}
       {...rest}

@@ -17,6 +17,9 @@ const PAGE_CSS = [
   'src/features/news/news.css',
   'src/features/contact/contact.css',
   'src/features/subscribe/subscribe.css',
+  // F7
+  'src/features/development/development.css',
+  'src/features/videos/videos.css',
 ];
 
 /** @param {string} file */

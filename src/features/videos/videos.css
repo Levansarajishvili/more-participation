@@ -1,0 +1,102 @@
+/*
+ * ვიდეოები (F7, VideosPage დაფა): ფლეიერი 8fr | ინფორმაცია 4fr კონტეინერი ≥ 64rem-ზე, ვიწროზე
+ * ფლეიერი ზემოთ; „გაგვიზიარე შენი ისტორია“ — მუქი ზოლი. ფერი მხოლოდ --mc-* ტოკენით.
+ */
+@layer components {
+  .mc-video-stage {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: 'player' 'info';
+    gap: 1.5rem 2.5rem;
+    align-items: start;
+  }
+  @container (min-width: 64rem) {
+    .mc-video-stage {
+      grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+      grid-template-areas: 'player info';
+    }
+  }
+  .mc-video-stage__player {
+    grid-area: player;
+    min-width: 0;
+  }
+  .mc-video-stage__info {
+    grid-area: info;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-video-stage__info > * {
+    margin: 0;
+  }
+  .mc-video-stage__eyebrow {
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    font-weight: 800;
+    color: var(--mc-accent-text);
+  }
+  .mc-video-stage__title {
+    font-size: clamp(1.625rem, 1.3929rem + 0.9524vw * var(--mc-font-scale), 2.125rem); /* 26 → 34 */
+    line-height: calc(1.2 * var(--mc-leading));
+    font-weight: 900;
+  }
+  .mc-video-stage__lead {
+    color: var(--mc-muted);
+  }
+  .mc-video-stage__person {
+    font-weight: 700;
+  }
+  .mc-video-stage__note {
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-video-stage__fallback {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .mc-story {
+    container-type: inline-size;
+    border-top: 6px solid var(--mc-band);
+    border-radius: var(--radius-block);
+    background-color: var(--mc-hero);
+  }
+  .mc-story__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+    padding: 2rem 1.5rem;
+    border-radius: inherit;
+    color: var(--mc-ink);
+    overflow-wrap: anywhere;
+  }
+  @container (min-width: 48rem) {
+    .mc-story__inner {
+      grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr);
+      align-items: center;
+      gap: 2.5rem;
+      padding: 3rem 3.5rem;
+    }
+    .mc-story__action {
+      justify-self: end;
+    }
+  }
+  .mc-story__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  .mc-story__title {
+    margin: 0;
+    font-size: clamp(1.625rem, 1.3929rem + 0.9524vw * var(--mc-font-scale), 2.25rem); /* 26 → 36 */
+    line-height: calc(1.15 * var(--mc-leading));
+    font-weight: 800;
+  }
+  .mc-story__lead {
+    margin: 0;
+    color: var(--mc-muted);
+  }
+}

@@ -70,6 +70,7 @@ export default function NewsItemPage() {
                   href={item.action.href ?? undefined}
                   newTab={Boolean(item.action.href?.startsWith('http'))}
                   disabled={!item.action.href}
+                  disabledReason={t('footer.linkPending')}
                 >
                   {item.action.text}
                 </Button>

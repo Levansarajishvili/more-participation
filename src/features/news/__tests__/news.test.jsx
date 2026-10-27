@@ -89,9 +89,13 @@ describe('სიახლეები: სტრუქტურა', () => {
     const online = /** @type {HTMLElement} */ (cards[1].closest('article'));
     expect(within(online).queryByText('ეტლით მისადგომი')).toBeNull();
     expect(within(online).getByText('ონლაინ')).toBeInTheDocument();
-    expect(
-      within(first).getByRole('button', { name: 'რეგისტრაცია: [ინკლუზიური დასაქმების ფორუმი]' }),
-    ).toBeDisabled();
+    // F7: მიუწვდომელი მოქმედება ფოკუსს იღებს (aria-disabled) და მიზეზს ამბობს
+    const register = within(first).getByRole('button', {
+      name: 'რეგისტრაცია: [ინკლუზიური დასაქმების ფორუმი]',
+    });
+    expect(register).toHaveAttribute('aria-disabled', 'true');
+    expect(register).not.toBeDisabled();
+    expect(register).toHaveAccessibleDescription('[ბმული მზადდება]');
     // დრო თბილისის დროით
     expect(first).toHaveTextContent('10:00–16:00');
   });

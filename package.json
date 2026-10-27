@@ -16,7 +16,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "tokens:report": "node scripts/contrast-report.mjs",
-    "i18n:stub": "node scripts/i18n-stub.mjs && prettier --write src/i18n/en.js"
+    "i18n:stub": "node scripts/i18n-stub.mjs && prettier --write src/i18n/en.js",
+    "placeholders": "node scripts/placeholders.mjs",
+    "audit": "python3 scripts/audit.py --out audit.json"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-georgian": "^5.3.0",
