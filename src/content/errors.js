@@ -5,7 +5,12 @@ import { t } from '@/i18n/index.js';
  * UI მხოლოდ `code`-ით იღებს გადაწყვეტილებას, `message`-ს კი პირდაპირ აჩვენებს.
  */
 
-/** @typedef {'not-found' | 'bad-request' | 'validation' | 'network' | 'server' | 'unknown'} ErrorCode */
+/**
+ * F8 (ადმინი): `unauthorized` — სესია არ არის / ამოიწურა (401), `forbidden` — როლს უფლება არ აქვს
+ * (403), `conflict` — მასალა სხვამ შეცვალა (409, ვერსიის შეუსაბამობა), `rate-limited` — ძალიან ბევრი
+ * მცდელობა (429; სერვერის rate limit, TODO backend).
+ * @typedef {'not-found' | 'bad-request' | 'validation' | 'network' | 'server' | 'unknown' | 'unauthorized' | 'forbidden' | 'conflict' | 'rate-limited'} ErrorCode
+ */
 /**
  * F6: `replyEmail` / `replyPhone` — არჩეული საპასუხო არხი საკონტაქტო ველს არ შეესაბამება.
  * @typedef {'required' | 'email' | 'contact' | 'consent' | 'tooLong' | 'option' | 'replyEmail' | 'replyPhone'} FieldErrorCode
@@ -20,6 +25,10 @@ export const ERROR_CODES = Object.freeze([
   'network',
   'server',
   'unknown',
+  'unauthorized',
+  'forbidden',
+  'conflict',
+  'rate-limited',
 ]);
 
 export class ContentError extends Error {
@@ -66,7 +75,11 @@ export function normalizeError(error) {
   const status = /** @type {{ status?: unknown, response?: { status?: unknown } }} */ (error ?? {});
   const code = Number(status.status ?? status.response?.status);
   if (Number.isInteger(code) && code >= 400) {
+    if (code === 401) return new ContentError('unauthorized', { cause: error });
+    if (code === 403) return new ContentError('forbidden', { cause: error });
     if (code === 404) return new ContentError('not-found', { cause: error });
+    if (code === 409) return new ContentError('conflict', { cause: error });
+    if (code === 429) return new ContentError('rate-limited', { cause: error });
     if (code === 400 || code === 422) return new ContentError('bad-request', { cause: error });
     if (code >= 500) return new ContentError('server', { cause: error });
   }

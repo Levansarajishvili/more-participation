@@ -11,6 +11,8 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   build: {
+    // F8: check-dist manifest-ით ადგენს, რომელი chunk-ია საჯარო და რომელი — მხოლოდ ადმინის
+    manifest: true,
     // შრიფტები ცალკე ფაილებად: unicode-range-ით ბრაუზერი მხოლოდ საჭირო subset-ს ტვირთავს
     assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
   },

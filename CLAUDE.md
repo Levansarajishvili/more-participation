@@ -162,6 +162,27 @@ src/
                           usePlayback.js (usePlayback, usePlayerLayout), media.css (lazy, გვერდთან ერთად);
                           __tests__/fake-source.jsx — ტესტისა და /__kit-ის წყარო
   pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
+  admin/                  F8: ადმინ პანელი — საჯარო bundle-ში არ ხვდება (routes.jsx იტვირთება
+                          src/routes.jsx-ის patchRoutesOnNavigation-ით)
+    routes.jsx            createAdminRoutes(); handle.admin = { title, crumbs, root, editor }
+    AdminRoot.jsx         PreferencesProvider + AuthProvider + noindex meta; admin.css
+    api/                  adminAdapter.js (ერთადერთი შესასვლელი), mock.js (საერთო საცავზე; სატესტო
+                          ანგარიშები), http.js (VITE_ADMIN_API, cookie + CSRF), permissions.js (როლები)
+    auth/                 AuthProvider (სესია, alertdialog, ავტოშენახვის flush), auth-context.js
+                          (useAuth, useSessionFlush), auth-forms.js, RequireAuth, RequireRole
+    shell/                AdminShell (sidebar + header + compact-მენიუ), AdminNav, admin-nav.js,
+                          admin-page.js (useAdminPage), useAdminLayout.js (75rem), initials.js
+    components/           Dialog (ნატიური <dialog>), ConfirmDialog, StatusBadge (+ IssueBadge), PasswordField
+    pages/                Login, Dashboard, List, A11yReport, Search, Media, Documents, Users, Settings,
+                          Forbidden, AdminNotFound, AdminRouteError, AdminRootError
+    editor/               EditorPage (lazy) → EntityEditor; RichTextEditor (TipTap, lazy chunk) +
+                          extensions.js; serialize.js (JSON ↔ ბლოკები), checklist.js (validate.js-ზე),
+                          fields/FieldRenderer.jsx (ყველა ველის სახე), path.js, datetime.js (Tbilisi),
+                          vtt.js, autosave.js, PreviewPage; editor.css
+    schemas/              ველების კონფიგი თითო ტიპზე (articles, news, events, series, videos, pages)
+    i18n/                 ადმინის ლექსიკონი (ka.js) + ta()
+    content-types.js      ტიპები, სვეტი „კატეგორია“, საჯარო გზა, creatable / archivable
+    __tests__/            admin-helpers.jsx (setupAdmin, signInDirect, renderAdmin, fillLogin), ტესტები
   content/
     adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk
     model.js              JSDoc typedef-ები + EXCERPT_MAX, MEDIA_RATIO, READING_WPM
@@ -172,7 +193,8 @@ src/
     validate.js           validateContent — dev console + F8-ის ჩეკლისტი (dev-only)
     slug.js               ქართული → ლათინური (§10)
     text.js               ბლოკების ტექსტი, კითხვის დრო, ძიების ნორმალიზაცია
-    mock/                 createMockAdapter, createMockData; ყველა ფაქტი [ფრჩხილებში]
+    mock/                 createMockAdapter, createMockData; ყველა ფაქტი [ფრჩხილებში];
+                          F8: store.js — საერთო in-memory საცავი (საჯარო + ადმინის adapter)
   hooks/
     useContent.js         ერთი მოთხოვნა → { data, status, error, reload }
     useLoadMore.js        cursor-ით „მეტის ჩატვირთვა“, firstNewIndex ფოკუსისთვის
@@ -344,3 +366,27 @@ src/
 - აუდიტი: `npm run build && npm run audit` → audit.json (axe ყველა როუტზე × 3 თემა × 1440 / 390, Tab-ით
   გავლა, reduced-motion, reflow 320 / 720 / შრიფტი 200%, ფლეიერი ფაილით, bundle). Gate — axe 0 / 0.
 
+
+## კოდის კონვენციები (F8)
+
+- ადმინის კოდი მხოლოდ `src/admin/`-შია და საჯარო ხიდან მხოლოდ `createRouterOptions()`-ით იტვირთება.
+  საჯარო მოდული `@/admin/*`-ს არასოდეს იმპორტებს (check-dist ამოწმებს manifest-ით). ადმინის ტექსტი —
+  `ta()` (`src/admin/i18n/ka.js`), საჯარო ka.js-ში არა; ზოგადი შეცდომის კოდები (`errors.*`) — ka.js-შია.
+- backend-თან მხოლოდ `@/admin/api/adminAdapter.js` (`auth`, `content`, `media`, `users`, `settings`,
+  `stats`, `a11yReport`); შეცდომა — `ContentError` (`unauthorized` → შესვლის გვერდი, `forbidden` → 403,
+  `conflict` → კონფლიქტის დიალოგი, `validation` + `fields` → შეცდომების ჯამი). token არსად ინახება.
+- ეკრანი h1-ს არ ხატავს — ის header-შია: სტატიკური სათაური `handle.admin.title`-ით, დინამიკური —
+  `useAdminPage({ title, crumbs, type, editor })`. ეკრანის სექცია — `.mc-admin-panel` + h2.
+- უფლება — `can(user, permission)`; როუტი — `<RequireRole permission>` (403 გარსის შიგნით).
+- დიალოგი — `Dialog` / `ConfirmDialog` (ნატიური `<dialog>`, `showModal`); დადასტურებაზე ფოკუსი
+  ნაკლებად სახიფათო ღილაკზე; მოთხოვნა, რომელიც პასუხს ითხოვს (სესია, შეუნახავი ცვლილება) — `alertdialog`.
+- ახალი კონტენტის ტიპი / ველი = სქემა `src/admin/schemas/`-ში (ველის `name` = მოდელის გზა); ახალი ველის
+  სახე — `FieldRenderer`-ში, UI ნაკრების ველებზე, id — `fieldId(path)` (შეცდომების ჯამი მასზე მიდის).
+- ჩეკლისტის წესი = `validate.js`-ის კოდი + `RULES` (`checklist.js`) + სქემის `rules`; ტექსტი —
+  `editor.checklist.rules.*`. ბლოკერი გამოქვეყნებას აჩერებს რედაქტორშიც და adapter-შიც.
+- TipTap-ის სქემა მხოლოდ მოდელის ბლოკებია (`extensions.js`); ახალი ფორმატი = მოდელი + serializer + ტესტი.
+- ცხრილი — `<table>` + `<caption>` + `scope="col"`, სქროლ-რეგიონში (`role="region"`, `tabindex="0"`,
+  სახელით); ბარათებად არ იქცევა. მოქმედების ღილაკის სახელი სათაურს შეიცავს (დამალული ნაწილით).
+- ტესტები: `setupAdmin()` (საერთო საცავი + ორივე adapter), `signInDirect(admin, role)`, `renderAdmin(path)`;
+  ავტოშენახვა — `setAutosaveDelay(ms)`; Chromium — `npm run audit -- --only admin` (`ADMIN_THEMES`,
+  `ADMIN_WIDTHS`, `ADMIN_SKIP_KEYBOARD`, `ADMIN_KEYBOARD`).

@@ -310,6 +310,8 @@ export function validateSeries(series, sink = []) {
     if (!filled(slide.plain)) c.add('error', `${at}.plain`, 'plainMissing');
     if (slide.image) c.image(`${at}.image`, slide.image);
   });
+  // F8: ატვირთული PDF-ის tagged-სტატუსი (PDF/UA) დადასტურებული უნდა იყოს — გაფრთხილება
+  if (series.pdf?.src && !series.pdf.tagged) c.add('warning', 'pdf', 'pdfUntagged');
   return sink;
 }
 
@@ -341,7 +343,10 @@ export function validateVideo(video, sink = []) {
     );
     if (!ordered) c.add('error', 'transcript', 'transcriptOrder');
   }
-  if (!video.audioDescription) c.add('error', 'audioDescription', 'audioDescriptionMissing');
+  // F8: აუდიოაღწერა არ სჭირდება, თუ რედაქტორმა მონიშნა „ვიზუალური ინფორმაცია აუდიოშიცაა“
+  if (!video.audioDescription && !video.visualInAudio) {
+    c.add('error', 'audioDescription', 'audioDescriptionMissing');
+  }
   if (!video.signLanguage) c.add('warning', 'signLanguage', 'signLanguageMissing');
   return sink;
 }

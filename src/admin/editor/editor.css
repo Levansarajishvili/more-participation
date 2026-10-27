@@ -1,0 +1,448 @@
+/*
+ * რედაქტორი, ბიბლიოთეკა, მომხმარებლები, პარამეტრები, გადახედვა (F8, ნაწილი ბ). იტვირთება
+ * ეკრანის lazy chunk-თან ერთად. ფერი მხოლოდ --mc-* ტოკენით (HEX არ არის — ტესტი), ოქროსფერი —
+ * მხოლოდ Button cta-ზე („გამოქვეყნება“, „შენახვა“). რადიუსი: 24 ბარათი, 12–14 ველი, 999 ღილაკი.
+ */
+@layer components {
+  /* ------------------------------------------------------------ განლაგება */
+  .mc-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-editor__top {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem 1rem;
+  }
+  .mc-editor__saved,
+  .mc-editor__message {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: 1.5;
+    color: var(--mc-muted);
+  }
+  .mc-editor__message:empty {
+    display: none;
+  }
+  .mc-editor__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+  /* 8fr | 4fr (AdminPanel) მხოლოდ ფართო შიგთავსზე; ვიწროზე — ერთ სვეტად, ფორმა ჯერ */
+  @container mc-admin-main (min-width: 60rem) {
+    .mc-editor__grid {
+      grid-template-columns: minmax(0, 8fr) minmax(0, 4fr);
+    }
+    .mc-editor__aside {
+      position: sticky;
+      top: 1rem;
+    }
+  }
+  .mc-editor__form,
+  .mc-editor__aside {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+  }
+  .mc-editor__section {
+    gap: 1.25rem;
+  }
+  .mc-editor__status {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-size: var(--text-small);
+    font-weight: 700;
+  }
+
+  /* ------------------------------------------------------------ ველები */
+  .mc-fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+  }
+  .mc-fieldset:focus {
+    outline: none;
+  }
+  .mc-fieldset > legend {
+    float: left;
+    width: 100%;
+    margin-bottom: 0.5rem;
+    padding: 0;
+  }
+  .mc-fieldset > legend + * {
+    clear: both;
+  }
+  .mc-slug {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+  .mc-slug .mc-field {
+    align-self: stretch;
+  }
+  .mc-counted {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .mc-counter {
+    align-self: flex-end;
+    margin: 0;
+    font-size: var(--text-small);
+    font-weight: 700;
+    color: var(--mc-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .mc-counter[data-over] {
+    color: var(--mc-error);
+  }
+  .mc-image-field__drop {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+    padding: 1rem;
+    border: 2px dashed var(--mc-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-alt);
+  }
+  .mc-image-field__drop[data-dragging],
+  .mc-library__upload[data-dragging] {
+    border-style: solid;
+    border-color: var(--mc-ink);
+  }
+  @container mc-admin-main (min-width: 40rem) {
+    .mc-image-field__drop {
+      grid-template-columns: 12.5rem minmax(0, 1fr);
+    }
+  }
+  .mc-image-field__preview {
+    border-radius: var(--radius-field-lg);
+    overflow: hidden;
+  }
+  .mc-image-field__body,
+  .mc-file-field__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    min-width: 0;
+  }
+  .mc-image-field__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  .mc-file-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+  }
+  .mc-file-field__state {
+    margin: 0;
+    font-size: var(--text-small);
+    color: var(--mc-muted);
+  }
+  .mc-file-input {
+    min-height: 2.75rem;
+    font: inherit;
+    font-size: var(--text-small);
+  }
+  .mc-datetime__row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 10rem), 1fr));
+    gap: 0.75rem;
+  }
+  .mc-repeater {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+  .mc-repeater__title {
+    font-size: var(--text-body);
+    font-weight: 800;
+  }
+  .mc-repeater__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-repeater__item {
+    padding: 1rem;
+    border: 2px solid var(--mc-line);
+    border-radius: var(--radius-card);
+  }
+  .mc-repeater__legend {
+    font-weight: 800;
+  }
+  .mc-repeater__legend:focus {
+    outline: none;
+  }
+  .mc-repeater__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-repeater__actions,
+  .mc-repeater__add {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-top: 0.75rem;
+  }
+
+  /* ------------------------------------------------------------ ტექსტის რედაქტორი */
+  .mc-rte__toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    padding: 0.5rem;
+    border: 2px solid var(--mc-border);
+    border-bottom: 0;
+    border-radius: var(--radius-field) var(--radius-field) 0 0;
+    background-color: var(--mc-alt);
+  }
+  .mc-rte__tool {
+    min-width: 2.75rem;
+    min-height: 2.75rem;
+    padding: 0 0.75rem;
+    border: 2px solid var(--mc-line);
+    border-radius: var(--radius-field);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    font: inherit;
+    font-size: var(--text-small);
+    font-weight: 800;
+    cursor: pointer;
+    transition: background-color var(--mc-dur-chip) var(--ease-out);
+  }
+  .mc-rte__tool:hover {
+    background-color: var(--mc-hover);
+  }
+  /* აქტიური ფორმატი: ink-ის შევსება + aria-pressed (ფერი მარტო არ არის — მდგომარეობა ისმის) */
+  .mc-rte__tool[aria-pressed='true'] {
+    border-color: var(--mc-ink);
+    background-color: var(--mc-ink);
+    color: var(--mc-surface);
+  }
+  [data-theme='contrast'] .mc-rte__tool[aria-pressed='true'] {
+    text-decoration: underline;
+  }
+  .mc-rte__frame {
+    border: 2px solid var(--mc-border);
+    border-radius: 0 0 var(--radius-field) var(--radius-field);
+    background-color: var(--mc-surface);
+  }
+  .mc-rte__content {
+    box-sizing: border-box;
+    min-height: 12rem;
+    max-inline-size: 68ch;
+    padding: 1rem;
+    font-size: 1.25rem;
+    line-height: 1.75;
+  }
+  .mc-rte__content:focus {
+    outline: none;
+  }
+  .mc-rte__frame:focus-within {
+    border-color: var(--mc-ink);
+  }
+  .mc-rte__content[aria-invalid='true'] {
+    outline: 3px solid var(--mc-error);
+  }
+  .mc-rte__content img {
+    display: block;
+    max-width: 100%;
+    min-height: 4rem;
+    border: 2px dashed var(--mc-border);
+    border-radius: var(--radius-field-lg);
+  }
+  .mc-rte__content img.ProseMirror-selectednode {
+    border-style: solid;
+    border-color: var(--mc-ink);
+  }
+  .mc-rte__card {
+    padding: 0.75rem 1rem;
+    border: 2px solid var(--mc-line);
+    border-radius: var(--radius-field-lg);
+    font-weight: 700;
+  }
+  .mc-dialog__fields {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  /* ------------------------------------------------------------ ჩეკლისტი და ვერსიები */
+  .mc-rule--fail > .mc-icon {
+    color: var(--mc-error);
+  }
+  .mc-rule--warn > .mc-icon {
+    color: var(--mc-accent-text);
+  }
+  .mc-versions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-small);
+  }
+  .mc-versions__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--mc-line);
+  }
+
+  /* ------------------------------------------------------------ ბიბლიოთეკა */
+  .mc-library {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-library__upload {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1.25rem;
+    border-style: dashed;
+  }
+  .mc-library__upload .mc-hint {
+    margin: 0;
+  }
+  .mc-media-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-media-card {
+    gap: 0.625rem;
+  }
+  .mc-media-card__title {
+    margin: 0;
+    font-size: var(--text-body);
+    line-height: 1.35;
+    font-weight: 800;
+  }
+  .mc-media-card__alt {
+    margin: 0;
+    font-size: var(--text-small);
+  }
+  .mc-media-card .mc-issue {
+    align-self: flex-start;
+    margin: 0;
+    white-space: normal;
+  }
+  .mc-media-card__form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  /* ------------------------------------------------------------ მომხმარებლები / პარამეტრები */
+  .mc-users__invite {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+    align-items: end;
+    gap: 1rem;
+  }
+  .mc-users__result {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.625rem;
+    padding: 1rem;
+    border: 2px solid var(--mc-growth);
+    border-radius: var(--radius-card);
+  }
+  .mc-users__result p {
+    margin: 0;
+  }
+  .mc-users__result .mc-field {
+    align-self: stretch;
+  }
+  .mc-users__role .mc-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .mc-settings {
+    max-width: 52rem;
+  }
+  .mc-settings__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  /* ------------------------------------------------------------ გადახედვა */
+  .mc-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .mc-preview__bar {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+  }
+  .mc-preview__note {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0;
+    font-weight: 700;
+  }
+  .mc-preview__frame {
+    padding: clamp(1rem, 3vw, 2.5rem);
+    border: 2px dashed var(--mc-border);
+    border-radius: var(--radius-block);
+    background-color: var(--mc-bg);
+  }
+  .mc-preview__title {
+    margin: 0 0 0.75rem;
+    font-size: var(--text-h1);
+    line-height: var(--text-h1--line-height);
+    font-weight: 900;
+  }
+  .mc-preview__lead {
+    margin: 0 0 1.5rem;
+    font-size: var(--text-lead);
+    line-height: var(--text-lead--line-height);
+    color: var(--mc-muted);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mc-rte__tool {
+      transition: none;
+    }
+  }
+}

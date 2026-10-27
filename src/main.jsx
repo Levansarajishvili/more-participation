@@ -7,9 +7,9 @@ import '@fontsource-variable/noto-sans-georgian';
 import '@fontsource/noto-serif-georgian/500.css';
 import './styles/index.css';
 
-import { routes } from './routes.jsx';
+import { createRouterOptions, routes } from './routes.jsx';
 
-const router = createBrowserRouter(routes);
+const router = createBrowserRouter(routes, createRouterOptions());
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>

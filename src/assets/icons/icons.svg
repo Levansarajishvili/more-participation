@@ -208,4 +208,49 @@
   <symbol id="download" viewBox="0 0 24 24" data-label="გადმოწერა">
     <path class="main" d="M12 4v11M7 10l5 5 5-5M5 20h14" />
   </symbol>
+
+  <!-- F8: ადმინ პანელი (AdminPanel / AdminAuth დაფები; clock, pencil, eye, archive, logout — ზოგადი) -->
+  <symbol id="dashboard" viewBox="0 0 24 24" data-label="დაფა">
+    <path class="main" d="M4 13h7V4H4zM13 20h7v-9h-7zM13 8h7V4h-7zM4 20h7v-4H4z" />
+  </symbol>
+  <symbol id="article" viewBox="0 0 24 24" data-label="სტატია">
+    <path class="main" d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" />
+  </symbol>
+  <symbol id="news" viewBox="0 0 24 24" data-label="სიახლე">
+    <path class="main" d="M4 5h16v14H4zM7 9h10M7 13h6" />
+  </symbol>
+  <symbol id="pages" viewBox="0 0 24 24" data-label="გვერდი">
+    <path class="main" d="M6 3h9l3 3v15H6zM15 3v4h4" />
+  </symbol>
+  <symbol id="image" viewBox="0 0 24 24" data-label="მედია">
+    <path class="main" d="M4 5h16v14H4zM4 17l5-5 4 4 3-3 4 4" />
+    <path class="main" d="M8.5 10.5a1.5 1.5 0 1 0 0-3a1.5 1.5 0 0 0 0 3z" />
+  </symbol>
+  <symbol id="document" viewBox="0 0 24 24" data-label="დოკუმენტი">
+    <path class="main" d="M6 3h9l3 3v15H6zM9 12h6M9 16h6" />
+  </symbol>
+  <symbol id="users" viewBox="0 0 24 24" data-label="მომხმარებლები">
+    <path class="main" d="M12.5 8a3.5 3.5 0 1 1-7 0a3.5 3.5 0 1 1 7 0zM2.5 20a6.5 6.5 0 0 1 13 0M17 8.5a3 3 0 1 0 0 6M18 20a5 5 0 0 0-2-4" />
+  </symbol>
+  <symbol id="settings" viewBox="0 0 24 24" data-label="პარამეტრები">
+    <path class="main" d="M12 15.5a3.5 3.5 0 1 1 0-7a3.5 3.5 0 0 1 0 7zM12 2.5v3M12 18.5v3M4.2 7l2.6 1.5M17.2 15.5l2.6 1.5M4.2 17l2.6-1.5M17.2 8.5l2.6-1.5" />
+  </symbol>
+  <symbol id="lock" viewBox="0 0 24 24" data-label="დახურული">
+    <path class="main" d="M7 11V8a5 5 0 0 1 10 0v3M5 11h14v9H5z" />
+  </symbol>
+  <symbol id="clock" viewBox="0 0 24 24" data-label="დაგეგმილი">
+    <path class="main" d="M20.5 12a8.5 8.5 0 1 1-17 0a8.5 8.5 0 1 1 17 0zM12 7v5l3 2" />
+  </symbol>
+  <symbol id="pencil" viewBox="0 0 24 24" data-label="მონახაზი">
+    <path class="main" d="M4 20h4L19 9l-4-4L4 16zM13.5 6.5l4 4" />
+  </symbol>
+  <symbol id="eye" viewBox="0 0 24 24" data-label="ჩვენება">
+    <path class="main" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0z" />
+  </symbol>
+  <symbol id="archive" viewBox="0 0 24 24" data-label="არქივი">
+    <path class="main" d="M3.5 4.5h17v4h-17zM5 8.5V19h14V8.5M10 12.5h4" />
+  </symbol>
+  <symbol id="logout" viewBox="0 0 24 24" data-label="გასვლა">
+    <path class="main" d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9" />
+  </symbol>
 </svg>

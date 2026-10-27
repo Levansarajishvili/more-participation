@@ -508,6 +508,10 @@ const en = {
     network: '[EN: errors.network]',
     server: '[EN: errors.server]',
     unknown: '[EN: errors.unknown]',
+    unauthorized: '[EN: errors.unauthorized]',
+    forbidden: '[EN: errors.forbidden]',
+    conflict: '[EN: errors.conflict]',
+    'rate-limited': '[EN: errors.rate-limited]',
   },
   fieldErrors: {
     required: '[EN: fieldErrors.required]',
@@ -528,6 +532,7 @@ const en = {
     transcriptOrder: '[EN: checks.transcriptOrder]',
     audioDescriptionMissing: '[EN: checks.audioDescriptionMissing]',
     signLanguageMissing: '[EN: checks.signLanguageMissing]',
+    pdfUntagged: '[EN: checks.pdfUntagged]',
     headingOrder: '[EN: checks.headingOrder]',
     linkText: '[EN: checks.linkText] {text}',
     linkBroken: '[EN: checks.linkBroken] {href}',

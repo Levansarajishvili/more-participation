@@ -38,6 +38,11 @@ export default [
       // F7: Safari / VoiceOver `list-style: none`-იან სიას სიის როლს აცლის — `role="list"` იქ
       // განზრახ წერია (F6 ღია საკითხი 2); სხვა ზედმეტი როლი კვლავ შეცდომაა
       'jsx-a11y/no-redundant-roles': ['error', { nav: ['navigation'], ul: ['list'], ol: ['list'] }],
+      // F8: სქროლვადი ცხრილი (`role="region"`, 1.4.10) კლავიატურით უნდა სქროლავდეს — tabindex="0"
+      'jsx-a11y/no-noninteractive-tabindex': [
+        'error',
+        { tags: [], roles: ['tabpanel', 'region'], allowExpressionValues: true },
+      ],
     },
   },
   {

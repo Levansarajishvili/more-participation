@@ -82,6 +82,8 @@ export const MEDIA_RATIO = Object.freeze({
  * @property {string | null} src
  * @property {string} label
  * @property {number} [size]       ბაიტებში
+ * @property {'ka' | 'en'} [lang]  F8: დოკუმენტის ენა
+ * @property {boolean} [tagged]    F8: PDF/UA (tagged) დადასტურებულია — არა → ჩეკლისტის გაფრთხილება
  */
 
 /**
@@ -270,6 +272,7 @@ export const MEDIA_RATIO = Object.freeze({
  * @property {AudioTrack | null} audioDescription  ცალკე ხმოვანი ბილიკი
  * @property {SignLanguageTrack | null} signLanguage
  * @property {TranscriptLine[]} transcript
+ * @property {boolean} [visualInAudio]  F8: „ვიზუალური ინფორმაცია აუდიოშიცაა“ — აუდიოაღწერა არ სჭირდება
  */
 
 /**

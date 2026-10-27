@@ -828,3 +828,177 @@ SiteHeader (ზედა ზოლი, თავსებადობის მ�
 ### შემდეგი: F8 — ადმინ პანელი
 
 შესვლა / რეგისტრაცია (მოწვევის კოდით), `AdminShell` (sidebar 268 + header 76), დაფა, სიები, რედაქტორი ხელმისაწვდომობის ჩეკლისტით (`validateContent`-ის წესები: alt, სათაურები, ბმულები, სუბტიტრი + ტრანსკრიპტი + აუდიოაღწერა, ჟესტური ენა — გაფრთხილება), ბიბლიოთეკა (მედია, დოკუმენტები: `DocumentFile.size`). Gate: ადმინის კოდი საჯარო bundle-ში არ ხვდება; alt-ის გარეშე გამოქვეყნება შეუძლებელია. F7-იდან: `Button disabledReason`, `role="list"`, `npm run audit` (ადმინის როუტები დასამატებელია), `npm run placeholders` (კონტენტის ჩეკლისტი).
+
+## F8 — ადმინ პანელი ✅ (2026-10-27)
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (34 ფაილი, 623 ტესტი: F7-ის 537 + F8-ის 86) · `npm run build` ✓ + check-dist ✓ (42 JS chunk; Vite manifest-ით: საჯარო 29 chunk-ში ადმინის მოდული, `mc-admin`, TipTap / ProseMirror, სატესტო პაროლი და validate-ის dev-ანგარიში **არ არის**; ადმინის chunk — 13) · **Chromium 141 + axe-core 4.14.0** (`npm run audit -- --only admin`):
+- ადმინის 32 მდგომარეობა × light / dark / contrast × 1440 / 390 = **189 გაშვება — 0 დარღვევა, 0 incomplete**, ჰორიზონტალური სქროლი 0. გამონაკლისი: გახსნილი compact-მენიუ (390) — WCAG-ის წესებით 0, best-practice `landmark-one-main` / `page-has-heading-one` ვარდება, რადგან `main` განზრახ `inert`-ია (F4-ის იგივე);
+- ცხრილის სქროლ-რეგიონში ხილვის არეს გარეთ მყოფ უჯრას axe „incomplete“-ად ნიშნავს — ასეთი უჯრები computed style-ით იზომება (`audit.py` → `scrollContrast`): მინიმუმი 6.12 / 8.6 / 16.57:1 (ღია / მუქი / კონტრასტი);
+- **ალტ-ის / სუბტიტრის გარეშე გამოქვეყნება შეუძლებელია** — mock adapter-ი (`validation` + ველის გზები) და რედაქტორი (შეცდომების ჯამი, ფოკუსი მასზე, ბმული ველზე) — ტესტებით და Chromium-ში;
+- **მთელი პანელი კლავიატურით:** Tab-ით გავლა 16 ეკრანზე × 1440 / 390 — რგოლი ყველგან ჩანს, არაფერი იფარება, სამიზნე ≥ 24px (ცხრილი ქვემოთ).
+
+### აუდიტის მატრიცა — ადმინის როუტები (prompt 7-ის მატრიცის გაგრძელება)
+
+| როუტი / მდგომარეობა | axe (3 თემა × 1440 / 390) | Tab-გაჩერება 1440 / 390 | 390 | მუქი | კონტრასტი | reduced-motion |
+|---|---|---|---|---|---|---|
+| `/admin/login` (+ `?tab=register&invite=`, `?reason=expired`, ჯამი, უარყოფა) | ✓ 0/0 | 9 / 9 | ✓ | ✓ | ✓ | ✓ |
+| `/admin` | ✓ | 33 / 20 | ✓ | ✓ | ✓ | ✓ |
+| `/admin/:type` (articles + status / check, videos, events, pages) | ✓ | 49 / 36 (articles) | ✓ | ✓ | ✓ | ✓ |
+| `/admin/articles/:id` (+ გამოქვეყნების ბლოკერი), `/admin/articles/new` | ✓ | 38 / 25 | ✓ | ✓ | ✓ | ✓ |
+| `/admin/news/:id`, `/admin/series/:id`, `/admin/events/:id`, `/admin/pages/:id` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| `/admin/videos/:id` | ✓ | 88 / 75 | ✓ | ✓ | ✓ | ✓ |
+| `/admin/:type/:id/preview` (სტატია, სერია) | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| `/admin/media` (+ `?filter=missing-alt`) | ✓ | 243 / 230 | ✓ | ✓ | ✓ | ✓ |
+| `/admin/documents` | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| `/admin/users` (ადმინისტრატორი; რედაქტორი → 403) | ✓ | 27 / 14 | ✓ | ✓ | ✓ | ✓ |
+| `/admin/settings` | ✓ | 97 / 84 | ✓ | ✓ | ✓ | ✓ |
+| `/admin/a11y`, `/admin/search?q=`, 404 | ✓ | — | ✓ | ✓ | ✓ | ✓ |
+| გახსნილი compact-მენიუ (390) | WCAG ✓ (best-practice — იხ. ზემოთ) | ციკლი ✓, Esc → ღილაკი | ✓ | ✓ | ✓ | ✓ |
+
+reduced-motion: ადმინს ახალი ანიმაცია არ აქვს — მხოლოდ ფერის transition (`--mc-dur-chip`, reduce-ში 0 + `transition: none`).
+
+### როუტი → როლი → დაფა
+
+| როუტი | როლი | დაფა |
+|---|---|---|
+| `/admin/login` (`?tab=register&invite=…`, `?next=`, `?reason=expired \| logged-out`) | ყველა | AdminAuth |
+| `/admin` | რედაქტორი, ადმინისტრატორი | AdminPanel — დაფა |
+| `/admin/:type` (articles, series, videos, news, events, pages) | რედაქტორი, ადმინისტრატორი | AdminPanel — სია; events — სიახლეების ქვეპუნქტი, დაფაზე არ არის |
+| `/admin/:type/:id` (`id = new` — ახალი) | რედაქტორი, ადმინისტრატორი | AdminPanel — რედაქტორი |
+| `/admin/:type/:id/preview` | რედაქტორი, ადმინისტრატორი | — (საჯარო შაბლონი) |
+| `/admin/media`, `/admin/documents` | რედაქტორი, ადმინისტრატორი | — (sidebar-ის „ბიბლიოთეკა“) |
+| `/admin/users`, `/admin/settings` | ადმინისტრატორი (სხვას — 403 გარსის შიგნით) | — |
+| `/admin/a11y` | რედაქტორი, ადმინისტრატორი | დაფის „სრული ანგარიში“ |
+| `/admin/search?q=` | რედაქტორი, ადმინისტრატორი | „ძიება პანელში“ |
+| `/admin/*` | რედაქტორი, ადმინისტრატორი | 404 გარსის შიგნით |
+
+### როლი × უფლება
+
+| უფლება (`permissions.js`) | ადმინისტრატორი | რედაქტორი |
+|---|---|---|
+| `content.read` / `content.write` / `content.publish` | ✓ | ✓ |
+| `media.read` / `media.write` | ✓ | ✓ |
+| `a11y.read` | ✓ | ✓ |
+| `users.manage` | ✓ | — |
+| `settings.manage` | ✓ | — |
+
+frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ია; mock-იც იგივე ცხრილით 403-ს აბრუნებს.
+
+### ჩეკლისტის წესი → ბლოკავს / აფრთხილებს → სად მოწმდება
+
+| წესი (`editor/checklist.js` → `checks.*`) | დონე | სად |
+|---|---|---|
+| სავალდებულო ველები და ფორმატი (required, slug, excerptLength ≤ 160, date, ratio, eventTime…) | ბლოკავს | `validate.js` — რედაქტორი (ცოცხლად) + mock `publish` / `schedule` |
+| alt ყველა ფოტოზე (ყდა, პოსტერი, ტექსტის ფოტო, სლაიდი, გუნდი, პარტნიორი) | ბლოკავს | იგივე + მედიის ბიბლიოთეკა („ხარვეზის“ ნიშანი) |
+| სათაურების იერარქია (H3 მხოლოდ H2-ის შემდეგ) | ბლოკავს | `validate.js` (`body`) |
+| ბმულის ტექსტი აღწერითია („აქ“, „აქ დააჭირე“, „ბმული“, „მეტი“ — არა) + არარსებული სტატია | ბლოკავს | `validate.js` (`GENERIC_LINK_TEXT`; ბმული — მხოლოდ საჯარო slug-ებთან) |
+| ვიდეო: სუბტიტრები | ბლოკავს | `validateVideo` |
+| ვიდეო: ტრანსკრიპტი (თანმიმდევრული, ≤ duration) | ბლოკავს | `validateVideo` |
+| ვიდეო: აუდიოაღწერა — ან „ვიზუალური ინფორმაცია აუდიოშიცაა“ (`visualInAudio`) | ბლოკავს | `validateVideo` (F8: + `visualInAudio`) |
+| სლაიდის მარტივი ენის ვერსია | ბლოკავს | `validateSeries` |
+| ღონისძიების ხელმისაწვდომობა (ეტლი, თარჯიმანი, სუბტიტრები, ფორმატი) | ბლოკავს | `validateEvent` |
+| ჟესტური ენის ვერსია; ქართული სუბტიტრი ნაგულისხმევად | აფრთხილებს | `validateVideo` |
+| PDF tagged-ად (PDF/UA) დადასტურებული | აფრთხილებს | `validateSeries` (F8: `pdfUntagged`, მხოლოდ ატვირთულ PDF-ზე) |
+| კონტრასტი ≥ 7:1 (ფერის არჩევა არ არსებობს) | ინფორმაციული | — |
+| ხმოვანი ვერსია გამოქვეყნების შემდეგ | ინფორმაციული | — |
+
+### ფერების გადახვევები (კონტრასტით)
+
+| სად | დაფაზე | კოდში | კონტრასტი |
+|---|---|---|---|
+| სტატუსის ფონი | ტინტები #E3F6EE, #FFF1E0, #FDECEA / #0A2E22, #33280B, #3A1515 | surface + ხატულა + ტექსტი + 2px ჩარჩო | — |
+| „გამოქვეყნებული“ (✓) | ტინტზე #08704C | #08704C / #3DDC97 / #FFFFFF | 6.1 / 8.8 / 21:1 |
+| „დაგეგმილი“ (საათი) | მუქში #FFD166 (CTA-ს hover) | #A8430C / #FF8A4C / #FFE600 | 6.1 / 6.7 / 16.6:1 |
+| ხარვეზი, შეცდომა | ტინტზე #B3261E | #B3261E / #F2B8B5 | 6.5 / 9.1:1 |
+| sidebar-ის ტექსტი | #DCE6F1 | #EAF0F7 | 14.69 (#0A1D38) / 17.22:1 (#030B16) |
+| „გასვლის“ ჩარჩო | #3A5A80 (2.4:1) | #8FA3BC | 6.53:1 |
+| აქტიური პუნქტი | rgba(255,184,28,.18) | #2B4A70 + 4px #FF8A4C ხაზი + 800 წონა | ტექსტი 7.90:1, ხაზი ≈ 3.9:1 |
+| „ადმინი“ | #FFB81C | #FF8A4C | ≥ 6.59:1 |
+| ავატარი | ოქროსფერი წრე | ink-ის შევსება | 15.9:1 |
+| ჯგუფის სათაური | #8FA3BC | #B8C7D9 | 9.80:1 |
+| სიმტკიცის ზოლი | მწვანე | ink / #6B7B91 კონტური | კონტური 4.31:1 |
+| ხელსაწყოს აქტიური ფორმატი | — | ink-ის შევსება + `aria-pressed` | 15.39 / 13.59 / 21:1 |
+
+### შექმნილი ფაილები
+
+- `src/admin/`: `AdminRoot.jsx`, `routes.jsx`, `content-types.js`, `a11y-rules.js`, `format.js`, `admin.css`; `api/{adminAdapter,mock,http,permissions}.js`; `auth/{AuthProvider.jsx,auth-context.js,auth-forms.js,RequireAuth.jsx,RequireRole.jsx}`; `shell/{AdminShell.jsx,AdminNav.jsx,admin-nav.js,admin-page.js,useAdminLayout.js,initials.js}`; `components/{Dialog,ConfirmDialog,StatusBadge,PasswordField}.jsx`; `pages/{LoginPage,DashboardPage,ListPage,A11yReportPage,SearchPage,MediaPage,DocumentsPage,UsersPage,SettingsPage,Forbidden,AdminNotFound,AdminRouteError,AdminRootError}.jsx`; `editor/{EditorPage.jsx,EntityEditor.jsx,PreviewPage.jsx,RichTextEditor.jsx,extensions.js,serialize.js,checklist.js,path.js,datetime.js,vtt.js,autosave.js,editor.css}`, `editor/fields/FieldRenderer.jsx`; `schemas/{index,common,articles,news,events,series,videos,pages}.js`; `i18n/{ka,index}.js`; `__tests__/{admin-helpers.jsx,auth.test.jsx,screens.test.jsx,api.test.js,editor-units.test.js,editor.test.jsx}`.
+- `src/content/mock/store.js` (საერთო in-memory საცავი).
+- შეიცვალა: `src/routes.jsx` (`createRouterOptions`, `ADMIN_PATH`), `src/main.jsx`, `src/content/{adapter,errors,validate,model}.js`, `src/content/mock/index.js`, `src/i18n/{ka,en}.js` (`errors.unauthorized|forbidden|conflict|rate-limited`, `checks.pdfUntagged`), `src/assets/icons/icons.svg` (+14), `vite.config.js` (`build.manifest`), `eslint.config.js` (`no-noninteractive-tabindex` → region), `scripts/check-dist.mjs` (საჯარო ↔ ადმინის chunk-ები), `scripts/audit.py` (`admin` ნაწილი), `package.json` (+ `@tiptap/{core,react,pm,starter-kit,extension-image,extension-blockquote}` 3.31.4, exact), `CLAUDE.md`, `docs/project-context.md`.
+
+### საჯარო API
+
+**როუტინგი** (`@/routes.jsx`): `createRouterOptions() → { patchRoutesOnNavigation }` — ადმინის როუტები `/admin`-ზე პირველი გადასვლისას ემატება (lazy route discovery, ერთხელ, ერთდროული გადასვლები ერთ ჩატვირთვას ელოდება); `ADMIN_PATH` (`/admin`, `/admin/…`, არა `/administration`). `createRouterOptions()` გადაეცემა `createBrowserRouter`-ს (main.jsx) და ტესტების `createMemoryRouter`-ს. `@/admin/routes.jsx`: `createAdminRoutes()`; `handle.admin = { title: i18n-key | (params) => string, crumbs?: (params) => Crumb[], root?, editor? }`.
+
+**adminAdapter** (`@/admin/api/adminAdapter.js`; ყველა → Promise, შეცდომა → `ContentError`):
+- `auth`: `login({ email, password, remember })`, `register({ name, email, invite, password })`, `logout()`, `me() → Session`, `extendSession()`; `Session = { user: AdminUser, expiresAt }`, `AdminUser = { id, name, email, role: 'admin' | 'editor', status: 'active' | 'invited' | 'deactivated' }`.
+- `content`: `list({ type: ContentType | 'all', status, q, page, limit = 10, check }) → { items: ContentRow[], total, page, pages, limit }`, `get(id) → ContentRecord` (+ `working` — გამოქვეყნებულის სამუშაო ასლი), `create(type, data)`, `update(id, data, { version, autosave })` (ძველი ვერსია → `conflict`; `autosave` გამოქვეყნებულზე/დაგეგმილზე → სამუშაო ასლი, საიტი არ იცვლება), `checkSlug(type, slug, id) → { available }`, `archive(id)`, `publish(id, { version, data })`, `schedule(id, at, { version, data })` (ბლოკერი → `validation` + `fields` — ველის გზა → `{ code, message }`), `versions(id) → VersionInfo[]`, `restoreVersion(id, version)`, `search(q) → ContentRow[]`. id ტიპის პრეფიქსითაა (`a-001`, `s-`, `v-`, `n-`, `e-`, `p-`).
+- `media`: `list({ kind: 'image' | 'document', missingAlt })`, `upload(file, meta)`, `updateAlt(id, alt)` (ყველა გამოყენებაში აისახება), `update(id, patch)` (დოკუმენტი: `title`, `lang`, `tagged`), `remove(id)` (გამოყენებული → `conflict`), `usage(id)`. `MediaItem = { id, kind, src, alt, title, ratio, size, lang, tagged, usage: { type, id, title, field }[] }`.
+- `users`: `list()`, `invite({ email?, role }) → { code, link: '/admin/login?tab=register&invite=…', expiresAt, role }`, `setRole(id, role)`, `deactivate(id)` (საკუთარ თავზე → `bad-request`).
+- `settings`: `get() → { site: SiteSettings, featured: { weeklyVideo, featuredArticle, featuredSeries, featuredNews } }` (id-ები), `update(patch)` — ახალი რჩეული წინას ხსნის.
+- `stats() → { published, draft, scheduled, nextScheduledAt, a11yIssues, counts: Record<ContentType, n>, library: { images, documents } }`, `a11yReport() → { totals, groups: { code, severity, count, types }[], items }`.
+- `setAdminAdapter(adapter | null)`, `UNAUTHORIZED_EVENT` ('mc-admin:unauthorized' — სესიის გარეთ 401 → შესვლის გვერდი).
+- mock: `createMockAdminAdapter({ store, delay, sessionTtl })`, `adminState(store)`, `MOCK_PASSWORD`, `MOCK_INVITE`, `SESSION_TTL_MS` (30 წთ), `PAGE_DEFS`. HTTP: `createHttpAdminAdapter({ baseUrl, fetch })` — `credentials: 'include'`, CSRF double-submit (`mc-csrf` cookie → `X-CSRF-Token`), `readCsrfToken()`; ჩაირთვება `VITE_ADMIN_API`-ით.
+
+**საერთო mock-საცავი** (`@/content/mock/store.js`, რეექსპორტი `mock/index.js`-იდან): `createMockStore({ now, data }) → MockStore` (`records`, `find`, `findBySlug`, `insert`, `replace` (ვერსია → `conflict`), `setMeta`, `snapshot()` — საჯარო ნაკრები არქივის გარეშე, `setSettings`, `setOrg({ team, partners })`, `extra`, `subscribe`), `getSharedMockStore()`, `setSharedMockStore()`, `ID_PREFIX`, `COLLECTIONS`. `createMockAdapter({ store })` — საჯარო adapter-ი საცავს ყოველ მოთხოვნაზე კითხულობს (`snapshot` — getter).
+
+**შეცდომის კოდები (+):** `unauthorized` (401), `forbidden` (403), `conflict` (409), `rate-limited` (429).
+
+**ავტორიზაცია:** `<AuthProvider warningMs expireMarginMs now>`; `useAuth() → { status: 'loading' | 'authenticated' | 'anonymous', user, expiresAt, reason: 'expired' | 'logged-out' | null, login, register, logout, extend, addFlush }`; `useSessionFlush(fn)` — ავტოშენახვა სესიის ამოწურვამდე; `SESSION_WARNING_MS` 120 000, `EXPIRE_MARGIN_MS` 5 000; `auth-forms.js`: `validateLogin`, `validateRegister`, `passwordStrength(pw) → { level 0–3, key, tip }`, `safeNext(next)`, `loginHref(next, reason)`, `PASSWORD_MIN` 12.
+
+**გარსი:** `<AdminShell>` (layout route), `useAdminPage({ title, crumbs, type, editor })`, `useAdminLayout(ref) → 'wide' | 'compact'` (`ADMIN_WIDE_REM` 75, `adminLayoutFor`), `ADMIN_NAV`, `initials(name)`.
+
+**კომპონენტები:** `<Dialog open onClose title description actions role="dialog | alertdialog" initialFocus>` (ნატიური `<dialog>` + `showModal`), `<ConfirmDialog open title description confirmLabel cancelLabel onConfirm onCancel busy>` (ფოკუსი „გაუქმებაზე“), `<StatusBadge status>`, `<IssueBadge count>`, `<PasswordField label hint error strength value …input>`.
+
+**რედაქტორი:** `<EntityEditor type routeId>`; სქემა — `EntitySchema = { type, sections: { id, title, fields: FieldSchema[] }[], defaults(now), rules: string[] }`, `FieldSchema = { name (გზა), kind: 'text' | 'slug' | 'textarea' | 'select' | 'radio' | 'richtext' | 'image' | 'file' | 'repeater' | 'datetime' | 'checkbox' | 'duration', label, hint?, required?, max?, taxonomy? + ids?, options?, ratio?, accept?, template?, fields?, newItem?, itemLabel?, itemTitle?, addLabel?, importVtt?, inputType?, lang? }`; `SCHEMAS`, `schemaFor(type)`, `ABOUT_SECTIONS`. `checklist.js`: `RULES`, `validateEntity(type, values, articleSlugs)`, `validatePage(page)`, `buildChecklist(rules, issues) → { items, done, total, blocking }`. `serialize.js`: `blocksToDoc(blocks)`, `docToBlocks(doc)`, `mergeRuns(runs)`. `path.js`: `parsePath`, `getIn`, `setIn`, `fieldId(path)` (`cover.alt` → `f-cover-alt`), `resolveFieldId(path)`, `sameValue`. `datetime.js`: `splitTbilisi`, `joinTbilisi` (ISO `+04:00`), `toClock`, `fromClock`. `vtt.js`: `parseVtt(text)`, `parseTimestamp`. `autosave.js`: `autosaveDelay()`, `setAutosaveDelay(ms)` (ტესტები). `EDITOR_EXTENSIONS` (TipTap).
+
+**ტოკენები:** ახალი არ არის. **ხატულები (+14):** `dashboard`, `article`, `news`, `pages`, `image`, `document`, `users`, `settings`, `lock`, `clock`, `pencil`, `eye`, `archive`, `logout`.
+
+**i18n:** ადმინის ტექსტი — ცალკე ლექსიკონი `@/admin/i18n/ka.js` + `ta()` (ადმინის chunk-შია, ka.js-ში არა); ჯგუფები: meta, brand, types, pageNames, roles, nav, header, user, auth, fieldErrors, session, status, issues, dashboard, list, a11y, search, errors, common, editor, preview, library, documents, users, settings.
+
+**CSS:** `admin.css` (გარსი, sidebar, header, ცხრილი, სტატუსი, დიალოგი, შესვლა, ჩანართები, პაროლი), `editor/editor.css` (რედაქტორი, ველები, TipTap, ბიბლიოთეკა, მომხმარებლები, პარამეტრები, გადახედვა) — ორივე lazy chunk-თან, HEX-ის გარეშე (ტესტი).
+
+**სკრიპტები:** `npm run audit -- --only admin` (`ADMIN_THEMES`, `ADMIN_WIDTHS`, `ADMIN_SKIP_KEYBOARD`, `ADMIN_KEYBOARD` — ნაწილ-ნაწილ გაშვებისთვის). **სატესტო ანგარიშები (mock):** `admin@example.org` / `editor@example.org`, პაროლი `mc-dev-password`, მოწვევა `MC-INVITE-0001`.
+
+**ბანდლი (gzip):** მთავარი JS 125.19 kB (F7: 123.71 — ხატულები, შეცდომის კოდები, `createRouterOptions`), CSS 14.19 kB; ადმინი — `routes` 13.19 kB + CSS 3.43, admin mock 5.48, EditorPage 7.30, **TipTap (`RichTextEditor`) 131.10 kB** — მხოლოდ რედაქტორში, MediaPage 1.85, SettingsPage 1.65, UsersPage 1.52, DocumentsPage 1.28, PreviewPage 0.96.
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+1. **ადმინი საჯარო გარსს არ იყენებს:** `AdminShell` — sidebar 268px (16.75rem) + header 76px (prompt).
+2. **თავსებადობის მენიუ ადმინის header-ში** და შესვლის გვერდზეც (დაფაზე არ არის) — რედაქტორებსაც სჭირდებათ შრიფტი, განლაგება და კონტრასტი.
+3. **სტატუსის ტინტები → ხატულა + ტექსტი + 2px ჩარჩო** surface-ზე (კონტრასტი — ცხრილში ზემოთ); მუქის warn #FFD166 → #FF8A4C.
+4. **sidebar:** ტექსტი #DCE6F1 → #EAF0F7; „გასვლის“ ჩარჩო #3A5A80 → #8FA3BC; აქტიური პუნქტი, ავატარი და „ადმინი“ ოქროსფრის გარეშე; პუნქტები `<button aria-current>` → `NavLink`.
+5. **რადიუსები** 20 / 22 / 16 / 10 → 24 ბარათი, 32 ბლოკი / ფორმა, 12–14 ველი, 999 ღილაკი / ჩიპი.
+6. **„გამოქვეყნებულს“ ✓ ახლავს**, ▲ ზრდის მეტრიკისთვის რჩება.
+7. **რედაქტორზე ერთადერთი ოქროსფერი CTA — „გამოქვეყნება“**; header-ის „ახალი მასალა“ იქ secondary-ა.
+8. **შესვლის გვერდი:** h1 = ფორმის სათაური (დაფაზე — ბრენდ-პანელზე); პანელი DOM-ში ფორმის შემდეგაა ორივე ზომაზე; „ადმინისტრირება“ / „ადმინი“ ოქროსფერი → #FF8A4C; უპირატესობების მწვანე ✓ → ink; „პაროლის ჩვენება“ 40 → 44px, მუდმივი სახელი + `aria-pressed`; ორფაქტორიანი კოდი, „[15] წუთით ბლოკი“, „რედაქტორის წესებზე“ თანხმობა და როლი „ავტორი“ — ამოღებულია / `[ფრჩხილებშია]`; „პაროლის აღდგენა“ — „[ბმული მზადდება]“; რეგისტრაციის შემდეგ შესვლა პირდაპირ (დაფაზე — „დამადასტურებელი ბმული გაიგზავნა“).
+9. **ძიება header-იდან sidebar-ში** (compact-ში — მენიუში), ხილული ლეიბლით: თავსებადობის მენიუს დამატების შემდეგ header 1440-ზე ერთ რიგში აღარ ეტეოდა.
+10. **დაფა:** 8fr | 4fr მხოლოდ ≥ 84rem შიგთავსზე — 1440-ზე ერთ სვეტადაა, რომ „ბოლო ცვლილებების“ ხუთი სვეტი სქროლის გარეშე დაეტიოს; ბილიკი დაფაზე არ არის.
+11. **სია:** კატეგორიის ჩიპები, სტატუსის select, მასობრივი მონიშვნა — არ არის (prompt-ში არ იყო); ღილაკები 40 → 44px; გვერდზე 10 სტრიქონი.
+12. **„საიტის ნახვა“:** საიტის ერთიანი ფორმულირება „(იხსნება ახალ ჩანართში)“ და არა „(ახალ ფანჯარაში)“.
+13. **გამოქვეყნების radio:** სამიანის (მონახაზი / დაგეგმილი / გამოქვეყნებული) ნაცვლად „როდის: ახლავე / დაგეგმვა“; მონახაზი — ცალკე ღილაკი „მონახაზად შენახვა“ (გამოქვეყნებულზე — დადასტურებით, მასალას საიტიდან ხსნის). Doc-ის კომენტარში დასადასტურებელია.
+14. **Ctrl/⌘+S = ახლავე შენახვა** (prompt: „მონახაზად შენახვა“) — გამოქვეყნებულ მასალას საიტიდან არ ხსნის.
+15. **გამოქვეყნებულის ავტოშენახვა = სამუშაო ასლი** (`working`) — საიტზე „გამოქვეყნებამდე“ არ ჩანს.
+16. **`/admin/:type/new` → `:type/:id`, `id = new`** — შექმნისას იგივე როუტი რჩება, რედაქტორი თავიდან არ იხატება.
+17. **ხელსაწყოები:** დაფის „B“ → „მუქი“, „• სია“ → „სია“ + „დანომრილი“, „„ ““ → „ციტატა“ (label-in-name); ღილაკები 40 → 44px. ბმული-ბლოკი (`LinkBlock`) და `lang` ფრაგმენტი რედაქტორში ინახება, ღილაკი არ აქვს.
+18. **ველიდან გასვლა (blur) ავტოშენახვას იწვევს** — „შეუნახავი ცვლილების“ დიალოგი ჩანს მხოლოდ მაშინ, როცა გადასვლა ფოკუსის დაკარგვის გარეშე ხდება (ბრაუზერის „უკან“, მალსახმობი).
+19. **ვერსიების შედარება** (დაფაზე) — არ არის (prompt: სია + აღდგენა).
+20. **ინიციალები მხედრულად** — `toUpperCase()` მთავრულს (ᲡᲒ) აბრუნებდა.
+21. **გადახედვა** საჯარო კომპონენტებით (`ArticleBody`, `Slider`, `VideoPlayer`, `EventCard`) ადმინის გარსში, h2 სათაურით (h1 header-შია).
+
+### ღია საკითხები
+
+1. **mock-ავტორიზაცია წარმოებაში:** CMS-მდე სატესტო ანგარიშები ადმინის chunk-შია; რეალურ გაშვებამდე `VITE_ADMIN_API` (backend) აუცილებელია.
+2. **სერვერის TODO:** `X-Robots-Tag: noindex, nofollow` ყველა `/admin` პასუხზე (SPA-ს index.html meta-ს JS-ის გარეშე არ შეიცავს); შესვლის / რეგისტრაციის rate limit (`[N]` მცდელობა, `[ვადა]`); სესიის ვადა (mock — 30 წთ) და მოწვევის ვადა (mock — 14 დღე) — `[ვადა]`, სერვერის პოლიტიკა; ფაილის ზომისა და ტიპის ზღვარი.
+3. **გამოქვეყნების radio** — ორი თუ სამი არჩევანი (Doc-ის კომენტარი).
+4. **გვერდების ველები** (სათაური, შესავალი, აღწერა) ინახება, მაგრამ საჯარო გვერდები ტექსტს ჯერ i18n-დან კითხულობს — CMS-თან ერთად; „ჩვენ შესახებ“-ის გუნდი და პარტნიორები საიტზე უკვე აისახება (`setOrg`).
+5. **TipTap 131 kB gzip** — მხოლოდ რედაქტორში; შემცირება (ProseMirror-ის მოდულების tree-shaking, StarterKit-ის ნაცვლად ცალკე გაფართოებები) — საჭიროებისას.
+6. **mock-ში გადატვირთვა სესიას და ცვლილებებს შლის** (მეხსიერება); რეალურ API-ზე სესია httpOnly cookie-შია.
+7. **ადმინის მობილური დიზაინი** დაფაზე არ არის — 390 აწყობილია შიდა პატერნებით (compact-მენიუ, ცხრილი სქროლ-რეგიონში); დიზაინის დადასტურება ღიაა.
+8. **ეკრანის მკითხველი რეალურ მოწყობილობაზე:** TipTap-ის `role="textbox"` + toolbar, `<dialog>` / `alertdialog`, ცხრილის სქროლ-რეგიონი — NVDA / VoiceOver (P2, F7 #1-ის გაგრძელება).
+9. **ადმინს ინგლისური ლექსიკონი არ აქვს.**
+10. **დაფები გასასწორებელია:** AdminAuth / AdminPanel — ტინტები, ოქროსფერი „ადმინისტრირება“ / აქტიური პუნქტი / ავატარი, #DCE6F1, #3A5A80, რადიუსები, 40px ღილაკები, „B“, სტატუსის select, მასობრივი მონიშვნა.
+11. **დახურულია:** F6 #1 (რჩეული ერთია — `settings.update`), F2 #8 (CMS-ზე შემოწმება — ადმინის ჩეკლისტი, ბმული მხოლოდ საჯარო slug-ებთან), project-context §9.12 (ნაწილობრივ — „ჩვენ შესახებ“ რედაქტორში). ძალაშია: F1 5, 7; F2 4, 6, 7, 9–11; F3 1, 6, 7; F4 1–3, 6–11; F5 1, 2, 5, 7–9; F6 3–5, 8–11; F7 1–5.
+
+### შემდეგი
+
+8 ნაბიჯი დასრულებულია. შემდეგი ეტაპი — backend / CMS-ის არჩევა (§9.4): `ContentAdapter` + `AdminAdapter`-ის რეალიზაცია, ჰოსტინგი (`X-Robots-Tag`, rate limit, prerender), რეალური კონტენტი `[ფრჩხილების]` ნაცვლად (`npm run placeholders`).

@@ -16,7 +16,11 @@ node_modules-შია (vitest-axe-ის დამოკიდებულე�
 - reflow  — 320px (100%), 720px (1440 × 200% zoom), data-size 200 (1440 და 390);
 - media   — ფლეიერი რეალური ფაილით (ffmpeg-ის WebM + VTT, `--fixtures`): დაკვრა, PiP-ის სინქრონი,
             სუბტიტრი overlay-ში, აუდიოაღწერა, მალსახმობები, ტრანსკრიპტი, axe;
-- bundle  — dist/assets-ის gzip ზომები.
+- bundle  — dist/assets-ის gzip ზომები;
+- admin   — F8: ადმინის როუტები (შესვლა / რეგისტრაცია / მდგომარეობები, დაფა, სიები, ანგარიში,
+            ძიება, 403, 404, გახსნილი compact-მენიუ) × light / dark / contrast × 1440 / 390 — axe +
+            ჰორიზ. სქროლი; Tab-ით გავლა (რგოლი, ხილვადობა, ≥ 24px) შესვლაზე, დაფასა და სიაზე.
+            mock-ის სესია მეხსიერებაშია — შესვლის შემდეგ გადასვლა SPA-ს შიგნით (history API).
 
 fixture-ები რეპოში არ ინახება (bundle-ში არ უნდა მოხვდეს): `scripts/audit.py --make-fixtures DIR`
 ffmpeg-ით ქმნის.
@@ -224,6 +228,188 @@ def audit_axe(browser, report):
                          'scroll': page.evaluate(OVERFLOW)['scroll']})
             context.close()
     report['axe'] = rows
+
+
+# ───────────────────────────────────────────────────────────────── admin (F8)
+ADMIN_READY = """() => document.querySelector('h1')
+  && !document.querySelector('[aria-busy="true"]')
+  && document.fonts.status === 'loaded'"""
+ADMIN_LOGIN = [
+    '/admin/login',
+    '/admin/login?tab=register&invite=MC-INVITE-0001',
+    '/admin/login?reason=expired',
+]
+ADMIN_ROUTES = [
+    '/admin',
+    '/admin/articles',
+    '/admin/articles?status=draft',
+    '/admin/articles?check=altMissing',
+    '/admin/videos',
+    '/admin/events',
+    '/admin/pages',
+    '/admin/a11y',
+    '/admin/search?q=%E1%83%9B%E1%83%9D%E1%83%9C%E1%83%90%E1%83%AE%E1%83%90%E1%83%96%E1%83%98',
+    '/admin/users',
+    '/admin/ar-arsebuli',
+    # ნაწილი ბ: რედაქტორი (mock-ის id-ები დეტერმინისტულია: a-017 / v-007 — მონახაზები ხარვეზებით,
+    # p-002 — „ჩვენ შესახებ“ გუნდითა და პარტნიორებით), გადახედვა, ბიბლიოთეკა, პარამეტრები
+    '/admin/articles/a-017',
+    '/admin/articles/new',
+    '/admin/news/n-001',
+    '/admin/videos/v-007',
+    '/admin/series/s-001',
+    '/admin/events/e-001',
+    '/admin/pages/p-002',
+    '/admin/articles/a-001/preview',
+    '/admin/series/s-001/preview',
+    '/admin/media',
+    '/admin/media?filter=missing-alt',
+    '/admin/documents',
+    '/admin/settings',
+]
+
+
+# axe ცხრილის სქროლ-რეგიონში ხილვის არეს გარეთ მყოფ უჯრას „incomplete“-ად ნიშნავს (ფონი ვერ
+# დგინდება — ნაწილობრივ ფარულია). ასეთ კვანძებს computed style-ით ვზომავთ: ტექსტის ფერი ↔ პირველი
+# გაუმჭვირვალე ფონი წინაპრებში (F4-ის მენიუს მეთოდი).
+SCROLL_CONTRAST = """() => {
+  const rgb = (c) => (c.match(/[\\d.]+/g) || []).map(Number);
+  const lum = ([r, g, b]) => [r, g, b].map((v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; })
+    .reduce((s, v, i) => s + v * [0.2126, 0.7152, 0.0722][i], 0);
+  const bgOf = (el) => { for (let n = el; n; n = n.parentElement) { const c = rgb(getComputedStyle(n).backgroundColor);
+    if (c.length >= 3 && (c.length < 4 || c[3] > 0.99)) return c; } return [255, 255, 255]; };
+  let min = 99, worst = null, count = 0;
+  for (const el of document.querySelectorAll('.mc-table-scroll th, .mc-table-scroll td, .mc-table-scroll td *')) {
+    if (!el.childNodes.length || ![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim())) continue;
+    if (el.closest('.sr-only')) continue;
+    const a = lum(rgb(getComputedStyle(el).color)), b = lum(bgOf(el));
+    const ratio = (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05);
+    count += 1;
+    if (ratio < min) { min = ratio; worst = el.textContent.trim().slice(0, 40); }
+  }
+  return { count, min: Math.round(min * 100) / 100, worst };
+}"""
+
+
+def axe_admin(page):
+    result = run_axe(page)
+    inside = page.evaluate("""async () => {
+      const r = await axe.run(document, { runOnly: ['color-contrast'], resultTypes: ['incomplete'] });
+      return r.incomplete.flatMap((v) => v.nodes).every((n) =>
+        document.querySelector(n.target.join(' '))?.closest('.mc-table-scroll'));
+    }""")
+    inc = [v for v in result['incomplete'] if v['id'] == 'color-contrast'] if inside else []
+    if inc:
+        measured = page.evaluate(SCROLL_CONTRAST)
+        result['scrollContrast'] = measured
+        if measured['min'] >= 4.5:
+            result['incomplete'] = [v for v in result['incomplete'] if v not in inc]
+    return result
+
+
+def admin_ready(page):
+    page.wait_for_function(ADMIN_READY)
+    page.wait_for_timeout(300)
+
+
+def admin_login(page, email='admin@example.org'):
+    page.goto(PREVIEW + '/admin/login')
+    page.wait_for_selector('#login-email')
+    page.fill('#login-email', email)
+    page.fill('#login-password', 'mc-dev-password')
+    page.click('#auth-panel-login button[type=submit]')
+    page.wait_for_selector('.mc-admin')
+    admin_ready(page)
+
+
+EDITOR_PATH = __import__('re').compile(r'^/admin/(articles|news|series|videos|events|pages)/([a-z]-\d+|new)$')
+
+
+def admin_nav(page, path):
+    page.evaluate("(p) => { history.pushState({}, '', p); dispatchEvent(new PopStateEvent('popstate')); }", path)
+    match = EDITOR_PATH.match(path)
+    if match:
+        page.wait_for_selector('.mc-editor__grid')
+        if match.group(1) in ('articles', 'news'):
+            page.wait_for_selector('.mc-rte__toolbar')
+    if path.endswith('/preview'):
+        page.wait_for_selector('.mc-preview__frame')
+    admin_ready(page)
+
+
+def audit_admin(browser, report):
+    # ADMIN_THEMES=light,dark / ADMIN_WIDTHS=390 / ADMIN_SKIP_KEYBOARD=1 — ნაწილ-ნაწილ გაშვებისთვის
+    themes = [t for t in os.environ.get('ADMIN_THEMES', ','.join(THEMES)).split(',') if t]
+    widths = [int(w) for w in os.environ.get('ADMIN_WIDTHS', ','.join(map(str, WIDTHS))).split(',') if w]
+    rows = []
+    for theme in themes:
+        for width in widths:
+            context, page = new_page(browser, width, theme)
+            for path in ADMIN_LOGIN:
+                page.goto(PREVIEW + path)
+                admin_ready(page)
+                rows.append({'path': path, 'theme': theme, 'width': width, **axe_admin(page),
+                             'scroll': page.evaluate(OVERFLOW)['scroll']})
+            # შეცდომის მდგომარეობები: ცარიელი ფორმა (ჯამი) და უარყოფილი შესვლა (role="alert")
+            page.goto(PREVIEW + '/admin/login')
+            admin_ready(page)
+            page.click('#auth-panel-login button[type=submit]')
+            page.wait_for_selector('.mc-error-summary')
+            rows.append({'path': '/admin/login [ჯამი]', 'theme': theme, 'width': width, **axe_admin(page),
+                         'scroll': page.evaluate(OVERFLOW)['scroll']})
+            page.fill('#login-email', 'nobody@example.org')
+            page.fill('#login-password', 'wrong-password-1')
+            page.click('#auth-panel-login button[type=submit]')
+            page.wait_for_selector('.mc-auth-alert')
+            rows.append({'path': '/admin/login [უარყოფა]', 'theme': theme, 'width': width, **axe_admin(page),
+                         'scroll': page.evaluate(OVERFLOW)['scroll']})
+
+            admin_login(page)
+            for path in ADMIN_ROUTES:
+                admin_nav(page, path)
+                print(f'  admin {path} {theme} {width}', file=sys.stderr, flush=True)
+                rows.append({'path': path, 'theme': theme, 'width': width, **axe_admin(page),
+                             'scroll': page.evaluate(OVERFLOW)['scroll']})
+            # რედაქტორი: გამოქვეყნება ბლოკერით → შეცდომების ჯამი
+            admin_nav(page, '/admin/articles/a-017')
+            page.click('.mc-editor__aside .mc-btn--cta')
+            page.wait_for_selector('.mc-error-summary')
+            rows.append({'path': '/admin/articles/a-017 [გამოქვეყნების ბლოკერი]', 'theme': theme, 'width': width,
+                         **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
+            if width == 390:
+                admin_nav(page, '/admin')
+                page.click('.mc-admin-menu button[aria-expanded]')
+                page.wait_for_timeout(200)
+                rows.append({'path': '/admin [მენიუ გახსნილი]', 'theme': theme, 'width': width,
+                             **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
+            context.close()
+            # რედაქტორი: 403 /admin/users-ზე
+            context, page = new_page(browser, width, theme)
+            admin_login(page, 'editor@example.org')
+            admin_nav(page, '/admin/users')
+            rows.append({'path': '/admin/users [რედაქტორი → 403]', 'theme': theme, 'width': width,
+                         **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
+            context.close()
+
+    keyboard = {}
+    for width in ([] if os.environ.get('ADMIN_SKIP_KEYBOARD') else widths):
+        for path in os.environ.get('ADMIN_KEYBOARD', '/admin/login,/admin,/admin/articles').split(','):
+            context, page = new_page(browser, width, 'light')
+            if path == '/admin/login':
+                page.goto(PREVIEW + path)
+                admin_ready(page)
+            else:
+                admin_login(page)
+                admin_nav(page, path)
+            stops = tab_walk(page)
+            keyboard[f'{path} @{width}'] = {
+                'stops': len(stops),
+                'noRing': [s for s in stops if not (s['ring'] or s['forced'])][:5],
+                'notVisible': [s for s in stops if not s['inView'] or s['obscured']][:5],
+                'under24': [s for s in stops if min(s['size']) < 24][:5],
+            }
+            context.close()
+    report['admin'] = {'axe': rows, 'keyboard': keyboard}
 
 
 # ───────────────────────────────────────────────────────────────── keyboard
@@ -550,7 +736,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default='audit.json')
     parser.add_argument('--fixtures', default=str(ROOT / '.audit-fixtures'))
-    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle')
+    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin')
     parser.add_argument('--make-fixtures', action='store_true')
     args = parser.parse_args()
     fixtures = pathlib.Path(args.fixtures)
@@ -565,7 +751,8 @@ def main():
             report['chromium'] = browser.version
             report['axeCore'] = json.loads((AXE.parent / 'package.json').read_text())['version']
             for name, fn in [('axe', audit_axe), ('keyboard', audit_keyboard), ('motion', audit_motion),
-                             ('reflow', audit_reflow), ('placeholders', audit_placeholders)]:
+                             ('reflow', audit_reflow), ('placeholders', audit_placeholders),
+                             ('admin', audit_admin)]:
                 if name in parts:
                     t0 = time.time()
                     fn(browser, report)

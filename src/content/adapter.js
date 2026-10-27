@@ -62,9 +62,11 @@ let current = null;
 
 /** @returns {Promise<ContentAdapter>} */
 function loadDefault() {
-  return import('./mock/index.js').then(({ createMockAdapter }) => {
+  return import('./mock/index.js').then(({ createMockAdapter, getSharedMockStore }) => {
+    // F8: საერთო საცავი — ადმინის adapter-იც მას კითხულობს (ადმინში გამოქვეყნებული საიტზე ჩანს)
     const adapter = createMockAdapter({
       delay: import.meta.env.MODE === 'development' ? DEV_DELAY : 0,
+      store: getSharedMockStore(),
     });
     if (import.meta.env.DEV) {
       // build-ში ეს ბლოკი და validate.js საერთოდ არ ხვდება (import.meta.env.DEV → false)

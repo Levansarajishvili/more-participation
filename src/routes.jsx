@@ -22,7 +22,9 @@ const page = (load) => ({ Component: async () => (await load()).default });
  * სტრუქტურა: `/` (RootLayout = PreferencesProvider + PageShell) → უგზო როუტი ErrorBoundary-ით
  * → გვერდები. გვერდის შეცდომა (RouteError) და 404 გარსის შიგნით ჩნდება; RootError — მხოლოდ
  * გარსის ავარიისას. `/__kit` მხოლოდ dev-შია (scripts/check-dist.mjs ამოწმებს).
- * ადმინი (`/admin/*`, AdminShell) — F8.
+ * ადმინი (`/admin/*`, AdminShell) — F8: აქ არ არის. `createRouterOptions()`-ის
+ * `patchRoutesOnNavigation` ადმინის როუტებს `/admin`-ზე პირველი გადასვლისას ამატებს — საჯარო
+ * bundle-ში ადმინის კოდი არ ხვდება (მხოლოდ ერთი `import()`).
  *
  * ფუნქციაა და არა მასივი: ყოველ router-ს საკუთარი lazy-ობიექტები სჭირდება — React Router
  * ჩატვირთულ lazy-ობიექტს ქეშავს, და მეორე router-ში (ტესტები) იგივე როუტზე გადასვლა
@@ -103,6 +105,29 @@ export function createRoutes() {
       ],
     },
   ];
+}
+
+/** ადმინის მისამართი: `/admin`, `/admin/…`, `/admin?…` (არა `/administration`). */
+export const ADMIN_PATH = /^\/admin(?:[/?#]|$)/;
+
+/**
+ * router-ის პარამეტრები: ადმინის როუტების lazy discovery (React Router `patchRoutesOnNavigation`).
+ * ფუნქცია `/`-ის splat-ზე (`*`) დამთხვევისასაც იძახება, ამიტომ `/admin/...` 404-ს არ ხვდება.
+ * ყოველ router-ს საკუთარი მდგომარეობა აქვს (ტესტები); ერთდროული გადასვლები ერთ ჩატვირთვას ელოდება.
+ * @returns {{ patchRoutesOnNavigation: NonNullable<Parameters<typeof import('react-router').createBrowserRouter>[1]>['patchRoutesOnNavigation'] }}
+ */
+export function createRouterOptions() {
+  /** @type {Promise<void> | null} */
+  let loading = null;
+  return {
+    async patchRoutesOnNavigation({ path, patch }) {
+      if (!ADMIN_PATH.test(path)) return;
+      loading ??= import('@/admin/routes.jsx').then(({ createAdminRoutes }) => {
+        patch(null, createAdminRoutes());
+      });
+      await loading;
+    },
+  };
 }
 
 /** აპლიკაციის როუტები (main.jsx). */

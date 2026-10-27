@@ -12,7 +12,7 @@ import {
   queryVideos,
 } from '../query.js';
 
-import { createMockData } from './data.js';
+import { createMockStore } from './store.js';
 
 /** @typedef {import('../adapter.js').ContentAdapter} ContentAdapter */
 /** @typedef {import('../model.js').ContentSnapshot} ContentSnapshot */
@@ -23,18 +23,25 @@ import { createMockData } from './data.js';
  * @property {() => number} [now]       საათი: ხილვადობა და „მომავალი ღონისძიებები“
  * @property {number} [delay=0]         ქსელის იმიტაცია, ms (dev-ში 300)
  * @property {ContentSnapshot} [data]   ნაგულისხმევად createMockData({ now: now() })
+ * @property {import('./store.js').MockStore} [store]  F8: საერთო საცავი (adapter.js — getSharedMockStore());
+ *                                      მის გარეშე adapter-ს საკუთარი საცავი აქვს `data`-დან
  * @property {ErrorCode | null} [fail]  ყოველი მოთხოვნა ამ შეცდომით მთავრდება (UI-ის შეცდომის მდგომარეობისთვის)
  */
 
 /**
  * mock adapter: იგივე კონტრაქტი, რაც CMS-ს ექნება. პასუხი ყოველთვის ასლია — UI-მ
  * მონაცემი რომც შეცვალოს, mock-ის მდგომარეობა არ იცვლება.
+ *
+ * F8: მონაცემი საცავიდან იკითხება ყოველ მოთხოვნაზე (`store.snapshot()` — არქივის გარეშე), ამიტომ
+ * ადმინში შენახული / გამოქვეყნებული მასალა იმავე სესიაში საჯარო გვერდზეც ჩანს.
  * @param {MockOptions} [options]
- * @returns {ContentAdapter & { snapshot: ContentSnapshot, subscribers: ReadonlySet<string>, contacts: () => number }}
+ * @returns {ContentAdapter & { readonly snapshot: ContentSnapshot, store: import('./store.js').MockStore, subscribers: ReadonlySet<string>, contacts: () => number }}
  */
 export function createMockAdapter(options = {}) {
-  const { now = Date.now, delay = 0, fail = null } = options;
-  const snapshot = options.data ?? createMockData({ now: now() });
+  const { delay = 0, fail = null } = options;
+  const store = options.store ?? createMockStore({ now: options.now, data: options.data });
+  const now = options.now ?? store.now;
+  const data = () => store.snapshot();
   /** @type {Set<string>} */
   const subscribers = new Set();
   let contactCount = 0;
@@ -53,28 +60,31 @@ export function createMockAdapter(options = {}) {
 
   return {
     source: 'mock',
-    snapshot,
+    get snapshot() {
+      return data();
+    },
+    store,
     subscribers,
     /** მიღებული (honeypot-ის გარეშე) შეტყობინებების რაოდენობა — ტესტებისთვის. */
     contacts: () => contactCount,
 
-    listArticles: (params = {}) => respond(() => queryArticles(snapshot.articles, params, now())),
-    getArticle: (slug) => respond(() => findArticle(snapshot.articles, slug, now())),
+    listArticles: (params = {}) => respond(() => queryArticles(data().articles, params, now())),
+    getArticle: (slug) => respond(() => findArticle(data().articles, slug, now())),
 
-    listSeries: (params = {}) => respond(() => querySeries(snapshot.series, params, now())),
-    getSeries: (slug) => respond(() => findSeries(snapshot.series, slug, now())),
+    listSeries: (params = {}) => respond(() => querySeries(data().series, params, now())),
+    getSeries: (slug) => respond(() => findSeries(data().series, slug, now())),
 
-    listVideos: (params = {}) => respond(() => queryVideos(snapshot.videos, params, now())),
-    getVideo: (slug) => respond(() => findVideo(snapshot.videos, slug, now())),
+    listVideos: (params = {}) => respond(() => queryVideos(data().videos, params, now())),
+    getVideo: (slug) => respond(() => findVideo(data().videos, slug, now())),
 
-    listNews: (params = {}) => respond(() => queryNews(snapshot.news, params, now())),
-    getNews: (slug) => respond(() => findNews(snapshot.news, slug, now())),
-    listEvents: (params = {}) => respond(() => queryEvents(snapshot.events, params, now())),
+    listNews: (params = {}) => respond(() => queryNews(data().news, params, now())),
+    getNews: (slug) => respond(() => findNews(data().news, slug, now())),
+    listEvents: (params = {}) => respond(() => queryEvents(data().events, params, now())),
 
-    getTeam: () => respond(() => [...snapshot.team].sort((a, b) => a.order - b.order)),
-    getPartners: () => respond(() => snapshot.partners),
-    getStages: () => respond(() => snapshot.stages),
-    getSettings: () => respond(() => snapshot.settings),
+    getTeam: () => respond(() => [...data().team].sort((a, b) => a.order - b.order)),
+    getPartners: () => respond(() => data().partners),
+    getStages: () => respond(() => data().stages),
+    getSettings: () => respond(() => data().settings),
 
     subscribe: (email) =>
       respond(() => {
@@ -98,3 +108,5 @@ export function createMockAdapter(options = {}) {
       }),
   };
 }
+
+export { createMockStore, getSharedMockStore, setSharedMockStore } from './store.js';
