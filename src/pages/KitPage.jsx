@@ -5,10 +5,14 @@ import {
   Accordion,
   ArticleCard,
   BRAND_ICONS,
+  Breadcrumbs,
   Button,
+  Card,
   Checkbox,
   Chip,
   ChipGroup,
+  ContentState,
+  DateTile,
   EventCard,
   GrowthStat,
   Icon,
@@ -19,12 +23,15 @@ import {
   Media,
   NewsCard,
   PartnerCard,
+  PendingLink,
   Quote,
   RadioGroup,
   SaveToggle,
   SectionHeading,
   Select,
   SeriesCard,
+  Skeleton,
+  SkeletonGroup,
   Switch,
   TeamCard,
   TextArea,
@@ -40,6 +47,7 @@ import {
   listSeries,
   listVideos,
 } from '@/content/adapter.js';
+import { ContentError } from '@/content/errors.js';
 import { ARTICLE_CATEGORIES, CONTACT_TOPICS, options, REPLY_CHANNELS } from '@/content/taxonomy.js';
 import { usePageTitle } from '@/components/layout/usePageTitle.js';
 import { useContent } from '@/hooks/useContent.js';
@@ -86,7 +94,13 @@ const UI_GLYPHS = [
   'minus',
   'reset',
   'arrow-up-right',
+  'slides',
+  'video',
 ];
+
+/** F5: ContentState-ის შეცდომის მაგალითი. */
+const KIT_ERROR = new ContentError('network');
+const noop = () => {};
 
 const FAQ = [
   { id: 'q1', title: '[კითხვა: როგორ ჩავერთო პროგრამაში?]', content: <p>[პასუხის ტექსტი]</p> },
@@ -166,7 +180,7 @@ export default function KitPage() {
       <div className="flex flex-col gap-2">
         <h1 className="text-h1">UI ნაკრები</h1>
         <p className="max-w-article text-lead text-muted">
-          F3: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
+          F3–F5: ყოველი კომპონენტი ყველა მდგომარეობაში, სამ თემაში. ცოცხალი ელემენტები კლავიატურით
           მუშაობს; „Hover“, „ფოკუსი“ და „დაჭერილი“ სტატიკური ასლებია (data-force).
         </p>
       </div>
@@ -569,6 +583,105 @@ export default function KitPage() {
             </>
           );
         }}
+      </KitSection>
+
+      <KitSection
+        id="kit-f5"
+        title="F5: ContentState, Skeleton, Breadcrumbs, DateTile, PendingLink, ვარიანტები"
+        note="მონაცემიანი ბლოკის სამი მდგომარეობა (ჩონჩხი ანიმაციის გარეშე); Card icon / row; VideoCard feature / row; NewsCard compact."
+      >
+        {(theme) => (
+          <>
+            <State name="ჩატვირთვა">
+              <ContentState
+                status="loading"
+                error={null}
+                onRetry={noop}
+                label="[სექცია]"
+                className="w-full"
+                skeleton={<Skeleton ratio="16:9" lines={2} />}
+              >
+                {() => null}
+              </ContentState>
+            </State>
+            <State name="შეცდომა">
+              <ContentState
+                status="error"
+                error={KIT_ERROR}
+                onRetry={noop}
+                label={`[სექცია] (${theme})`}
+                skeleton={null}
+              >
+                {() => null}
+              </ContentState>
+            </State>
+            <State name="ცარიელი">
+              <ContentState
+                status="success"
+                error={null}
+                onRetry={noop}
+                label="[სექცია]"
+                skeleton={null}
+                empty
+                emptyText={t('home.articlesEmpty')}
+              >
+                {() => null}
+              </ContentState>
+            </State>
+            <State name="Skeleton: row, tile, person, logo, text">
+              <div className="flex w-full flex-col gap-2">
+                <Skeleton variant="row" lines={2} />
+                <Skeleton variant="tile" lines={2} />
+                <SkeletonGroup
+                  count={2}
+                  variant="person"
+                  lines={2}
+                  className="grid grid-cols-2 gap-2"
+                />
+                <SkeletonGroup
+                  count={2}
+                  variant="logo"
+                  lines={1}
+                  className="grid grid-cols-2 gap-2"
+                />
+                <Skeleton variant="text" lines={3} />
+              </div>
+            </State>
+            <Breadcrumbs
+              label={`ნავიგაციის ბილიკი (${theme})`}
+              items={[{ to: '/', label: t('nav.home') }, { label: t('nav.about') }]}
+            />
+            <div className="flex items-center gap-2">
+              <DateTile date="2026-10-24T10:00:00+04:00" />
+              <PendingLink>{t('about.vacancies')}</PendingLink>
+            </div>
+            <Card
+              as="div"
+              title={t('about.pillars.engagement.title')}
+              icon={<Icon name="engagement" accent size="1.75rem" />}
+            >
+              <p>{t('about.pillars.engagement.text')}</p>
+            </Card>
+            {videos && news ? (
+              <>
+                <VideoCard
+                  video={videos[0]}
+                  feature
+                  eyebrow={t('home.weeklyVideo')}
+                  showExcerpt={false}
+                />
+                <ul className="mc-row-list">
+                  <li>
+                    <VideoCard video={videos[1]} layout="row" showExcerpt={false} />
+                  </li>
+                </ul>
+                <NewsCard item={news.items[0]} variant="compact" />
+              </>
+            ) : (
+              <p className="text-muted">{t('common.loading')}</p>
+            )}
+          </>
+        )}
       </KitSection>
 
       <KitSection id="kit-live" title="VisuallyHidden, LiveRegion">

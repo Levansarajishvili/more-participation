@@ -1,8 +1,9 @@
-import { formatDate, formatDateParts, formatTimeRange, t, toDateAttribute } from '@/i18n/index.js';
+import { formatTimeRange, t } from '@/i18n/index.js';
 
 import A11yBadge from '../A11yBadge.jsx';
 import Button from '../Button.jsx';
 import Card from '../Card.jsx';
+import DateTile from '../DateTile.jsx';
 import Icon from '../Icon.jsx';
 import VisuallyHidden from '../VisuallyHidden.jsx';
 
@@ -18,22 +19,11 @@ import VisuallyHidden from '../VisuallyHidden.jsx';
  */
 export default function EventCard({ event, headingLevel = 'h3', className, ...rest }) {
   const { title, excerpt, start, end, location, accessibility, registrationUrl } = event;
-  const day = formatDateParts(start);
   return (
     <Card
       title={title}
       headingLevel={headingLevel}
-      aside={
-        <time dateTime={toDateAttribute(start)} className="mc-date-tile">
-          <span className="mc-date-tile__day" aria-hidden="true">
-            {day.day}
-          </span>
-          <span className="mc-date-tile__month" aria-hidden="true">
-            {day.monthShort}
-          </span>
-          <VisuallyHidden>{formatDate(start, 'weekday')}</VisuallyHidden>
-        </time>
-      }
+      aside={<DateTile date={start} format="weekday" />}
       meta={
         <>
           <span>{formatTimeRange(start, end)}</span>

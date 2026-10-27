@@ -241,7 +241,10 @@ describe('PageShell', () => {
   it('hash-ით გადასვლა ფოკუსს სამიზნეზე გადაიტანს, თუ ის არსებობს', async () => {
     const { router } = await renderApp('/');
     await act(() => router.navigate('/about#main'));
-    await screen.findByRole('heading', { level: 1, name: 'ჩვენ შესახებ' });
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'ვანგრევთ ბარიერებს. ვაძლიერებთ პოტენციალს.',
+    });
     await waitFor(() => expect(screen.getByRole('main')).toHaveFocus());
   });
 

@@ -23,6 +23,9 @@ const unbracket = (text = '') => text.replace(/^\[([\s\S]*)\]$/, '$1');
  * @param {'cover' | 'contain'} [props.fit='cover']
  * @param {boolean} [props.decorative=false]  alt="" (სურათი ტექსტს იმეორებს, მაგ. პარტნიორის ლოგო სახელთან)
  * @param {boolean} [props.round=false]       წრე (გუნდის ფოტო, 1:1)
+ * @param {boolean} [props.compact=false]     F5: პატარა კადრი (ვიდეოს სია, 120–220px) — ჩარჩოში
+ *                                            წარწერა არ ეტევა (ხანგრძლივობის ნიშანს ეფარება): მხოლოდ
+ *                                            წყვეტილი ჩარჩო; აღწერა alt-ში რჩება
  * @param {'lazy' | 'eager'} [props.loading='lazy']
  * @param {string} [props.className]
  */
@@ -33,13 +36,19 @@ export default function Media({
   fit = 'cover',
   decorative = false,
   round = false,
+  compact = false,
   loading = 'lazy',
   className,
 }) {
   const value = ratio ?? image?.ratio ?? '3:2';
   const style = { aspectRatio: value.replace(':', ' / ') };
   const alt = decorative ? '' : (image?.alt ?? '');
-  const classes = cx('mc-media', round && 'mc-media--round', className);
+  const classes = cx(
+    'mc-media',
+    round && 'mc-media--round',
+    compact && 'mc-media--compact',
+    className,
+  );
 
   if (!image?.src) {
     const kindLabel = t(`media.${kind}`);
@@ -48,6 +57,7 @@ export default function Media({
     let label = t('media.placeholder', { kind: kindLabel, alt: description });
     if (description.startsWith(`${kindLabel}:`)) label = `[${description}]`;
     if (round) label = `[${kindLabel}]`;
+    if (compact) label = '';
     const a11y = alt ? { role: 'img', 'aria-label': alt } : { 'aria-hidden': true };
     return (
       <div className={cx(classes, 'mc-media--placeholder')} style={style} {...a11y}>

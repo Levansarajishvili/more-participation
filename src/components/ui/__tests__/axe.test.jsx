@@ -1,13 +1,19 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 
+import { ContentError } from '@/content/errors.js';
+
 import {
   A11yBadge,
   Accordion,
   ArticleCard,
   BRAND_ICONS,
+  Breadcrumbs,
   Button,
+  Card,
   Checkbox,
+  ContentState,
+  DateTile,
   Chip,
   ChipGroup,
   EventCard,
@@ -19,12 +25,15 @@ import {
   Media,
   NewsCard,
   PartnerCard,
+  PendingLink,
   Quote,
   RadioGroup,
   SaveToggle,
   SectionHeading,
   Select,
   SeriesCard,
+  Skeleton,
+  SkeletonGroup,
   Switch,
   TeamCard,
   TextArea,
@@ -209,6 +218,72 @@ const CASES = [
           )),
         )}
         <Logo layout="mark" decorative />
+      </>
+    ),
+  ],
+  [
+    'F5: ContentState — ჩატვირთვა, შეცდომა, ცარიელი',
+    () => (
+      <>
+        <ContentState
+          status="loading"
+          error={null}
+          onRetry={() => {}}
+          label="სტატიები"
+          skeleton={<SkeletonGroup count={2} lines={2} />}
+        >
+          {() => null}
+        </ContentState>
+        <ContentState
+          status="error"
+          error={new ContentError('network')}
+          onRetry={() => {}}
+          label="სიახლეები"
+          skeleton={null}
+        >
+          {() => null}
+        </ContentState>
+        <ContentState
+          status="success"
+          error={null}
+          onRetry={() => {}}
+          label="გუნდი"
+          skeleton={null}
+          empty
+          emptyText="გუნდის წევრები ჯერ არ არის დამატებული."
+        >
+          {() => null}
+        </ContentState>
+      </>
+    ),
+  ],
+  [
+    'F5: Skeleton (ყველა ვარიანტი), Breadcrumbs, DateTile, PendingLink',
+    () => (
+      <>
+        {['card', 'row', 'tile', 'person', 'logo', 'text'].map((variant) => (
+          <Skeleton key={variant} variant={variant} />
+        ))}
+        <Breadcrumbs items={[{ to: '/', label: 'მთავარი' }, { label: 'ჩვენ შესახებ' }]} />
+        <DateTile date="2026-10-24T10:00:00+04:00" />
+        <PendingLink>ვაკანსიები</PendingLink>
+      </>
+    ),
+  ],
+  [
+    'F5: Card icon, VideoCard feature / row, NewsCard compact',
+    () => (
+      <>
+        <Card as="div" title="ჩართულობა" icon={<Icon name="engagement" accent />}>
+          <p>[ტექსტი]</p>
+        </Card>
+        <VideoCard video={video} feature eyebrow="კვირის ვიდეო" headingLevel="h2" />
+        <ul className="mc-row-list">
+          <li>
+            <VideoCard video={{ ...video, slug: 'row-demo' }} layout="row" showExcerpt={false} />
+          </li>
+        </ul>
+        <NewsCard item={newsItem} variant="compact" />
       </>
     ),
   ],

@@ -1,0 +1,50 @@
+/*
+ * სამი მიმართულების სია (F5, PillarList): ბარათები და HomeMobile-ის ჩიპები.
+ * ფერი მხოლოდ --mc-* ტოკენით.
+ */
+@layer components {
+  /*
+   * 7fr-იან სვეტში სამი ბარათი ≈ 222px-ია: დაფის 28px კიდე და 23px სათაური „ჩართულობა“ /
+   * „სოციალური“ სიტყვას შუაზე ჭრიდა → კიდე 24px, სათაური 21px (lead).
+   */
+  .mc-pillars .mc-card__body {
+    padding: 1.5rem;
+  }
+  .mc-pillars .mc-card__title {
+    font-size: var(--text-lead);
+    line-height: calc(1.25 * var(--mc-leading));
+  }
+
+  /* HomeMobile: ჩიპები (სექციის კონტეინერი < 48rem) */
+  @container (width < 48rem) {
+    .mc-pillars--compact {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+    }
+    .mc-pillars--compact > li {
+      display: block;
+    }
+    .mc-pillars--compact .mc-card {
+      border-color: var(--mc-alt);
+      border-radius: var(--radius-pill);
+      background-color: var(--mc-alt);
+    }
+    .mc-pillars--compact .mc-card__body {
+      padding: 0.25rem 0.875rem;
+      gap: 0;
+    }
+    .mc-pillars--compact .mc-card__title {
+      font-size: var(--text-small);
+      line-height: var(--text-small--line-height);
+      font-weight: 700;
+    }
+    .mc-pillars--compact :is(.mc-icon-well, .mc-card__text) {
+      display: none;
+    }
+    /* კონტრასტში alt = შავი: ჩიპის კიდე თეთრი ჩარჩოთი */
+    [data-theme='contrast'] .mc-pillars--compact .mc-card {
+      border-color: var(--mc-line);
+    }
+  }
+}

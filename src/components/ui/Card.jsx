@@ -13,6 +13,11 @@ import { cx } from './utils.js';
  * DOM-ის რიგი: სათაური → წარწერა → ტექსტი → მეტა → მედია; ვიზუალურად მედია და წარწერა ზემოთაა.
  * ეკრანის მკითხველი სათაურით იწყებს.
  *
+ * F5: `icon` — დეკორატიული ხატულა წრეში, ბარათის თავში (ორგანიზაციის მიმართულებები). წრე
+ * ყოველთვის მუქია (`data-theme="dark"` ქვეხე: #0B1C33, ხატულა #EAF0F7 14.91:1, აქცენტი #FF8A4C).
+ * `layout="row"` — მედია მარცხნივ, ფიქსირებული სიგანით (`--mc-card-media`, ნაგულისხმევი
+ * 7.5–13.75rem); ვიდეოს მცირე სია (HomePage / HomeMobile დაფები).
+ *
  * @param {object} props
  * @param {import('react').ReactNode} props.title
  * @param {'h2' | 'h3' | 'h4'} [props.headingLevel='h3']
@@ -28,6 +33,8 @@ import { cx } from './utils.js';
  * @param {import('react').ReactNode} [props.actions]   ღილაკები ბარათის ბოლოში
  * @param {import('react').ReactNode} [props.aside]     გვერდითი ბლოკი (ღონისძიების თარიღი)
  * @param {import('react').ReactNode} [props.children]  მოკლე ტექსტი
+ * @param {import('react').ReactNode} [props.icon]    F5: ხატულა წრეში (`<Icon … accent />`)
+ * @param {'stack' | 'row'} [props.layout='stack']  F5
  * @param {'article' | 'div' | 'li'} [props.as='article']
  * @param {string} [props.className]
  */
@@ -45,6 +52,8 @@ export default function Card({
   meta,
   actions,
   aside,
+  icon,
+  layout = 'stack',
   children,
   as: Tag = 'article',
   className,
@@ -68,13 +77,24 @@ export default function Card({
 
   return (
     <Tag
-      className={cx('mc-card', linked && 'mc-card--link', aside && 'mc-card--aside', className)}
+      className={cx(
+        'mc-card',
+        linked && 'mc-card--link',
+        aside && 'mc-card--aside',
+        layout === 'row' && 'mc-card--row',
+        className,
+      )}
       {...rest}
     >
       <div className="mc-card__body">
         <Heading className="mc-card__title" lang={titleLang}>
           {heading}
         </Heading>
+        {icon && (
+          <span className="mc-icon-well" data-theme="dark" aria-hidden="true">
+            {icon}
+          </span>
+        )}
         {eyebrow && <p className="mc-card__eyebrow">{eyebrow}</p>}
         {children && <div className="mc-card__text">{children}</div>}
         {meta && <div className="mc-card__meta">{meta}</div>}

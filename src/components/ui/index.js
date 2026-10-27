@@ -4,9 +4,12 @@
  */
 export { default as A11yBadge } from './A11yBadge.jsx';
 export { default as Accordion } from './Accordion.jsx';
+export { default as Breadcrumbs } from './Breadcrumbs.jsx';
 export { default as Button, IconButton } from './Button.jsx';
 export { default as Card } from './Card.jsx';
 export { default as ChipGroup, Chip } from './Chip.jsx';
+export { default as ContentState } from './ContentState.jsx';
+export { default as DateTile } from './DateTile.jsx';
 export { default as GrowthStat } from './GrowthStat.jsx';
 export { default as Icon } from './Icon.jsx';
 export { BRAND_ICONS, ICONS } from './icon-sprite.js';
@@ -21,9 +24,11 @@ export {
   logoMetrics,
 } from './logo-geometry.js';
 export { default as Media } from './Media.jsx';
+export { default as PendingLink } from './PendingLink.jsx';
 export { default as Quote } from './Quote.jsx';
 export { default as SaveToggle } from './SaveToggle.jsx';
 export { default as SectionHeading } from './SectionHeading.jsx';
+export { default as Skeleton, SkeletonGroup } from './Skeleton.jsx';
 export { default as Switch } from './Switch.jsx';
 export { default as UiLink } from './UiLink.jsx';
 export { default as VisuallyHidden } from './VisuallyHidden.jsx';

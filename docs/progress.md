@@ -360,3 +360,133 @@ SiteHeader (ზედა ზოლი, თავსებადობის მ�
 ### შემდეგი: F5 — მთავარი + ჩვენ შესახებ
 
 2 გვერდი: HomePage (ჰერო + CTA „ჩაერთე“ `JOIN_HREF`-ზე + სამი შესასვლელი + კვირის ვიდეო, სექციები), AboutPage (ფოტოები, მისია, ღირებულებები, „ჩვენი გზა“, გუნდი `id="team"`, პარტნიორები `id="partners"`). Gate: სათაურების ხე, axe 0. F4-იდან: გვერდი `<main>`-ს არ ხატავს; h1 — პირველივე რენდერზე; სათაური — `handle.title`; breakpoint-ები `data-size`-ზე — container query; ბადის gutter 24px (F1-ის ღია საკითხი 4).
+
+## F5 — მთავარი + ჩვენ შესახებ ✅ (2026-10-26)
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (19 ფაილი, 399 ტესტი: F4-ის 361 + F5-ის 38) · `npm run build` ✓ + check-dist ✓ (16 JS chunk) · **Chromium 141 + axe-core 4.14.0** (ფერის კონტრასტით):
+- `/` და `/about` × 1440 / 390 × light / dark / contrast — **0 დარღვევა, 0 incomplete** (12 კომბინაცია), ჰორიზონტალური სქროლი არ არის;
+- `/__kit` (F5-ის ახალი სექციით: შეცდომა, ცარიელი, ჩონჩხი, ვარიანტები) × 1440 / 390 × 3 თემა — 0 / 0;
+- **სათაურების ხე:** დონე არ გამოტოვებულა (Chromium-შიც და jsdom-შიც, `skippedLevels`);
+- **ყველა ფაქტი ფრჩხილებშია:** `unbracketedFacts(main)` = `[]` ორივე გვერდზე — ყოველი ტექსტი i18n-ის (დაფის) სტრიქონია, `[placeholder]` ან გამოთვლილი მნიშვნელობა (`<time>`, ხანგრძლივობა, რაოდენობა); ფუნქციის თვითტესტი გამოგონილ „2019 წელს“ / „120 მონაწილე“-ს იჭერს;
+- **ჩატევა:** შრიფტი 100–200% × განლაგება ჩართ./გამორთ. × 390 / 768 / 1200 / 1440 / 1920 × 2 გვერდი — 100 კომბინაცია, 0 სქროლი, 0 ეკრანს გასული ელემენტი;
+- reduced-motion: ახალი ანიმაცია არ არის (ჩონჩხი სტატიკურია; შესასვლელის ფერი `--mc-dur-base` → 0).
+
+### მატრიცა
+
+| | light | dark | contrast |
+|---|---|---|---|
+| `/` 1440 | ✓ axe 0/0, 23 სათაური | ✓ axe 0/0 | ✓ axe 0/0, ორბიტა დამალულია |
+| `/` 390 | ✓ axe 0/0, HomeMobile-ის რაოდენობები | ✓ axe 0/0 | ✓ axe 0/0 |
+| `/about` 1440 | ✓ axe 0/0, 35 სათაური | ✓ axe 0/0 | ✓ axe 0/0 |
+| `/about` 390 | ✓ axe 0/0, გუნდი row-ად, პარტნიორები 2 სვეტად | ✓ axe 0/0 | ✓ axe 0/0 |
+
+### სათაურების ხე
+
+**მთავარი:** h1 „ისწავლე. შთაგონდი. გაიზარდე.“ → h2 [კვირის ვიდეოს სათაური] → h2 „ვანგრევთ ბარიერებს. ვაძლიერებთ პოტენციალს.“ (h3 × 3 მიმართულება) → h2 სტატიები (h3 × 3) → h2 პიროვნული განვითარება (h3 × 4) → h2 ვიდეო-ისტორიები (h3 × 3) → h2 სიახლეები (h3 × 3).
+
+**ჩვენ შესახებ:** h1 „ვანგრევთ ბარიერებს. ვაძლიერებთ პოტენციალს.“ → h2 მისია (h3 × 3) → h2 ღირებულებები (h3 × 6) → h2 ჩვენი გზა (`<ol>`, სათაურის გარეშე) → h2 გუნდი `#team` (h3 × 8) → h2 პარტნიორები `#partners` (h3 × 12).
+
+ფუტერის h2-ები (F4) `<main>`-ის გარეთაა.
+
+### სექცია → დაფა → კომპონენტები
+
+| სექცია | დაფა | კომპონენტები | მონაცემი |
+|---|---|---|---|
+| მთავარი: ჰერო | HomePage, HomeMobile | `PageHero`, `Button cta` (`JOIN_HREF`), `Icon` (education / slides / video), `VideoCard feature`, `ContentState`, `Skeleton` | `listVideos()` → `splitVideos`; რაოდენობები: `listArticles.total`, `listSeries`, `listVideos` |
+| მთავარი: ჩვენ შესახებ | HomePage, HomeMobile (ჩიპები) | `PageSection split`, `PillarList compact`, `Card icon`, `Button link` | i18n |
+| მთავარი: სტატიები | HomePage, HomeMobile | `PageSection alt`, `ArticleCard` (+ `SaveToggle`), `ContentState`, `SkeletonGroup` | `listArticles({ limit: 3 })` |
+| მთავარი: პიროვნული განვითარება | HomePage, HomeMobile | `PageSection`, `SeriesCard` (ყდა 30px), `ContentState` | `listSeries()` → 4 |
+| მთავარი: ვიდეო-ისტორიები | HomePage, HomeMobile, LandingDark (მუქი ზოლი) | `PageSection dark`, `VideoCard`, `VideoCard layout="row"`, `mc-row-list` | `listVideos()` → კვირის ვიდეოს გარეშე 3 |
+| მთავარი: სიახლეები | HomePage, HomeMobile | `PageSection alt`, `NewsCard variant="compact"` (`DateTile`) | `listNews({ limit: 3 })` |
+| ჩვენ შესახებ: ჰერო | AboutPage | `PageHero asideTheme="dark"`, `Breadcrumbs`, `Media` × 2 (1:1) | `about-media.js` (i18n) |
+| ჩვენ შესახებ: მისია | AboutPage | `PageSection split`, `PillarList` | i18n |
+| ჩვენ შესახებ: ღირებულებები | AboutPage | `PageSection alt`, `Card` × 6 | i18n (`ORG_VALUES`) |
+| ჩვენ შესახებ: ჩვენი გზა | AboutPage | `PageSection dark`, `<ol class="mc-grid mc-grid--4 mc-path">`, `ContentState` | `getStages()` |
+| ჩვენ შესახებ: გუნდი | AboutPage (390 — HomeMobile-ის პატერნი) | `PageSection`, `TeamCard` × 8, `PendingLink` („ვაკანსიები“), `ContentState` | `getTeam()`, `getSettings()` |
+| ჩვენ შესახებ: პარტნიორები | AboutPage | `PageSection alt`, `PartnerCard` × 12, `Button cta` („გახდი პარტნიორი“) | `getPartners()` |
+
+### შექმნილი ფაილები
+
+- `src/features/home/`: `HomeHero.jsx`, `HomeAbout.jsx`, `HomeArticles.jsx`, `HomeDevelopment.jsx`, `HomeVideos.jsx`, `HomeNews.jsx`, `useHomeContent.js`, `home.css`, `__tests__/home.test.jsx`.
+- `src/features/about/`: `AboutHero.jsx`, `AboutMission.jsx`, `AboutValues.jsx`, `AboutPath.jsx`, `AboutTeam.jsx`, `AboutPartners.jsx`, `PillarList.jsx`, `pillars.css`, `about-media.js`, `about.css`, `__tests__/about.test.jsx`.
+- `src/features/__tests__/`: `page-helpers.jsx`, `pages.test.jsx`.
+- `src/components/layout/`: `PageSection.jsx`, `PageHero.jsx`.
+- `src/components/ui/`: `ContentState.jsx`, `Skeleton.jsx` (+ `SkeletonGroup`), `Breadcrumbs.jsx`, `DateTile.jsx`, `PendingLink.jsx`.
+- `src/styles/sections.css`.
+- შეიცვალა: `pages/HomePage.jsx`, `pages/AboutPage.jsx`, `pages/KitPage.jsx` (F5-ის სექცია), `components/ui/Card.jsx` (`icon`, `layout`), `Media.jsx` (`compact`), `cards/VideoCard.jsx` (`eyebrow`, `feature`, `layout`, `showExcerpt`), `cards/NewsCard.jsx` (`variant`), `cards/EventCard.jsx` (`DateTile`), `ui/index.js`, `assets/icons/icons.svg` (+ `slides`, `video`), `styles/components.css` (F5-ის ბლოკი), `styles/index.css` (+ sections.css), `i18n/ka.js` + `en.js`, `content/mock/org.js` (გუნდის ფოტოების მიმართულება, პარტნიორის alt), `content/mock/videos.js` (პოსტერები), ტესტები: `routes.test.jsx`, `layout/__tests__/shell.test.jsx`, `a11y/__tests__/a11y-menu.test.jsx`, `ui/__tests__/axe.test.jsx`; `CLAUDE.md` (რუკა + F5 კონვენციები), `docs/project-context.md` (§2, §5, §7, §9, §10).
+
+### საჯარო API
+
+**გვერდის ბლოკები** (`@/components/layout/`):
+- `<PageHero headingId children aside asideTheme="root | dark" className>` — `<section aria-labelledby>`, ფონი `--mc-hero`, ორბიტა (CSS mask), ტექსტის სვეტი `data-theme="dark"`; h1 გვერდისაა.
+- `<PageSection headingId title eyebrow lead action intro split tone="default | alt | dark" className>{children}</PageSection>` — `<section aria-labelledby>` + `SectionHeading` (h2); `action` DOM-ში სათაურის შემდეგ; `split` → 5fr | 7fr (სათაური + `intro` + `action` | `children`).
+
+**UI ნაკრები (+)** (`@/components/ui/index.js`):
+
+| კომპონენტი | props |
+|---|---|
+| `ContentState` | `status`, `error: ContentError \| null`, `onRetry`, **`label`** (სექცია), `skeleton`, `empty`, `emptyText`, `focusId`, `className`, `children: () => ReactNode` |
+| `Skeleton` | `variant: 'card' \| 'row' \| 'tile' \| 'person' \| 'logo' \| 'text'` = card, `ratio` = '3:2', `lines` = 3, `className` |
+| `SkeletonGroup` | `count`, `className` (ბადის კლასი), + `Skeleton`-ის props |
+| `Breadcrumbs` | `items: { to?, label }[]` (ბოლო = მიმდინარე, `aria-current="page"`), `label` (ნაგულისხმევი „ნავიგაციის ბილიკი“), `className` |
+| `DateTile` | `date` (ISO), `format: 'long' \| 'weekday'` = long, `className` |
+| `PendingLink` | `children` (წარწერა), `className` → „{წარწერა} [ბმული მზადდება]“ |
+| `Card` (+) | `icon` (ხატულა მუქ წრეში), `layout: 'stack' \| 'row'` |
+| `Media` (+) | `compact` (პატარა კადრი — წარწერის გარეშე, alt რჩება) |
+| `VideoCard` (+) | `eyebrow`, `feature`, `layout: 'stack' \| 'row'`, `showExcerpt` = true |
+| `NewsCard` (+) | `variant: 'default' \| 'compact'` |
+
+**ფიჩერები:** `useHomeContent() → { articles, series, videos, news }` (თითო — `useContent`-ის მდგომარეობა), `HOME_LIMITS` `{ articles: 3, series: 4, videos: 3, news: 3 }`, `splitVideos(list) → { weekly, rest }`; `aboutHeroPhotos() → Image[]`; `TEAM_HEADING_ID` 'team', `PARTNERS_HEADING_ID` 'partners', `BECOME_PARTNER_HREF` '/contact?topic=partnership'; `<PillarList compact>`.
+
+**CSS კლასები:** `sections.css` — `.mc-section`, `--alt`, `--dark`, `.mc-section__inner` (container), `__head`, `__head--split`, `__action`, `__split`, `__intro`, `__aside`, `.mc-grid` (`--mc-cols`, `--mc-min`, `--mc-gap`), `.mc-grid--4`, `--6`, `--tight`, `.mc-page-hero`, `__inner`, `__grid`, `__intro`, `__aside`, `.mc-orbit`, `.mc-pending-link`; `components.css` — `.mc-icon-well`, `.mc-card--row`, `.mc-row-list`, `.mc-video-thumb--feature`, `.mc-card--news-compact`, `.mc-skeleton*`, `.mc-state`, `--error`, `--empty`, `.mc-breadcrumbs*`, `.mc-media--compact`; გვერდებისა — `.mc-hero-title`, `.mc-entries`, `.mc-entry`, `.mc-home-videos`, `.mc-series-grid`, `.mc-home-limit-2 | -3`, `.mc-home-brief`, `.mc-pillars`, `--compact`, `.mc-about-photos`, `.mc-mission__*`, `.mc-path*`, `.mc-team`.
+
+**ტოკენები:** ახალი არ არის — მხოლოდ არსებული `--mc-*` (§2 „გვერდები“ — კონტრასტის წყვილები).
+
+**ხატულები (+):** `slides`, `video` (HomePage დაფის შესასვლელებიდან).
+
+**i18n (+):** `states.loading` („იტვირთება: {label}“), `home.entryCount`, `home.weeklyEmpty`, `home.articlesEmpty`, `home.developmentEmpty`, `home.videosEmpty`, `home.newsEmpty`, `about.photoTraining`, `about.photoTeam`, `about.pathEmpty`, `about.teamEmpty`, `about.partnersEmpty`; `common.retry` „ხელახლა ცდა“ → „თავიდან ცდა“. ცარიელი მდგომარეობების ტექსტი დაფებზე არ იყო — დასადასტურებელია.
+
+**ტესტის დამხმარე** (`@/features/__tests__/page-helpers.jsx`): `renderPage(path, adapter)`, `settle(main)`, `okAdapter()`, `failingAdapter()`, `emptyAdapter()`, `pendingAdapter()`, `switchableAdapter(initial) → { adapter, use }`, `headingTree(main)`, `skippedLevels(tree)`, `unbracketedFacts(main)`, `NOW`, `AXE`.
+
+**ბანდლი:** მთავარი JS 407.55 kB / **120.37 kB gzip** (F4: 118.86), CSS 62.16 / 12.78 kB gzip (F4: 11.16; + sections.css და UI-ის F5 ბლოკი); HomePage 5.75 / 1.75 kB + CSS 0.67 kB, AboutPage 3.83 / 1.23 kB + CSS 0.52 kB, PillarList (საერთო) 1.97 / 0.75 kB + CSS 0.33 kB.
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+1. **ვიდეოს ბმული `/videos?video={slug}`** (prompt: `?v=`) — VideoCard-ის (F3) და `?series=`-ის თანმიმდევრულობა.
+2. **„გახდი პარტნიორი“ → `/contact?topic=partnership`** (prompt: `partner`) — ტაქსონომიის id; F6-ის ფორმა თემას ამით ირჩევს.
+3. **ვიდეო-ისტორიები კვირის ვიდეოს არ იმეორებს** (დაფაზე ერთი ვიდეო ჰეროშიც და სექციაშიც იყო).
+4. **„ყველა …“ ბმული სათაურის შემდეგაა** მობილურზეც (HomeMobile — სიის ბოლოს): ფოკუსის რიგი = ვიზუალური.
+5. **სერიები მობილურზე ბადეა** და არა ჰორიზონტალური ზოლი (WCAG 1.4.10, scrollable-region-focusable).
+6. **ღირებულებები ნომრებისა და ფერადი წრეების გარეშე:** თანმიმდევრობა არ არის; წრეები #FFB81C-ს (მხოლოდ CTA) და #13A06F-ს (მხოლოდ ზრდა) იყენებდა.
+7. **მიმართულებების ხატულის აქცენტი ერთია** (`--mc-graphic`; დაფაზე ნარინჯისფერი / ოქროსფერი / მწვანე).
+8. **ტოკენს გარეთ ფერები:** #17406E → #2B4A70, #DCE6F1 → #B8C7D9, #12294A → #0B1C33; ჰეროს ბარათის rgba-ჩრდილი → ბარათის მყარი hover-ჩრდილი.
+9. **მუქ თემაში ზოლის ფონი #030B16** (`--mc-hero`; დაფაზე #0F2440) — მუქი ბარათები ფონისგან გამოიყოფა.
+10. **შესასვლელის სახელი „განვითარება“ მობილურზეც** (HomeMobile — „სლაიდები“), ნავიგაციის თანმიმდევრულად.
+11. **კვირის ვიდეო მობილურის ჰეროშიც** (HomeMobile-ის ჰეროში არ იყო; prompt-ის შემადგენლობა).
+12. **„თავიდან ცდა“** — `common.retry` შეიცვალა (prompt).
+13. **390px-ის რაოდენობები** HomeMobile-ის მიხედვით: 2 სტატია, 3 სერია, 2 სიახლე, მოკლე აღწერის გარეშე — media query-ით (1440-ზე 200%-ზეც ყველა ჩანს).
+14. **მიმართულების ბარათი:** სათაური 23 → 21px, კიდე 28 → 24px — 7fr-იან სვეტში „ჩართულობა“ / „სოციალური“ იჭრებოდა.
+15. **სერიის ყდის სათაური მთავარზე 30px** (SeriesCard-ში h2-ის ზომა) — „მსოფლხედვა“ იჭრებოდა.
+16. **დაკვრის წრე ჩანაცვლების ჩარჩოზე არ ჩანს** — ფოტოს მიმართულებას ფარავდა; ნამდვილ პოსტერზე ჩანს. მცირე კადრში (row) წარწერა არ არის — ხანგრძლივობის ნიშანს ეფარებოდა.
+17. **ორბიტა CSS mask-ია** და არა inline SVG — SVG axe-ს ფონის დადგენაში უშლიდა ხელს (incomplete); კონტრასტის თემაში დამალულია.
+18. **„ჩვენ შესახებ“ 390px** — მობილური დაფა არ არის: ერთი სვეტი, კიდე 20px, გუნდი — ფოტო მარცხნივ (72px), პარტნიორები — 2 სვეტი, ფოტოები — 2 სვეტი.
+19. **ჩანაცვლების ჩარჩო იზრდება ტექსტით** (`overflow: visible`) — ფოტოს გრძელი მიმართულება ვიწრო ჩარჩოში არ იჭრება.
+20. **ფოტოს მიმართულება mock-ში:** გუნდის 8 პორტრეტი და 6 ვიდეოს პოსტერი — „თვალის დონე, მოქმედების მომენტი — …“; მრავალფეროვნება მოქმედებით (ჟესტური ენა, ეკრანის მკითხველი, ბრაილის დისპლეი, მარტივი ენის მასალა).
+21. **ხმოვანი რეჟიმის ტესტი** (F4) განახლდა: `/about` ახლა ბილიკს, h1-ს და ტექსტს კითხულობს.
+
+### ღია საკითხები
+
+1. **ცარიელი მდგომარეობების ტექსტი** დაფებზე არ იყო (6 + 3 სტრიქონი, `home.*Empty`, `about.*Empty`) — დასადასტურებელია.
+2. **„ჩვენ შესახებ“-ის ჰეროს ფოტოები** მოდელში არ არის (`about-media.js`) — CMS-თან ერთად `SiteSettings`-ში / გვერდის მოდელში.
+3. **თარიღი Chromium-ში ინგლისურია** („Oct“, „October 24, 2026“) — §9.7 (F2-ის `format.js`, ICU). სრული ICU-ის ბრაუზერში ქართულია; fallback ჯერ არ არის.
+4. **„ჩაერთე“ და „გახდი პარტნიორი“** `/contact`-ზე მიდის; F6-ის ფორმამ `?topic=partnership` და `?topic=barrier` უნდა წაიკითხოს.
+5. **ვიდეოს პარამეტრი `?video=`** — F7-ის ფლეიერმა უნდა წაიკითხოს (ან VideoCard-ს `onSelect`).
+6. **სიახლის ბარათი ბმული არ არის** — `/news/:slug` ჯერ გადაუწყვეტელია (F2-ის ღია საკითხი 2, F6).
+7. **მთავარი გვერდის სიგრძე 390-ზე** ≈ 7800px (დაფა 4980) — ბარათები UI ნაკრებისაა (ფოტო 3:2, ყდა 4:3), დაფის მობილური ბარათები უფრო კომპაქტურია. თუ დიზაინი მოითხოვს, F7-ის აუდიტში — კომპაქტური ბარათის ვარიანტი.
+8. **დაფები გასასწორებელია** (project-context §9.6): ღირებულებების ნომრები და ფერები, ხატულების აქცენტები, #17406E / #DCE6F1 / #12294A, კვირის ვიდეოს გამეორება, HomeMobile-ის სლაიდების ზოლი.
+9. **ჩატვირთვის ორი მოთხოვნა `getSettings()`-ზე** (ფუტერი + გუნდი) — mock-ზე უმნიშვნელოა; CMS-ზე adapter-ის დონის ქეში დასჭირდება.
+10. F1-ის ღია საკითხი 3 (გრძელი სიტყვები) გვერდებზე დახურულია (`overflow-wrap: anywhere` + `minmax(0, 1fr)`); F1-ის 4 (gutter 24px) — `--mc-gap`. ძალაშია: F1 5, 7; F2 2–11; F3 1, 4–7; F4 1–3, 6–11.
+
+### შემდეგი: F6 — სტატიები + სიახლეები + კონტაქტი
+
+3 გვერდი + სტატიის შაბლონი. Gate: ფორმა გადის კლავიატურით და ეკრანის მკითხველით. F5-იდან: `PageHero` / `PageSection`, `ContentState` + `SkeletonGroup`, `Breadcrumbs` (სტატიის გვერდი), `DateTile`, `PendingLink`, `mc-grid`; ფორმამ `?topic=` უნდა წაიკითხოს (`partnership`, `barrier`); სიახლის სრული ტექსტის გადაწყვეტა (`/news/:slug`?); `format.js`-ის ქართული fallback (§9.7) — სტატიებისა და სიახლეების გვერდებზე თარიღი მთავარია.

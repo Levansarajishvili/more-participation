@@ -109,6 +109,7 @@ src/
     base.css              ტიპოგრაფია, --mc-font-scale, --mc-leading, data-size / data-spacing
     components.css        F3: UI ნაკრების სტილები (@layer components, mc-*), reduced-motion; F4: Switch
     layout.css            F4: გარსი — ზედა ზოლი, მენიუ, ჰედერი (data-layout), მობ. პანელი, ფუტერი (container query)
+    sections.css          F5: PageSection / PageHero, ბადე (mc-grid, --4, --6), ორბიტა (CSS mask), PendingLink
     focus.css             სამშრიანი რგოლი (layer-ის გარეშე) + ბარათის რგოლი (:has) + data-force;
                           F4: #main და [data-route-focus] — რგოლის გარეშე
     motion.css            prefers-reduced-motion; F4: [data-theme-switching] — თემის ფერების გადასვლა 200ms
@@ -121,15 +122,24 @@ src/
       speech.js           speechSynthesis-ის store: ქართული ხმა, readElement, cancelSpeech, useSpeech (Esc აჩერებს)
       A11yMenu.jsx        თავსებადობის მენიუ (არამოდალური პანელი)
       __tests__/          მენიუ: შენახვა/აღდგენა, Esc, OS-ის თემა, ხმოვანი რეჟიმი; speech.js
+    home/                 F5: მთავარის სექციები — HomeHero, HomeAbout, HomeArticles, HomeDevelopment,
+                          HomeVideos, HomeNews; useHomeContent.js (4 მოთხოვნა, splitVideos); home.css
+    about/                F5: AboutHero, AboutMission, AboutValues, AboutPath, AboutTeam (#team),
+                          AboutPartners (#partners); PillarList (+ pillars.css, მთავარიც იყენებს);
+                          about-media.js (ჰეროს ფოტოები); about.css
+    __tests__/            F5: page-helpers.jsx (renderPage, adapter-ები: ok/failing/empty/pending/
+                          switchable, headingTree, unbracketedFacts), pages.test.jsx (CSS, gate-ის თვითტესტი)
   components/
     ui/                   F3: index.js (შესასვლელი), Button, Chip, Card, Media, Accordion, SaveToggle,
                           A11yBadge, GrowthStat, SectionHeading, Quote, Icon (+ icon-sprite.js), Logo
-                          (+ logo-geometry.js), VisuallyHidden, LiveRegion, UiLink, Switch (F4), utils.js
+                          (+ logo-geometry.js), VisuallyHidden, LiveRegion, UiLink, Switch (F4), utils.js;
+                          F5: ContentState, Skeleton (+ SkeletonGroup), Breadcrumbs, DateTile, PendingLink
       cards/              Article, Series, Video, News, Event, Team, PartnerCard
       fields/             TextField, TextArea, Select, Checkbox, RadioGroup, Field.jsx, field-utils.js
       __tests__/          axe, კლავიატურა, ლოგო, components.css (fixtures.jsx — mock-ის summary-ები)
     layout/               F4: RootLayout (Provider + PageShell + ScrollRestoration), PageShell, SiteHeader,
-                          SiteFooter, site-nav.js (ბმულები), useShellLayout.js, usePageTitle.js, __tests__/
+                          SiteFooter, site-nav.js (ბმულები), useShellLayout.js, usePageTitle.js, __tests__/;
+                          F5: PageSection, PageHero
     media/                F7: slider, player
   pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
   content/
@@ -224,3 +234,29 @@ src/
 - ორობითი პარამეტრი — `<Switch>` (`role="switch"`); მიუწვდომელი — `disabled` + `disabledReason`
   (`aria-disabled`, ფოკუსს იღებს, მიზეზი ხილულია). ზღვარზე მისული ღილაკი — `aria-disabled`, არა `disabled`.
 - ტესტებში router — `createMemoryRouter(createRoutes(), …)`; სიგანე და OS-ის თემა — `installMatchMedia()`.
+
+## კოდის კონვენციები (F5)
+
+- გვერდი = ჰერო + სექციები: `PageHero` (h1 გვერდისაა, `id={headingId}`) და `PageSection` (`headingId`,
+  `title`, `eyebrow`, `lead`, `action`, `tone: default | alt | dark`, `split`). `<section>` და `<h2>`-ს
+  გვერდი ხელით არ აწყობს; სექციის შიგნით სათაური h3-ით იწყება. hash-ის სამიზნე (`#team`) — h2-ის id.
+- მუქი ზოლი: `tone="dark"` (ფონი `--mc-hero`, შიგთავსი `data-theme="dark"`). თეთრი ბარათი ლურჯ ფონზე —
+  ძირეულ თემაში (`PageHero` `asideTheme="root"`).
+- ყოველი მონაცემიანი ბლოკი `ContentState`-შია: `status`, `error`, `onRetry={reload}`, `label` (სექციის
+  სახელი), `skeleton` (`SkeletonGroup` იმავე ბადის კლასით), `empty` + `emptyText`, `focusId` (h2-ის id);
+  შიგთავსი — ფუნქცია `{() => …}` (მხოლოდ `success`-ზე იძახება). ჩონჩხი ანიმაციას არ იღებს.
+- სია — `<ul className="mc-grid …">` + `<li>` + ბარათი. სვეტები: `mc-grid` (3), `mc-grid--4`,
+  `mc-grid--6`, `mc-grid--tight`; ვიწრო row-ბარათები — `mc-row-list` (საკუთარი კონტეინერი).
+- მრავალსვეტიანი განლაგება — container query (`@container (min-width: …rem)`), რომ შრიფტის მასშტაბს
+  მიჰყვეს; ბლოკის ტექსტს `overflow-wrap: anywhere` (`.mc-section__inner`) აქვს. რაოდენობის შეზღუდვა
+  მობილურზე — media query (ეკრანი, არა მასშტაბი).
+- გვერდის CSS lazy chunk-თან ერთად იტვირთება (`import './home.css'` გვერდიდან / კომპონენტიდან),
+  `@layer components`, მხოლოდ `--mc-*`; HEX, `var(--mc-cta)` და ანიმაცია გვერდის CSS-ში არ არის
+  (ამოწმებს `src/features/__tests__/pages.test.jsx`).
+- ფოტოს ჩანაცვლება — „[ფოტო: თვალის დონე, მოქმედების მომენტი — …]“; მრავალფეროვნება მოქმედებით
+  (ჟესტური ენა, ეკრანის მკითხველი, ბრაილი, მარტივი ენა), არასოდეს შეზღუდვის წარწერით პირად ბარათზე.
+  ეტლის სიმბოლო დეკორაციად არ გამოიყენება.
+- გვერდის ტესტი: `renderPage(path, adapter)` + `settle(main)`; სამი მდგომარეობა (`pendingAdapter`,
+  `failingAdapter` + `switchableAdapter` → ფოკუსი h2-ზე, `emptyAdapter`), `skippedLevels(headingTree(main))`
+  = `[]`, `unbracketedFacts(main)` = `[]`, axe (jsdom). Chromium-ის axe — gate (1440 / 390 × 3 თემა).
+

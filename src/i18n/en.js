@@ -115,6 +115,9 @@ const en = {
     filtersReset: '[EN: common.filtersReset]',
     assetPending: '[EN: common.assetPending]',
   },
+  states: {
+    loading: '[EN: states.loading] {label}',
+  },
   saved: {
     save: '[EN: saved.save] {title}',
     added: '[EN: saved.added] {title}',
@@ -156,6 +159,12 @@ const en = {
     newsTitle: '[EN: home.newsTitle]',
     newsLead: '[EN: home.newsLead]',
     newsAll: '[EN: home.newsAll]',
+    entryCount: '[EN: home.entryCount] {count}',
+    weeklyEmpty: '[EN: home.weeklyEmpty]',
+    articlesEmpty: '[EN: home.articlesEmpty]',
+    developmentEmpty: '[EN: home.developmentEmpty]',
+    videosEmpty: '[EN: home.videosEmpty]',
+    newsEmpty: '[EN: home.newsEmpty]',
   },
   about: {
     title: '[EN: about.title]',
@@ -213,6 +222,11 @@ const en = {
     partnersTitle: '[EN: about.partnersTitle]',
     partnersLead: '[EN: about.partnersLead]',
     becomePartner: '[EN: about.becomePartner]',
+    photoTraining: '[EN: about.photoTraining]',
+    photoTeam: '[EN: about.photoTeam]',
+    pathEmpty: '[EN: about.pathEmpty]',
+    teamEmpty: '[EN: about.teamEmpty]',
+    partnersEmpty: '[EN: about.partnersEmpty]',
   },
   articles: {
     title: '[EN: articles.title]',

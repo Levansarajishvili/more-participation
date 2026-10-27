@@ -1,0 +1,87 @@
+/*
+ * „ჩვენ შესახებ“ (F5): ჰეროს ფოტოები, მისიის ტექსტი, „ჩვენი გზა“, პარტნიორების ბარათი.
+ * წყარო: AboutPage (1440); 390px — HomeMobile-ის პატერნებით. ფერი მხოლოდ --mc-* ტოკენით.
+ */
+@layer components {
+  /* ------------------------------------------------------------ ჰეროს ფოტოები */
+  .mc-about-photos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+  .mc-about-photos > :nth-child(2) {
+    margin-top: 2rem; /* 32 — დაფა */
+  }
+  .mc-about-photos > .mc-media {
+    border-radius: var(--radius-card);
+  }
+
+  /* ------------------------------------------------------------ მისია */
+  .mc-mission__text {
+    max-width: 36em;
+    margin: 0;
+    font-size: var(--text-article);
+    line-height: var(--text-article--line-height);
+  }
+  .mc-mission__note {
+    max-width: 40em;
+    margin: 0;
+    color: var(--mc-muted);
+  }
+
+  /* ------------------------------------------------------------ ღირებულებები */
+  .mc-values .mc-card__title {
+    font-size: var(--text-lead);
+    line-height: calc(1.3 * var(--mc-leading));
+  }
+
+  /* ------------------------------------------------------------ ჩვენი გზა */
+  .mc-path__item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding-top: 1.125rem;
+    border-top: 4px solid var(--mc-band);
+  }
+  .mc-path__year {
+    margin: 0;
+    font-size: var(--text-h3);
+    line-height: calc(1.3 * var(--mc-leading));
+    font-weight: 900;
+  }
+  .mc-path__text {
+    margin: 0;
+    color: var(--mc-muted);
+  }
+
+  /* ------------------------------------------------------------ პარტნიორები */
+  .mc-grid--6 .mc-card--partner .mc-card__body {
+    padding: 0.75rem 1rem 1rem;
+  }
+  .mc-grid--6 .mc-card--partner .mc-card__title {
+    font-size: var(--text-body);
+    line-height: calc(1.35 * var(--mc-leading));
+  }
+
+  /* ------------------------------------------------------------ გუნდი: ვიწრო (390, 200%) */
+  /* 8 ბარათი ერთ სვეტში: ფოტო მარცხნივ (72px), ტექსტი მარჯვნივ — HomeMobile-ის სიის პატერნი */
+  @container (width < 36rem) {
+    .mc-team .mc-card--person {
+      flex-direction: row;
+      align-items: flex-start;
+    }
+    .mc-team .mc-card--person .mc-card__media {
+      flex: 0 0 4.5rem;
+      width: 4.5rem;
+      margin: 1.25rem 0 1.25rem 1.25rem;
+    }
+    .mc-team .mc-card--person .mc-card__body {
+      min-width: 0;
+      padding: 1.25rem;
+    }
+    .mc-team .mc-card--person .mc-media--placeholder {
+      padding: 0.25rem;
+    }
+  }
+}

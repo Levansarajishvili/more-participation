@@ -1157,3 +1157,279 @@
     rotate: 360deg;
   }
 }
+
+/*
+ * F5: UI ნაკრების გაფართოება — ბარათის ხატულა და row-განლაგება, ვიდეოს ფიჩერი, ჩონჩხი,
+ * მდგომარეობის ბლოკი (შეცდომა / ცარიელი), ნავიგაციის ბილიკი. ფერი მხოლოდ --mc-* ტოკენით.
+ */
+@layer components {
+  /* ------------------------------------------------------------ ბარათის ხატულა (წრე) */
+  /* data-theme="dark" ქვეხე: წრე ორივე თემაში მუქია — #0B1C33, ხატულა #EAF0F7 (14.91:1), აქცენტი #FF8A4C (7.32:1) */
+  .mc-icon-well {
+    --mc-icon-accent: var(--mc-graphic);
+    order: -2;
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 3.75rem;
+    height: 3.75rem;
+    margin-bottom: 0.375rem;
+    border: 2px solid var(--mc-line);
+    border-radius: var(--radius-circle);
+    background-color: var(--mc-alt);
+    color: var(--mc-ink);
+  }
+
+  /* ------------------------------------------------------------ ბარათი: row */
+  .mc-card--row {
+    --mc-card-media: clamp(7.5rem, 38%, 13.75rem); /* 120–220px (HomeMobile / HomePage) */
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .mc-card--row .mc-card__media {
+    flex: 0 0 var(--mc-card-media);
+    align-self: flex-start;
+    margin: 0.75rem 0 0.75rem 0.75rem;
+    border-radius: var(--radius-field-lg);
+  }
+  .mc-card--row .mc-card__body {
+    min-width: 0;
+    padding: 0.75rem 1rem 0.875rem;
+  }
+  .mc-card--row .mc-card__title {
+    font-size: var(--text-body);
+    line-height: calc(1.35 * var(--mc-leading));
+  }
+  .mc-card--row .mc-card__media .mc-media--placeholder {
+    border-width: 2px;
+    border-radius: var(--radius-field-lg);
+  }
+  .mc-card--row .mc-thumb-badge--time {
+    right: 0.375rem;
+    bottom: 0.375rem;
+  }
+  /*
+   * row-ბარათების სია — საკუთარი კონტეინერი: ვიწრო სიაში (125–200%, 390px) კადრი ზემოთ ბრუნდება.
+   * rem კონტეინერის პირობაში <html>-ის ზომაა, ამიტომ ზღვარი შრიფტის მასშტაბს მიჰყვება.
+   */
+  .mc-row-list {
+    container: mc-row-list / inline-size;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+  .mc-row-list > li {
+    display: flex;
+    min-width: 0;
+  }
+  .mc-row-list > li > * {
+    flex: 1 1 auto;
+  }
+  @container mc-row-list (max-width: 20rem) {
+    .mc-card--row {
+      flex-direction: column;
+    }
+    .mc-card--row .mc-card__media {
+      flex-basis: auto;
+      align-self: stretch;
+      margin: 0.75rem 0.75rem 0;
+    }
+  }
+
+  /*
+   * ჩანაცვლების ჩარჩო ტექსტს არ კვეთს: overflow: visible-ით aspect-ratio-ს ავტომატური მინიმუმი
+   * შიგთავსის სიმაღლეა — ფოტოს გრძელი მიმართულება ვიწრო ჩარჩოში ბლოკს ადიდებს და არ იმალება.
+   * ნამდვილი სურათი (`.mc-media__img`) ზუსტ პროპორციაში რჩება.
+   */
+  .mc-media--placeholder {
+    overflow: visible;
+    overflow-wrap: anywhere; /* 200%-ზე ვიწრო ჩარჩოში გრძელი სიტყვა ჩარჩოს არ სცდება */
+  }
+
+  /* პატარა კადრი: მხოლოდ „[ვიდეოს კადრი]“, მინიმალური შიდა დაშორებით */
+  .mc-media--compact.mc-media--placeholder {
+    padding: 0.25rem;
+  }
+
+  /* ------------------------------------------------------------ ვიდეოს ფიჩერი (ჰერო) */
+  .mc-video-thumb--feature .mc-video-thumb__play {
+    width: 4rem;
+    height: 4rem;
+    margin: -2rem 0 0 -2rem;
+    opacity: 1;
+  }
+  @media (min-width: 48rem) {
+    .mc-video-thumb--feature .mc-video-thumb__play {
+      width: 5.25rem; /* 84 — HomePage დაფა */
+      height: 5.25rem;
+      margin: -2.625rem 0 0 -2.625rem;
+    }
+  }
+
+  /* ჩანაცვლების ჩარჩოზე დაკვრის წრე ფოტოს მიმართულების ტექსტს ფარავდა — ნამდვილ პოსტერზე ჩანს */
+  .mc-video-thumb:has(.mc-media--placeholder) .mc-video-thumb__play {
+    display: none;
+  }
+
+  /* ------------------------------------------------------------ სიახლე: compact */
+  .mc-card--news-compact .mc-card__aside {
+    padding: 1.25rem 0 1.25rem 1.25rem;
+  }
+  .mc-card--news-compact .mc-card__body {
+    padding: 1.25rem 1.25rem 1.25rem 1rem;
+  }
+  .mc-card--news-compact .mc-card__title {
+    font-size: var(--text-lead);
+    line-height: calc(1.3 * var(--mc-leading));
+  }
+
+  /* ------------------------------------------------------------ ჩონჩხი (ანიმაციის გარეშე) */
+  .mc-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    min-width: 0;
+    padding: 0 0 1.5rem;
+    border: 2px solid var(--mc-line);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    overflow: hidden;
+  }
+  .mc-skeleton__media {
+    display: block;
+    width: 100%;
+    background-color: var(--mc-alt);
+  }
+  .mc-skeleton__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    padding: 0 1.5rem;
+  }
+  .mc-skeleton__line {
+    display: block;
+    height: 1rem;
+    border-radius: var(--radius-pill);
+    background-color: var(--mc-alt);
+  }
+  .mc-skeleton__line--title {
+    height: 1.5rem;
+  }
+  .mc-skeleton--card .mc-skeleton__body:first-child,
+  .mc-skeleton--text .mc-skeleton__body {
+    padding-top: 1.5rem;
+  }
+  .mc-skeleton--row,
+  .mc-skeleton--tile {
+    flex-direction: row;
+    align-items: flex-start;
+    padding: 0.75rem;
+  }
+  .mc-skeleton--row .mc-skeleton__body,
+  .mc-skeleton--tile .mc-skeleton__body {
+    flex: 1;
+    padding: 0.25rem 0.5rem;
+  }
+  .mc-skeleton__media--row {
+    flex: 0 0 clamp(7.5rem, 38%, 13.75rem);
+    aspect-ratio: 16 / 9;
+    border-radius: var(--radius-field-lg);
+  }
+  .mc-skeleton__tile {
+    flex: 0 0 4.5rem;
+    height: 4.5rem;
+    border-radius: var(--radius-field-lg);
+    background-color: var(--mc-alt);
+  }
+  .mc-skeleton--person {
+    padding-top: 1.5rem;
+  }
+  .mc-skeleton__avatar {
+    width: 7.5rem;
+    aspect-ratio: 1;
+    margin-inline: 1.5rem;
+    border-radius: var(--radius-circle);
+    background-color: var(--mc-alt);
+  }
+  .mc-skeleton--logo {
+    padding: 1rem 1rem 1.25rem;
+  }
+  .mc-skeleton--logo .mc-skeleton__media {
+    border-radius: var(--radius-field);
+  }
+  .mc-skeleton--logo .mc-skeleton__body {
+    padding: 0;
+  }
+  /* alt-ფონის სექციაში ბლოკები surface-ზე უნდა ჩანდეს */
+  .mc-section--alt .mc-skeleton {
+    border-color: var(--mc-border);
+  }
+
+  /* ------------------------------------------------------------ მდგომარეობა: შეცდომა / ცარიელი */
+  .mc-state {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem 1rem;
+    margin: 0;
+    padding: 1.25rem 1.5rem;
+    border: 2px solid var(--mc-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+  }
+  .mc-state--error {
+    border-color: var(--mc-error);
+  }
+  .mc-state--empty {
+    border-style: dashed;
+    color: var(--mc-muted);
+  }
+  .mc-state__icon {
+    flex-shrink: 0;
+    color: var(--mc-error);
+  }
+  .mc-state__text {
+    flex: 1 1 16rem;
+    min-width: 0;
+    margin: 0;
+  }
+
+  /* ------------------------------------------------------------ ნავიგაციის ბილიკი */
+  .mc-breadcrumbs__list {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-small);
+    line-height: var(--text-small--line-height);
+    color: var(--mc-muted);
+  }
+  .mc-breadcrumbs__item {
+    display: inline-flex;
+    align-items: center;
+  }
+  .mc-breadcrumbs__item + .mc-breadcrumbs__item::before {
+    content: '/' / '';
+    padding-inline: 0.5rem;
+  }
+  .mc-breadcrumbs__link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    color: var(--mc-ink);
+    font-weight: 600;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.25em;
+  }
+  .mc-breadcrumbs__link:hover {
+    text-decoration-thickness: 2px;
+  }
+}

@@ -138,4 +138,14 @@
   <symbol id="arrow-up-right" viewBox="0 0 24 24" data-label="გადასვლა" stroke-width="2.5">
     <path class="main" d="M7 17L17 7M9 7h8v8" />
   </symbol>
+
+  <!-- F5: მასალების ტიპები (HomePage დაფის ჰეროს შესასვლელები; education = სტატიები) -->
+  <symbol id="slides" viewBox="0 0 24 24" data-label="სლაიდები">
+    <path class="main" d="M4 5h16v14H4z" />
+    <path class="accent" d="M9 9l6 3-6 3z" />
+  </symbol>
+  <symbol id="video" viewBox="0 0 24 24" data-label="ვიდეო">
+    <path class="main" d="M3 6h13v12H3z" />
+    <path class="accent" d="M16 10l5-3v10l-5-3" />
+  </symbol>
 </svg>

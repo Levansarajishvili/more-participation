@@ -291,7 +291,10 @@ describe('ხმოვანი რეჟიმი', () => {
 
     await user.click(voice);
     expect(voice).toHaveAttribute('aria-checked', 'true');
-    expect(spoken.map((u) => u.text)).toEqual(['ჩვენ შესახებ']);
+    // F5: გვერდს შიგთავსი აქვს — #main ბლოკებად იკითხება: ბილიკი, h1, ტექსტი…
+    const texts = spoken.map((u) => u.text);
+    expect(texts.slice(0, 2)).toEqual(['მთავარი', 'ჩვენ შესახებ']);
+    expect(texts).toContain('ვანგრევთ ბარიერებს. ვაძლიერებთ პოტენციალს.');
     expect(spoken[0].lang).toBe('ka-GE');
     expect(JSON.parse(localStorage.getItem('mc-a11y') ?? '{}')).toMatchObject({ voice: true });
 
