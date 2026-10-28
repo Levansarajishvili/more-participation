@@ -4,6 +4,7 @@ import { Button, ContentState, EventCard, Media, SkeletonGroup } from '@/compone
 import { Slider, VideoPlayer } from '@/components/media/index.js';
 import ArticleBody from '@/features/articles/ArticleBody.jsx';
 import { useContent } from '@/hooks/useContent.js';
+import { localizePath } from '@/i18n/index.js';
 
 import { content } from '../api/adminAdapter.js';
 import StatusBadge from '../components/StatusBadge.jsx';
@@ -48,7 +49,7 @@ export default function PreviewPage() {
           <Button
             variant="link"
             size="sm"
-            href={TYPE_CONFIG[type].publicPath(state.data.item)}
+            href={localizePath(TYPE_CONFIG[type].publicPath(state.data.item))}
             newTab
           >
             {ta('preview.public')}
@@ -89,7 +90,7 @@ export default function PreviewPage() {
             )}
             {type === 'pages' && item && (
               <p>
-                <Button variant="link" href={item.path} newTab>
+                <Button variant="link" href={localizePath(item.path)} newTab>
                   {ta('preview.public')}
                 </Button>
               </p>

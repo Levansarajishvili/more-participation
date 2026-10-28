@@ -22,6 +22,15 @@
 /** @typedef {import('./taxonomy.js').PartnerKind} PartnerKind */
 /** @typedef {import('./taxonomy.js').SocialNetwork} SocialNetwork */
 /** @typedef {import('./taxonomy.js').SeriesTone} SeriesTone */
+
+/**
+ * F9 — ენის ვერსიები: ყოველ კონტენტის ერთეულს (Article, Series, Video, NewsItem, Event, TeamMember,
+ * Partner, SiteSettings) აქვს არასავალდებულო `translations?: Translations` — ნაწილობრივი ასლი
+ * იმავე ფორმით (მხოლოდ ტექსტი: სათაური, აღწერა, alt, ტექსტის ბლოკები, სლაიდის / ტრანსკრიპტის
+ * ტექსტი…). საჯარო პასუხში თარგმანი ზემოდან ედება და ემატება გამოთვლილი `lang: 'ka' | 'en'`
+ * (`localize.js`); `translations` პასუხში არ ხვდება.
+ * @typedef {{ en?: Record<string, unknown> }} Translations
+ */
 /** @typedef {import('./taxonomy.js').ContactTopic} ContactTopic */
 /** @typedef {import('./taxonomy.js').ReplyChannel} ReplyChannel */
 

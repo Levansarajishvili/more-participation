@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { formatTimeRange, t } from '@/i18n/index.js';
 
 import A11yBadge from '../A11yBadge.jsx';
@@ -23,6 +24,7 @@ export default function EventCard({ event, headingLevel = 'h3', className, ...re
   const { title, excerpt, start, end, location, accessibility, registrationUrl } = event;
   return (
     <Card
+      contentLang={contentLang(event)}
       title={title}
       headingLevel={headingLevel}
       aside={<DateTile date={start} format="weekday" />}

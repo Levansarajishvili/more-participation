@@ -11,6 +11,9 @@
     -->
     <script id="mc-boot">
       (function (d, w) {
+        // F9: ენა URL-იდან (`/en` — ინგლისური) — `<html lang>` პირველ რენდერამდე
+        var path = (w.location && w.location.pathname) || '';
+        d.documentElement.lang = /^\/en(\/|$)/.test(path) ? 'en' : 'ka';
         var THEMES = ['light', 'dark', 'contrast'];
         var SIZES = [100, 125, 150, 175, 200];
         var p = null;

@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { label } from '@/content/taxonomy.js';
 
 import Card from '../Card.jsx';
@@ -16,6 +17,7 @@ export default function PartnerCard({ partner, headingLevel = 'h3', className, .
   const { name, kind, logo, url } = partner;
   return (
     <Card
+      contentLang={contentLang(partner)}
       href={url ?? undefined}
       newTab={Boolean(url)}
       title={name}

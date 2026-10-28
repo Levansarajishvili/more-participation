@@ -6,7 +6,8 @@ import A11yMenu from '@/features/a11y/A11yMenu.jsx';
 import { usePreferences } from '@/features/a11y/usePreferences.js';
 import { t } from '@/i18n/index.js';
 
-import { EN_HREF, JOIN_HREF, NAV_ITEMS } from './site-nav.js';
+import LanguageSwitch from './LanguageSwitch.jsx';
+import { JOIN_HREF, NAV_ITEMS } from './site-nav.js';
 import { useShellLayout } from './useShellLayout.js';
 
 /**
@@ -15,7 +16,7 @@ import { useShellLayout } from './useShellLayout.js';
  *
  * ზედა ზოლი (ორივე თემაში მუქი, `--mc-footer` + `data-theme="dark"` ქვეხე):
  *   skip-link „გადასვლა შინაარსზე“ (compact-ში ჩანს მხოლოდ ფოკუსისას) · თავსებადობის მენიუ ·
- *   English (`lang="en"`, `hreflang="en"`).
+ *   ენის გადამრთველი — English / ქართული (`lang`, `hreflang`; F9: იგივე გვერდი მეორე ენაზე).
  * მთავარი ზოლი (`--mc-header`): ლოგო (ბმული მთავარზე) · 7 პუნქტი `NavLink`-ით · „მუქი რეჟიმი“
  *   (`aria-pressed`) · CTA „ჩაერთე“.
  * compact (ზოლში ნავიგაცია არ ეტევა — 100%-ზე < 1200px; იხ. useShellLayout): ლოგო · რეჟიმი · ჰამბურგერი (`aria-expanded`,
@@ -70,9 +71,7 @@ export default function SiteHeader({ onNavOpenChange }) {
             {t('nav.skipLink')}
           </a>
           <A11yMenu className="mc-topbar__a11y" />
-          <a href={EN_HREF} lang="en" hrefLang="en" className="mc-topbar__link">
-            {t('nav.english')}
-          </a>
+          <LanguageSwitch className="mc-topbar__link" />
         </div>
       </div>
 

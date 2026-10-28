@@ -24,6 +24,7 @@ import { currentLineIndex, durationAttribute } from './transcript-utils.js';
  * @param {string} [props.className]
  */
 export default function Transcript({
+  contentLang,
   id,
   lines,
   currentTime = 0,
@@ -48,7 +49,7 @@ export default function Transcript({
       <p className="mc-transcript__hint">
         {onSeek ? t('player.transcriptHint') : t('player.transcriptPendingHint')}
       </p>
-      <ol className="mc-transcript__list" role="list">
+      <ol className="mc-transcript__list" role="list" lang={contentLang}>
         {lines.map((line, i) => {
           const time = (
             <time dateTime={durationAttribute(line.start)}>{formatDuration(line.start)}</time>

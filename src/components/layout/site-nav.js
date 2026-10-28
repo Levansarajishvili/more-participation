@@ -27,9 +27,6 @@ export const NAV_ITEMS = Object.freeze([
  */
 export const JOIN_HREF = '/contact';
 
-/** ინგლისური ვერსია ჯერ არ არსებობს (§9.4) — ჩასანაცვლებელი მისამართი. */
-export const EN_HREF = '[en-ვერსიის მისამართი]';
-
 /**
  * ფუტერის ბმული: `to` — შიდა როუტი; `setting` — `SiteSettings.links`-ის ველი
  * (null → „[ბმული მზადდება]“, ბმულის გარეშე).

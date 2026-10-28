@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ERROR_CODES } from '@/content/errors.js';
 import {
@@ -22,6 +22,7 @@ import { STATUSES } from '@/content/model.js';
 
 import en from './en.js';
 import {
+  alternatePath,
   createT,
   formatDate,
   formatDateParts,
@@ -29,6 +30,9 @@ import {
   formatDurationLabel,
   formatTimeRange,
   getYear,
+  localeFromPath,
+  localizePath,
+  setLocale,
   t,
   toDateAttribute,
 } from './index.js';
@@ -43,7 +47,10 @@ function flatten(node, prefix = '', out = new Map()) {
   for (const [key, value] of Object.entries(/** @type {object} */ (node))) {
     const path = prefix ? `${prefix}.${key}` : key;
     if (typeof value === 'string') out.set(path, value);
-    else flatten(value, path, out);
+    // F9: მრავლობითი `{ one, other }` — ერთი გასაღებია (ფორმები — `other`-ით შედარება)
+    else if (value && typeof value === 'object' && typeof value.other === 'string') {
+      out.set(path, Object.values(value).join(' '));
+    } else flatten(value, path, out);
   }
   return out;
 }
@@ -58,10 +65,12 @@ describe('ლექსიკონები', () => {
     expect([...enFlat.keys()].sort()).toEqual([...kaFlat.keys()].sort());
   });
 
-  it('en.js — [EN] placeholder-ები იგივე ცვლადებით', () => {
+  it('F9: en.js თარგმნილია — [EN] placeholder არ არის, ცვლადები იგივეა (მრავლობითის ყველა ფორმაში)', () => {
     for (const [key, value] of enFlat) {
-      expect(value.startsWith('[EN')).toBe(true);
-      expect(vars(value)).toEqual(vars(/** @type {string} */ (kaFlat.get(key))));
+      expect(value.startsWith('[EN'), key).toBe(false);
+      expect([...new Set(vars(value))], key).toEqual([
+        ...new Set(vars(/** @type {string} */ (kaFlat.get(key)))),
+      ]);
     }
   });
 
@@ -196,5 +205,52 @@ describe('ფორმატირება (ka-GE, Asia/Tbilisi)', () => {
     expect(formatDurationLabel(120)).toBe('2 წუთი');
     expect(formatDurationLabel(0)).toBe('0 წამი');
     expect(formatDurationLabel(3600)).toBe('1 საათი');
+  });
+});
+
+describe('F9: ინგლისური ენა', () => {
+  afterEach(() => setLocale('ka'));
+
+  it('t() მიმდინარე ენით; მრავლობითი count-ით; რიცხვი en-GB ფორმატით', () => {
+    setLocale('en');
+    expect(document.documentElement.lang).toBe('en');
+    expect(t('articles.found', { count: 1 })).toBe('1 article found');
+    expect(t('articles.found', { count: 5 })).toBe('5 articles found');
+    expect(t('common.shownOf', { shown: 12, total: 12500 })).toBe('Showing 12 of 12,500');
+    expect(formatDurationLabel(61)).toBe('1 minute 1 second');
+    setLocale('ka');
+    expect(t('articles.found', { count: 5 })).toBe('ნაპოვნია 5 სტატია');
+  });
+
+  it('თარიღი ინგლისურად (en-GB, თბილისის დრო)', () => {
+    setLocale('en');
+    const date = '2026-03-05T10:00:00+04:00';
+    expect(formatDate(date)).toBe('5 March 2026');
+    expect(formatDate(date, 'weekday')).toBe('Thursday, 5 March');
+    expect(formatDate(date, 'monthYear')).toBe('March 2026');
+    expect(formatDate(date, 'dateTime')).toBe('5 March 2026, 10:00');
+    expect(formatDateParts(date)).toMatchObject({ month: 'March', monthShort: 'Mar' });
+  });
+
+  it('localizePath / alternatePath / localeFromPath', () => {
+    expect(localeFromPath('/en')).toBe('en');
+    expect(localeFromPath('/en/articles')).toBe('en');
+    expect(localeFromPath('/english')).toBe('ka');
+    expect(localizePath('/articles', 'en')).toBe('/en/articles');
+    expect(localizePath('/', 'en')).toBe('/en');
+    expect(localizePath('/en/articles', 'ka')).toBe('/articles');
+    expect(localizePath('/en/articles?x=1', 'en')).toBe('/en/articles?x=1');
+    expect(localizePath('/admin/articles', 'en')).toBe('/admin/articles');
+    expect(localizePath('https://example.org/x', 'en')).toBe('https://example.org/x');
+    expect(localizePath('#main', 'en')).toBe('#main');
+    expect(alternatePath({ pathname: '/news', search: '?type=event', hash: '#top' }, 'en')).toBe(
+      '/en/news?type=event#top',
+    );
+  });
+
+  it('დაკარგული ინგლისური გასაღები → ქართული (სარეზერვო)', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const tt = createT({ a: 'A' }, { fallback: { a: 'ა', b: 'ბ' } });
+    expect([tt('a'), tt('b')]).toEqual(['A', 'ბ']);
   });
 });

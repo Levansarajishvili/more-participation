@@ -123,6 +123,7 @@ export default function FieldRenderer({ field, path = field.name, ctx }) {
         <Suspense fallback={<LiveRegion visible>{ta('editor.loadingEditor')}</LiveRegion>}>
           <RichTextEditor
             id={id}
+            lang={field.lang}
             label={label}
             hint={hint}
             error={error}
@@ -249,6 +250,7 @@ function CountedTextArea({ field, path, ctx }) {
     <div className="mc-counted">
       <TextArea
         id={id}
+        lang={field.lang}
         label={ta(field.label)}
         hint={field.hint ? ta(field.hint, { max: max ?? '' }) : undefined}
         error={ctx.errorFor(path)}

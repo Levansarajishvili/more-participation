@@ -12,6 +12,10 @@ import {
   queryVideos,
 } from '../query.js';
 
+import { getLocale } from '@/i18n/locale.js';
+
+import { localizeSnapshot } from '../localize.js';
+
 import { createMockStore } from './store.js';
 
 /** @typedef {import('../adapter.js').ContentAdapter} ContentAdapter */
@@ -41,7 +45,17 @@ export function createMockAdapter(options = {}) {
   const { delay = 0, fail = null } = options;
   const store = options.store ?? createMockStore({ now: options.now, data: options.data });
   const now = options.now ?? store.now;
-  const data = () => store.snapshot();
+  // F9: პასუხი მიმდინარე ენაზე (`translations.<locale>` ზემოდან, თარგმანის გარეშე — ქართული)
+  /** @type {{ raw: unknown, locale: string, value: ContentSnapshot } | null} */
+  let localized = null;
+  const data = () => {
+    const raw = store.snapshot();
+    const locale = getLocale();
+    if (!localized || localized.raw !== raw || localized.locale !== locale) {
+      localized = { raw, locale, value: localizeSnapshot(raw, locale) };
+    }
+    return localized.value;
+  };
   /** @type {Set<string>} */
   const subscribers = new Set();
   let contactCount = 0;

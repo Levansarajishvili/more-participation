@@ -3,6 +3,7 @@ import { createEvents, createNews } from './news.js';
 import { createPartners, createSettings, createStages, createTeam } from './org.js';
 import { createSeries } from './series.js';
 import { createVideos } from './videos.js';
+import { applyTranslations } from './translations.js';
 
 /** @typedef {import('../model.js').ContentSnapshot} ContentSnapshot */
 
@@ -13,7 +14,8 @@ import { createVideos } from './videos.js';
  * @returns {ContentSnapshot}
  */
 export function createMockData({ now = Date.now() } = {}) {
-  return {
+  // F9: ინგლისური ვერსიები — ნაწილი მასალისა (translations.js)
+  return applyTranslations({
     articles: createArticles(now),
     series: createSeries(now),
     videos: createVideos(now),
@@ -23,5 +25,5 @@ export function createMockData({ now = Date.now() } = {}) {
     partners: createPartners(),
     stages: createStages(),
     settings: createSettings(),
-  };
+  });
 }

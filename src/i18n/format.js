@@ -13,6 +13,9 @@
  * ცარიელ სტრიქონს აბრუნებს და შეცდომას არ აგდებს.
  */
 
+import { LANG_TAG, getLocale } from './locale.js';
+
+/** @deprecated F9: ენა დინამიკურია — `LANG_TAG[getLocale()]`. */
 export const LOCALE = 'ka-GE';
 export const TIME_ZONE = 'Asia/Tbilisi';
 
@@ -61,6 +64,37 @@ export const WEEKDAYS = Object.freeze([
 ]);
 
 /** თბილისი: UTC+4, საზაფხულო დროის გარეშე (2005 წლიდან) — Intl-ის დროის სარტყლის გარეშე. */
+/** F9: ინგლისური სახელები (en-GB: „24 October 2026“, დრო 24-საათიანი — თბილისის დროით). */
+export const MONTHS_EN = Object.freeze([
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+]);
+export const MONTHS_SHORT_EN = Object.freeze(MONTHS_EN.map((m) => m.slice(0, 3)));
+export const WEEKDAYS_EN = Object.freeze([
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+]);
+
+const names = () =>
+  getLocale() === 'en'
+    ? { months: MONTHS_EN, short: MONTHS_SHORT_EN, weekdays: WEEKDAYS_EN }
+    : { months: MONTHS, short: MONTHS_SHORT, weekdays: WEEKDAYS };
+
 const FIXED_OFFSET = 4 * 3_600_000;
 
 /** @type {Intl.DateTimeFormat | null | undefined} undefined — ჯერ არ შექმნილა, null — მიუწვდომელია */
@@ -154,34 +188,33 @@ export function formatDate(value, style = 'long') {
   const date = toDate(value);
   if (!date) return '';
   const p = localParts(date);
-  const dayMonth = `${p.day} ${MONTHS[p.month]}`;
+  const { months, weekdays } = names();
+  const en = getLocale() === 'en';
+  const dayMonth = `${p.day} ${months[p.month]}`;
+  const time = `${pad2(p.hour)}:${pad2(p.minute)}`;
   switch (style) {
     case 'weekday':
-      return `${WEEKDAYS[p.weekday]}, ${dayMonth}`;
+      return `${weekdays[p.weekday]}, ${dayMonth}`;
     case 'monthYear':
-      return `${MONTHS[p.month]}, ${p.year}`;
+      return en ? `${months[p.month]} ${p.year}` : `${months[p.month]}, ${p.year}`;
     case 'dayMonth':
       return dayMonth;
     case 'dateTime':
-      return `${dayMonth}, ${p.year}, ${pad2(p.hour)}:${pad2(p.minute)}`;
+      return en ? `${dayMonth} ${p.year}, ${time}` : `${dayMonth}, ${p.year}, ${time}`;
     default:
-      return `${dayMonth}, ${p.year}`;
+      return en ? `${dayMonth} ${p.year}` : `${dayMonth}, ${p.year}`;
   }
 }
 
-/**
- * თარიღის ნაწილები ბარათის ნიშნისთვის („05“ / „მარ“) — ცალკე ელემენტებად იხატება.
- * @param {DateInput | null | undefined} value
- * @returns {{ day: string, month: string, monthShort: string, year: string } | null}
- */
 export function formatDateParts(value) {
   const date = toDate(value);
   if (!date) return null;
   const p = localParts(date);
+  const { months, short } = names();
   return {
     day: pad2(p.day),
-    month: MONTHS[p.month],
-    monthShort: MONTHS_SHORT[p.month],
+    month: months[p.month],
+    monthShort: short[p.month],
     year: String(p.year),
   };
 }
@@ -253,7 +286,8 @@ export function formatDuration(seconds) {
 }
 
 /** @type {((value: number) => string) | null} */
-let numberFormat = null;
+/** @type {Record<string, (value: number) => string>} */
+const numberFormats = {};
 
 /**
  * ka-GE-ის დაჯგუფება ICU-ის გარეშე: ოთხნიშნა — დაჯგუფების გარეშე, ხუთნიშნა და მეტი — U+00A0.
@@ -272,22 +306,21 @@ function groupGeorgian(value) {
  * @returns {string}
  */
 export function formatNumber(value) {
-  if (!numberFormat) {
-    const intl = new Intl.NumberFormat(LOCALE);
-    numberFormat = intl.resolvedOptions().locale.startsWith('ka')
-      ? (v) => intl.format(v)
-      : groupGeorgian;
+  const locale = getLocale();
+  if (!numberFormats[locale]) {
+    if (locale === 'en') {
+      const intl = new Intl.NumberFormat(LANG_TAG.en);
+      numberFormats.en = (v) => intl.format(v);
+    } else {
+      const intl = new Intl.NumberFormat(LANG_TAG.ka);
+      numberFormats.ka = intl.resolvedOptions().locale.startsWith('ka')
+        ? (v) => intl.format(v)
+        : groupGeorgian;
+    }
   }
-  return numberFormat(value);
+  return numberFormats[locale](value);
 }
 
-/**
- * F7: ფაილის ზომა ბმულის გვერდით (PDF): 245 760 → „240 KB“, 1 572 864 → „1,5 MB“. ერთეული ლათინურად
- * (KB / MB — ფაილის მენეჯერის ენა), ათობითი — მძიმით (ka-GE). 1 KB = 1024 ბაიტი.
- * არარიცხვი / უარყოფითი → '' (ზომა უცნობია — გვერდი `[00 KB]`-ს აჩვენებს).
- * @param {number | null | undefined} bytes
- * @returns {string}
- */
 export function formatFileSize(bytes) {
   if (typeof bytes !== 'number' || !Number.isFinite(bytes) || bytes < 0) return '';
   if (bytes < 1024) return `${Math.round(bytes)} B`;

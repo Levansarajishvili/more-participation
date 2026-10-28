@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { useRef } from 'react';
 import { useParams } from 'react-router';
 
@@ -40,7 +41,7 @@ export default function NewsItemPage() {
       <ReadingHeader
         headingRef={headingRef}
         headingId={HEADING_ID}
-        title={title}
+        title={contentLang(item) ? <span lang={contentLang(item)}>{title}</span> : title}
         breadcrumbs={[
           { to: '/', label: t('nav.home') },
           { to: '/news', label: t('nav.news') },
@@ -49,7 +50,17 @@ export default function NewsItemPage() {
         category={
           item && { to: `/news?category=${item.type}`, label: label('newsType', item.type) }
         }
-        lead={item?.excerpt}
+        lead={
+          item &&
+          (contentLang(item) ? (
+            <>
+              <span className="mc-card__lang">{t(`common.inLanguage.${contentLang(item)}`)}</span>{' '}
+              <span lang={contentLang(item)}>{item.excerpt}</span>
+            </>
+          ) : (
+            item.excerpt
+          ))
+        }
         meta={
           item && (
             <span>
@@ -105,7 +116,7 @@ export default function NewsItemPage() {
         <div className="site-container mc-reading__content">
           <div className="mc-reading__column">
             <Media image={item.cover} ratio="3:2" loading="eager" className="mc-reading__cover" />
-            <ArticleBody blocks={item.body} />
+            <ArticleBody blocks={item.body} lang={contentLang(item)} />
             <p className="mc-reading__back">
               <Button variant="link" to="/news">
                 {t('news.backToList')}

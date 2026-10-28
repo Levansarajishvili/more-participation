@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { useRef } from 'react';
 import { useParams } from 'react-router';
 
@@ -51,7 +52,7 @@ export default function ArticlePage() {
         <ReadingHeader
           headingRef={headingRef}
           headingId={HEADING_ID}
-          title={title}
+          title={contentLang(article) ? <span lang={contentLang(article)}>{title}</span> : title}
           breadcrumbs={[
             { to: '/', label: t('nav.home') },
             { to: '/articles', label: t('nav.articles') },
@@ -63,7 +64,19 @@ export default function ArticlePage() {
               label: label('articleCategory', article.category),
             }
           }
-          lead={article?.excerpt}
+          lead={
+            article &&
+            (contentLang(article) ? (
+              <>
+                <span className="mc-card__lang">
+                  {t(`common.inLanguage.${contentLang(article)}`)}
+                </span>{' '}
+                <span lang={contentLang(article)}>{article.excerpt}</span>
+              </>
+            ) : (
+              article.excerpt
+            ))
+          }
           meta={
             article && (
               <>
@@ -115,7 +128,7 @@ export default function ArticlePage() {
                 loading="eager"
                 className="mc-reading__cover"
               />
-              <ArticleBody ref={bodyRef} blocks={article.body} />
+              <ArticleBody ref={bodyRef} blocks={article.body} lang={contentLang(article)} />
               <p className="mc-reading__back">
                 <Button variant="link" to="/articles">
                   {t('articles.backToList')}

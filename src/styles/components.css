@@ -1682,3 +1682,20 @@
     color: var(--mc-error);
   }
 }
+
+/* F9: მასალის ენის ნიშანი („In Georgian“) — ბარათის მეტა და სტატიის შესავალი; ტექსტი ჩანს,
+   ჩარჩო დეკორატიულია (ინფორმაციას ტექსტი ატარებს) */
+@layer components {
+  .mc-card__lang {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    border: 1px solid var(--mc-border);
+    border-radius: var(--radius-pill);
+    color: var(--mc-muted);
+    font-size: var(--text-small);
+    font-weight: 700;
+    line-height: 1.6;
+    vertical-align: 0.1em;
+  }
+}

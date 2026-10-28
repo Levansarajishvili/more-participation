@@ -1,23 +1,18 @@
 /**
- * en.js-ის გენერატორი: ka.js-ის ყველა გასაღები → `[EN: გასაღები]` + იგივე `{ცვლადები}`.
- * უკვე თარგმნილი მნიშვნელობა (რომელიც `[EN`-ით არ იწყება) ინახება; ka.js-ში წაშლილი
- * გასაღები en.js-იდანაც იშლება. გაშვება: `npm run i18n:stub`.
+ * ინგლისური ლექსიკონების სინქრონი (F9): ka.js-ის ყოველი ახალი გასაღები → en.js-ში
+ * `[EN: გასაღები]` + იგივე `{ცვლადები}`; უკვე თარგმნილი მნიშვნელობა (სტრიქონი, რომელიც `[EN`-ით
+ * არ იწყება, ან მრავლობითის ობიექტი `{ one, other }`) ინახება; ka.js-ში წაშლილი გასაღები
+ * en.js-იდანაც იშლება. ფაილის სათავე-კომენტარი ინახება. ორი წყვილი: საიტი (`src/i18n`) და
+ * ადმინი (`src/admin/i18n`). გაშვება: `npm run i18n:stub`.
  */
-import { writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const root = new URL('../src/i18n/', import.meta.url);
-const kaUrl = new URL('ka.js', root);
-const enUrl = new URL('en.js', root);
+const PAIRS = ['../src/i18n/', '../src/admin/i18n/'];
 
-const { default: ka } = await import(pathToFileURL(fileURLToPath(kaUrl)).href);
-/** @type {Record<string, unknown>} */
-let en = {};
-try {
-  en = (await import(pathToFileURL(fileURLToPath(enUrl)).href)).default;
-} catch {
-  en = {};
-}
+/** @param {unknown} v */
+const isPlural = (v) =>
+  Boolean(v) && typeof v === 'object' && typeof (/** @type {any} */ (v).other) === 'string';
 
 /**
  * @param {unknown} source
@@ -28,6 +23,7 @@ try {
 function stub(source, existing, prefix) {
   if (typeof source === 'string') {
     if (typeof existing === 'string' && !existing.startsWith('[EN')) return existing;
+    if (isPlural(existing)) return existing;
     const vars = source.match(/\{\w+\}/g) ?? [];
     return [`[EN: ${prefix}]`, ...vars].join(' ');
   }
@@ -59,14 +55,31 @@ function print(value, depth) {
   return `{\n${entries.join('\n')}\n${pad}}`;
 }
 
-const header = `/**
- * ინგლისური ვერსიის placeholder-ები: გასაღებები ka.js-ს ემთხვევა, მნიშვნელობა — \`[EN: გასაღები]\`
- * + იგივე ცვლადები. ფაილი გენერირდება: \`npm run i18n:stub\` (თარგმნილ მნიშვნელობას ინარჩუნებს).
+const DEFAULT_HEADER = `/**
+ * English strings: same keys as ka.js. Generated / synchronised by \`npm run i18n:stub\`
+ * (translated values are kept; new keys get \`[EN: key]\`).
  */
 `;
 
-await writeFile(
-  enUrl,
-  `${header}const en = ${print(stub(ka, en, ''), 0)};\n\nexport default en;\n`,
-);
-console.log('✓ en.js განახლდა');
+for (const dir of PAIRS) {
+  const root = new URL(dir, import.meta.url);
+  const kaUrl = new URL('ka.js', root);
+  const enUrl = new URL('en.js', root);
+  const { default: ka } = await import(pathToFileURL(fileURLToPath(kaUrl)).href);
+  /** @type {Record<string, unknown>} */
+  let en = {};
+  let header = DEFAULT_HEADER;
+  try {
+    en = (await import(pathToFileURL(fileURLToPath(enUrl)).href)).default;
+    const text = await readFile(enUrl, 'utf8');
+    const match = /^\/\*\*[\s\S]*?\*\/\n/.exec(text);
+    if (match) header = match[0];
+  } catch {
+    en = {};
+  }
+  await writeFile(
+    enUrl,
+    `${header}const en = ${print(stub(ka, en, ''), 0)};\n\nexport default en;\n`,
+  );
+  console.log(`✓ ${dir.replace('../', '')}en.js განახლდა`);
+}

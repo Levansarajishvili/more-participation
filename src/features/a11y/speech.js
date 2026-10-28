@@ -25,7 +25,10 @@ import { useSyncExternalStore } from 'react';
  * @property {string | null} voiceName
  */
 
+import { LANG_TAG, getLocale } from '@/i18n/locale.js';
+
 export const VOICE_TIMEOUT_MS = 2000;
+/** @deprecated F9: ენა დინამიკურია — `LANG_TAG[getLocale()]`. */
 export const SPEECH_LANG = 'ka-GE';
 const MAX_CHUNK = 220;
 const BLOCKS = 'h1, h2, h3, h4, p, li, blockquote, figcaption, dt, dd, caption';
@@ -36,6 +39,11 @@ const listeners = new Set();
 let snapshot = { status: 'pending', phase: 'idle', voiceName: null };
 /** @type {SpeechSynthesisVoice | null} */
 let voice = null;
+/** F9: ხმა თითო ენაზე (ქართული / ინგლისური); `voice` — მიმდინარე ენისა. */
+/** @type {{ ka: SpeechSynthesisVoice | null, en: SpeechSynthesisVoice | null }} */
+let voices = { ka: null, en: null };
+/** @type {'ka' | 'en'} */
+let voiceLocale = 'ka';
 let initialized = false;
 /** @type {ReturnType<typeof setTimeout> | null} */
 let voiceTimer = null;
@@ -61,22 +69,48 @@ function synth() {
  * @returns {SpeechSynthesisVoice | null}
  */
 export function findGeorgianVoice(voices) {
-  const georgian = voices.filter((v) =>
-    (v.lang || '').toLowerCase().replace('_', '-').startsWith('ka'),
+  return findVoice(voices, 'ka');
+}
+
+/**
+ * ენის ხმა (`ka`, `en`): ლოკალური ხმა პრიორიტეტულია.
+ * @param {SpeechSynthesisVoice[]} list
+ * @param {'ka' | 'en'} lang
+ * @returns {SpeechSynthesisVoice | null}
+ */
+export function findVoice(list, lang) {
+  const matching = list.filter((v) =>
+    (v.lang || '').toLowerCase().replace('_', '-').startsWith(lang),
   );
-  return georgian.find((v) => v.localService) ?? georgian[0] ?? null;
+  return matching.find((v) => v.localService) ?? matching[0] ?? null;
 }
 
 function loadVoices() {
   const api = synth();
   if (!api) return;
-  const found = findGeorgianVoice(api.getVoices() || []);
+  const list = api.getVoices() || [];
+  voices = { ka: findVoice(list, 'ka'), en: findVoice(list, 'en') };
+  voiceLocale = getLocale();
+  const found = voices[voiceLocale];
   if (found) {
     voice = found;
     if (voiceTimer) clearTimeout(voiceTimer);
     voiceTimer = null;
     set({ status: 'ready', voiceName: found.name });
   }
+}
+
+/**
+ * F9: ენის შეცვლისას ხმა და სტატუსი ახალი ენისთვის (RootLayout / AdminRoot იძახებს).
+ */
+export function syncSpeechLocale() {
+  const api = synth();
+  if (!initialized || !api || voiceLocale === getLocale()) return;
+  cancelSpeech();
+  voiceLocale = getLocale();
+  const found = voices[voiceLocale] ?? findVoice(api.getVoices() || [], voiceLocale);
+  voice = found;
+  set(found ? { status: 'ready', voiceName: found.name } : { status: 'no-voice', voiceName: null });
 }
 
 /** @param {KeyboardEvent} event */
@@ -174,7 +208,7 @@ export function speakBlocks(blocks) {
   api.cancel();
   chunks.forEach((chunk, index) => {
     const utterance = new window.SpeechSynthesisUtterance(chunk);
-    utterance.lang = SPEECH_LANG;
+    utterance.lang = LANG_TAG[getLocale()];
     utterance.voice = voice;
     utterance.rate = 0.95;
     if (index === chunks.length - 1) {

@@ -1,4 +1,5 @@
 import { ContentError } from '@/content/errors.js';
+import { isTranslated, localize } from '@/content/localize.js';
 import { tbilisi } from '@/content/mock/helpers.js';
 import { ID_PREFIX, getSharedMockStore } from '@/content/mock/store.js';
 import { isPublic } from '@/content/query.js';
@@ -12,8 +13,9 @@ import {
 } from '@/content/validate.js';
 
 import { validateLogin, validateRegister } from '../auth/auth-forms.js';
+import { EN_CODES } from '../editor/checklist.js';
 import { CONTENT_TYPES, TYPE_CONFIG } from '../content-types.js';
-import { ta } from '../i18n/index.js';
+import { adminDictionary, adminDictionaryEn, ta } from '../i18n/index.js';
 
 import { ROLES, can } from './permissions.js';
 
@@ -114,7 +116,19 @@ export function adminState(store) {
     if (store.findBySlug('pages', page.slug)) continue;
     store.insert('pages', {
       slug: page.slug,
-      title: ta(`pageNames.${page.slug}`),
+      // ქართული — ძირითადი ვერსია; ინგლისური — თარგმანი (F9; `ta()` მიმდინარე ენას დააბრუნებდა)
+      title:
+        adminDictionary.pageNames[
+          /** @type {keyof typeof adminDictionary.pageNames} */ (page.slug)
+        ],
+      translations: {
+        en: {
+          title:
+            adminDictionaryEn.pageNames[
+              /** @type {keyof typeof adminDictionaryEn.pageNames} */ (page.slug)
+            ],
+        },
+      },
       path: page.path,
       status: 'published',
       publishedAt: tbilisi(now, -60),
@@ -390,6 +404,14 @@ export function createMockAdminAdapter(options = {}) {
    */
   function assertPublishable(type, item) {
     const blocking = issuesOf(type, item).filter((i) => i.severity === 'error');
+    // F9: ინგლისური ვერსია (თუ თარგმნილია) — იგივე ტექსტური წესები, ველი `translations.en.*`
+    if (isTranslated(item, 'en')) {
+      for (const issue of issuesOf(type, localize(item, 'en'))) {
+        if (issue.severity === 'error' && EN_CODES.includes(issue.code)) {
+          blocking.push({ ...issue, field: `translations.en.${issue.field}` });
+        }
+      }
+    }
     if (!blocking.length) return;
     /** @type {Record<string, { code: any, message: string }>} */
     const fields = {};

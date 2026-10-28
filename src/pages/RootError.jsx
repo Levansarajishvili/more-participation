@@ -1,4 +1,4 @@
-import { t } from '@/i18n/index.js';
+import { localizePath, t } from '@/i18n/index.js';
 
 /**
  * გარსის ავარია (PreferencesProvider, SiteHeader ან SiteFooter ჩავარდა). გარსი არ არის, ამიტომ
@@ -10,7 +10,7 @@ export default function RootError() {
       <title>{`${t('shell.errorTitle')} — ${t('meta.siteName')}`}</title>
       <h1 className="text-h1">{t('shell.errorTitle')}</h1>
       <p className="max-w-article text-lead text-muted">{t('shell.errorText')}</p>
-      <a href="/">{t('shell.notFoundHome')}</a>
+      <a href={localizePath('/')}>{t('shell.notFoundHome')}</a>
     </main>
   );
 }

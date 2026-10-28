@@ -1014,3 +1014,52 @@ frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ი�
 - უფლება — `content.write` (რედაქტორი და ადმინისტრატორი, როგორც არქივზე იყო).
 - **Gate:** lint ✓ · test ✓ (34 ფაილი, 624; არქივის ორი ტესტი → წაშლის სამი) · Chromium axe — სია გახსნილი წაშლის დიალოგით, 3 თემა × 1440 / 390: 0 დარღვევა; 390-ზე დიალოგის სათაური და აღწერა axe-ს „incomplete“-ია (top-layer `<dialog>`-ის გადაფარვა — `bgOverlap`), computed style-ით: 15.39 / 13.59 / 21:1 · build + check-dist ✓.
 - **ღია საკითხი:** წაშლა შეუქცევადია — რეალურ backend-ზე „სანაგვე“ (რბილი წაშლა N დღით) ან წაშლის უფლება მხოლოდ ადმინისტრატორს — დასადასტურებელია.
+
+## F9 — ინგლისური ვერსია ✅ (2026-10-28)
+
+**მოთხოვნა:** საიტის ყველა გვერდი, ადმინ პანელის ჩათვლით, ინგლისურადაც ხელმისაწვდომი.
+
+**Gate:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (38 ფაილი, 641 ტესტი; F9-ის ახალი — 17) · `npm run build` ✓ + check-dist ✓ (43 JS chunk; საჯარო 30 chunk-ში ადმინი / TipTap არ არის; ინგლისური ლექსიკონი — ცალკე dynamic chunk, `/`-ზე არ იტვირთება — Chromium-ში შემოწმდა; ადმინის ინგლისური ლექსიკონი ადმინის chunk-შია) · **Chromium 141 + axe-core 4.14.0** (`npm run audit -- --only en`): ინგლისური ვერსიის 17 მდგომარეობა (11 საჯარო როუტი `/en`-ით + `/en/admin` შესვლა, დაფა, სია, რედაქტორი English ჩანართით, პარამეტრები, მედია) × light / dark / contrast × 1440 / 390 = **102 გაშვება — 0 დარღვევა, 0 incomplete, ჰორიზ. სქროლი 0, `<html lang="en">` ყველგან**. რეგრესია ქართულზე: საჯარო axe 74 / 74 სუფთა, ადმინი (light 1440) 31 / 31.
+
+### გადაწყვეტილებები
+
+- **მისამართები:** ქართული — ძირი (`/articles`), ინგლისური — `/en` (`/en/articles`, `/en/admin/…`). main.jsx ენას URL-იდან იღებს და `createBrowserRouter`-ს `basename: '/en'` გადასცემს — ყოველი შიდა ბმული (`Link to="/articles"`) თავისთავად `/en`-ს იღებს; ადმინის lazy discovery `/en/admin`-ზეც მუშაობს (`stripLocale`).
+- **ენის გადამრთველი** (`LanguageSwitch`): საჯარო ჰედერის ზედა ზოლში, ადმინის header-სა და შესვლის ზოლში — „English“ / „ქართული“ (`lang`, `hreflang`), იგივე გვერდი (query-ით, hash-ით) მეორე ენაზე. ჩვეულებრივი `<a>` — სრული გადასვლა (სხვა basename); mock-ში ადმინის სესია და შეუნახავი მონაცემი ამით იკარგება (რეალურ API-ზე სესია cookie-შია). `EN_HREF` ამოღებულია.
+- **ენის მონიშვნა:** `<html lang>` — mc-boot სკრიპტით პირველ რენდერამდე და `setLocale`-ით; `<head>` — `<link rel="alternate" hreflang="ka|en|x-default">` (RootLayout).
+- **ინგლისური ლექსიკონი ცალკე chunk-ია** (`en-*.js`, 7.6 KB gzip): main.jsx მას მხოლოდ `/en`-ზე ტვირთავს (`registerDictionary('en', …)`) და მერე ხატავს — ქართველ მომხმარებელს არ ჩამოეტვირთება. საწყისი JS (ქართული): 137.3 KB gzip (main 120.9 + საერთო chunk-ები 16.4; Python gzip-9, entry + სტატიკური import-ები). ადმინის ინგლისური ლექსიკონი ადმინის chunk-შია.
+- **ინტერფეისის ტექსტი:** `src/i18n/en.js` (~520 სტრიქონი) და `src/admin/i18n/en.js` (~600) — სრული თარგმანი, იგივე გასაღებები (ტესტი: გასაღებები, ცვლადები, `[EN` placeholder არ არის). `t()` / `ta()` მიმდინარე ენით; დაკარგული ინგლისური გასაღები → ქართული. მრავლობითი: `{ one, other }` (`Intl.PluralRules`). ტონი — ძალა და მოქმედება, სოციალური მოდელი („persons with disabilities“, „the barrier is in the environment“), სიბრალულის ენის გარეშე.
+- **ფორმატი:** თარიღი en-GB-ის რიგით, თბილისის დროით („5 March 2026“, „Thursday, 5 March“, „5 March 2026, 10:00“), რიცხვი en-GB („12,500“). ICU-ის ქართული ლოკალის გარეშე მუშაობის წესი (F6) უცვლელია.
+- **ხმოვანი რეჟიმი:** ხმა მიმდინარე ენისაა (`findVoice(list, 'ka' | 'en')`, `utterance.lang` = `ka-GE` / `en-GB`); ინგლისურ ტექსტებში — „English voice“.
+- **კონტენტის თარგმანი:** მოდელში `translations.en` (ნაწილობრივი ასლი იმავე ფორმით — მხოლოდ ტექსტი). `localize.js`: საჯარო პასუხი მიმდინარე ენაზე — თარგმანი ზემოდან (ცარიელი სტრიქონი → ქართული; მასივი ინდექსით, `body` — მთლიანად), `translations` პასუხში არ ხვდება, ემატება `lang`. ძიება ინგლისურ ტექსტშიც მუშაობს.
+- **თარგმანის გარეშე მასალა ინგლისურ საიტზე ქართულად ჩანს** (ნაგულისხმევი — კითხვაზე პასუხი არ იყო): `lang="ka"` სათაურზე, ტექსტზე და მედიაზე (WCAG 3.1.2) + ნიშანი „In Georgian“ (ბარათის მეტა, სტატიის / სიახლის შესავალი). მასალა არ იმალება.
+- **რედაქტორი:** „ქართული / English“ ჩანართები (WAI-ARIA tabs); English ჩანართში მხოლოდ თარგმნადი ველები (`translations.en.<გზა>`, `lang="en"`): text / textarea / richtext, ფოტოს alt, repeater-ის ტექსტური ქვეველები — სტრუქტურის გარეშე; მინიშნება — ქართული ორიგინალი. ჩეკლისტი არჩეული ენის ვერსიას აჩვენებს; ინგლისური ვერსიის ბლოკერი (alt, სათაურების რიგი, ბმულის ტექსტი, მოკლე აღწერა, მარტივი ენა) გამოქვეყნებას აჩერებს რედაქტორშიც და adapter-შიც, თუ თარგმანი არის.
+- **პარამეტრები:** სექცია „ინგლისური ვერსია“ — პასუხის ვადა, მისამართი, „როგორ მოგვაგნო“, ვიდეოზარის განრიგი, მესენჯერის სახელი, საათები, ოფისის ხელმისაწვდომობა (ტელეფონი, ელფოსტა, ბმულები — საერთო).
+- **mock:** `src/content/mock/translations.js` — ინგლისური ვერსია ნაწილი მასალისა (3 სტატია, 2 სიახლე, 1 სერია, 1 ვიდეო, 2 ღონისძიება, გუნდის 3 წევრი, პარამეტრები) — `[placeholder]`-ის თარგმანი, ფაქტის გარეშე; დანარჩენი — ქართულად („In Georgian“). 7 გვერდის სახელი ორივე ენაზე.
+
+### შექმნილი / შეცვლილი ფაილები
+
+- ახალი: `src/i18n/locale.js`, `src/content/localize.js` (+ ტესტი), `src/content/mock/translations.js`, `src/components/layout/LanguageSwitch.jsx` (`LanguageSwitch`, `AlternateLinks`), `src/admin/i18n/en.js`, `src/admin/editor/TranslationFields.jsx`, `src/admin/editor/translation.js`, `src/i18n/en-pages.test.jsx`, `src/admin/__tests__/{i18n,english}.test.js(x)`.
+- შეცვლილი: `src/i18n/{index,format,ka,en,i18n.test}.js`, `src/test/setup.js` (ინგლისური ლექსიკონის რეგისტრაცია), `src/main.jsx` (basename, ლექსიკონის lazy-ჩატვირთვა), `src/routes.jsx`, `index.html` (mc-boot: lang), `src/features/a11y/speech.js`, `src/content/{model,mock/index,mock/data}.js`, `src/components/ui/Card.jsx` + 7 ბარათი, `src/features/articles/ArticleBody.jsx`, `src/pages/{ArticlePage,NewsItemPage,RootError}.jsx`, `src/components/media/{Slider,Transcript,VideoPlayer}.jsx`, `src/features/{development/SeriesDeck,videos/VideoStage}.jsx`, `src/components/layout/{SiteHeader,RootLayout,site-nav}.js(x)`, `src/styles/components.css`, ადმინი — `i18n/{ka,index}.js`, `shell/AdminShell.jsx`, `pages/{LoginPage,SettingsPage}.jsx`, `editor/{EntityEditor,RichTextEditor,checklist,PreviewPage}.js(x)`, `editor/fields/FieldRenderer.jsx`, `editor/editor.css`, `admin.css`, `api/mock.js`; `scripts/{i18n-stub.mjs,audit.py}`; `CLAUDE.md`, `docs/project-context.md`.
+
+### საჯარო API (+)
+
+- `@/i18n/locale.js` (რეექსპორტი `@/i18n/index.js`-იდან): `LOCALES`, `DEFAULT_LOCALE`, `EN_PREFIX` ('/en'), `LANG_TAG` ({ ka: 'ka-GE', en: 'en-GB' }), `getLocale()`, `setLocale(locale)` (+ `<html lang>`), `isLocale`, `localeFromPath(pathname)`, `stripLocale(pathname)`, `localizePath(path, locale?)` (`/admin`, გარე, `#`, `?` უცვლელია), `alternatePath(location, locale)`, `storedLocale()` / `storeLocale()` (`mc-lang`, მომავლისთვის).
+- `@/i18n/index.js`: `registerDictionary('en', dict)` — ინგლისური ლექსიკონის ჩართვა (main.jsx — დინამიკური import `/en`-ზე, ტესტები — `src/test/setup.js`); რეგისტრაციამდე `t()` ქართულს აბრუნებს; `t()` — მიმდინარე ენით; `createT(dict, { fallback, lang })` — მრავლობითი `{ one, other }`, სარეზერვო ლექსიკონი; `createLocalizedT(kaDict, enDict)` (ადმინის `ta`); `getLang()`. `LANG` ამოღებულია.
+- `@/i18n/format.js`: `MONTHS_EN`, `MONTHS_SHORT_EN`, `WEEKDAYS_EN`; ფორმატი მიმდინარე ენით. `LOCALE` — მოძველებული.
+- `@/content/localize.js`: `overlay(base, patch, key)`, `isTranslated(item, locale)`, `localize(item, locale)` → `{ …, lang }`, `localizeSnapshot(snapshot, locale)`, `contentLang(item, locale?)`.
+- მოდელი: `translations?: { en?: DeepPartial }` ყველა კონტენტის ერთეულზე და `SiteSettings`-ზე; საჯარო პასუხში `lang: 'ka' | 'en'`.
+- `<Card contentLang>` (სათაური / ტექსტი / მედია `lang` + ნიშანი), `<ArticleBody lang>`, `<Slider contentLang>`, `<Transcript contentLang>`; `<LanguageSwitch className>`, `<AlternateLinks />`.
+- speech: `findVoice(list, lang)`, `syncSpeechLocale()`; `SPEECH_LANG` — მოძველებული.
+- ადმინი: `ta()` — მიმდინარე ენით; `adminDictionaryEn`; `<TranslationFields sections ctx headingLevel>`, `EN_PREFIX` ('translations.en'), `isTranslatable(field)` (`translate: false` — გამონაკლისი); `checklist.js`: `EN_CODES`, `validateTranslation(type, values, slugs)`.
+- i18n-ის ახალი გასაღებები: `nav.otherLanguage` (`nav.english`-ის ნაცვლად), `common.inLanguage.{ka,en}`; ადმინი — `editor.lang.*`, `settings.sections.english`, `settings.hints.english`.
+- `npm run audit -- --only en` (`EN_THEMES`, `EN_WIDTHS`); `npm run i18n:stub` — ორივე წყვილი (საიტი, ადმინი), თარგმანს და მრავლობითს ინარჩუნებს.
+
+### ღია საკითხები
+
+1. **ორგანიზაციის ოფიციალური ინგლისური სახელი** — ახლა თარგმანი „More Participation for Development and Social Change“ (მოკლე — „More Participation“).
+2. **ჰოსტინგი:** `/en/*` → index.html (SPA fallback); prerender (hreflang-იანი HTML JS-ის გარეშეც); `X-Robots-Tag` `/en/admin`-ზეც.
+3. **ენის გადართვა სრული გადატვირთვაა** — mock-ში ადმინის სესია იხურება (რეალურ API-ზე — არა).
+4. **ვიდეოს ინგლისური სუბტიტრები / აუდიოაღწერა** — ფაილები (VTT) ენის მიხედვით, კონტენტის გეგმა; ინგლისური ტრანსკრიპტი ტექსტად უკვე ითარგმნება.
+5. **გვერდების სტრუქტურირებული ველები და FAQ** საჯარო გვერდებზე ჯერ i18n-დან / mock-იდან მოდის — CMS-თან ერთად; FAQ-ის რედაქტირება პარამეტრებში არ არის.
+6. **ადმინის სიაში თარგმანის სტატუსის სვეტი / ფილტრი** („თარგმანის გარეშე“) — საჭიროებისას.
+7. **ეკრანის მკითხველით შემოწმება** ორენოვან გვერდზე (`lang` ცვლილებები) — NVDA / VoiceOver რეალურ მოწყობილობაზე.

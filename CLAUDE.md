@@ -97,7 +97,7 @@ public/favicon.svg        ლოგოს 16px ვერსია (LogoSynergy)
 scripts/
   check-dist.mjs          postbuild: mc-boot პირველია, /__kit და validate.js არ არის, შრიფტი არ არის base64
   contrast-report.mjs     ტოკენების კონტრასტის ცხრილი
-  i18n-stub.mjs           en.js-ის გენერაცია ka.js-იდან (`npm run i18n:stub`)
+  i18n-stub.mjs           en.js-ის სინქრონი ka.js-თან — საიტი და ადმინი (`npm run i18n:stub`; თარგმანს ინარჩუნებს)
   placeholders.mjs        F7: [placeholder]-ები ტიპების მიხედვით (`npm run placeholders`, `--json`)
   audit.py                F7: Chromium-ის აუდიტი (`npm run build && npm run audit`; Python Playwright,
                           axe-core node_modules-იდან, ffmpeg — fixture-ები `.audit-fixtures/`-ში)
@@ -180,7 +180,7 @@ src/
                           fields/FieldRenderer.jsx (ყველა ველის სახე), path.js, datetime.js (Tbilisi),
                           vtt.js, autosave.js, PreviewPage; editor.css
     schemas/              ველების კონფიგი თითო ტიპზე (articles, news, events, series, videos, pages)
-    i18n/                 ადმინის ლექსიკონი (ka.js) + ta()
+    i18n/                 ადმინის ლექსიკონი (ka.js + en.js) + ta() (მიმდინარე ენით)
     content-types.js      ტიპები, სვეტი „კატეგორია“, საჯარო გზა, creatable / deletable
     __tests__/            admin-helpers.jsx (setupAdmin, signInDirect, renderAdmin, fillLogin), ტესტები
   content/
@@ -204,7 +204,9 @@ src/
     useHeadingRefocus.js  F6: ასინქრონული გვერდის h1 — ჩატვირთვის შემდეგ ფოკუსი (ან #hash-ის სამიზნე)
   i18n/
     ka.js                 ინტერფეისის ყველა სტრიქონი
-    en.js                 იგივე გასაღებები, [EN] placeholder-ები (გენერირდება)
+    en.js                 ინგლისური (F9) — იგივე გასაღებები, მრავლობითი `{ one, other }`; ცალკე chunk,
+                          main.jsx ტვირთავს მხოლოდ `/en`-ზე (`registerDictionary`)
+    locale.js             ენა: getLocale / setLocale, localizePath, alternatePath, `/en` პრეფიქსი
     index.js              t(), createT(), formatDurationLabel + format.js-ის რეექსპორტი
     format.js             ka-GE, Asia/Tbilisi: formatDate, formatTimeRange, formatDuration… (F6: თვეები
                           და დღეები ფაილშია — ICU-ის ქართულ ლოკალზე აღარ არის დამოკიდებული)
@@ -390,3 +392,17 @@ src/
 - ტესტები: `setupAdmin()` (საერთო საცავი + ორივე adapter), `signInDirect(admin, role)`, `renderAdmin(path)`;
   ავტოშენახვა — `setAutosaveDelay(ms)`; Chromium — `npm run audit -- --only admin` (`ADMIN_THEMES`,
   `ADMIN_WIDTHS`, `ADMIN_SKIP_KEYBOARD`, `ADMIN_KEYBOARD`).
+
+## კოდის კონვენციები (F9 — ორენოვნება)
+
+- ტექსტი მხოლოდ `t()` / `ta()`-ით; ახალი გასაღები — ka.js-შიც და en.js-შიც (`npm run i18n:stub` ცარიელს
+  `[EN: …]`-ით ავსებს — ტესტი მას არ ატარებს). რიცხვიანი ინგლისური — `{ one: '…', other: '…' }`.
+- შიდა ბმული — `Link` / `UiLink` / `Button to` აბსოლუტური გზით (`/articles`): `/en` basename-ს თავად
+  ამატებს. ჩვეულებრივი `<a href>` / `Button href` შიდა გზაზე — `localizePath(path)`. ენის გადამრთველი —
+  `<LanguageSwitch>` (layout), სხვა ბმული მეორე ენაზე — `alternatePath(location, locale)`.
+- თარიღი / რიცხვი — მხოლოდ `formatDate` / `formatNumber` (მიმდინარე ენით); `ka-GE` ხელით არ იწერება.
+- კონტენტის ტექსტი, რომელიც გვერდის ენაზე არ არის: `lang={contentLang(item)}` (`@/content/localize.js`) —
+  სათაურზე, ტექსტსა და მედიაზე, ბარათზე — `<Card contentLang>` (ნიშანი „In Georgian“ თავისით ჩნდება).
+  UI-ის ტექსტი (ღილაკები, მეტა) `lang`-ს არ იღებს.
+- ახალი თარგმნადი ველი რედაქტორში — სქემის ტექსტური ველი თავისით ითარგმნება (`isTranslatable`);
+  არა-თარგმნადი ტექსტი (ნომერი, სახელი-ანგარიში) — `translate: false`.

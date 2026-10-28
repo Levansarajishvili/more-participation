@@ -5,6 +5,7 @@ import {
   validateSeries,
   validateVideo,
 } from '@/content/validate.js';
+import { isTranslated, localize } from '@/content/localize.js';
 import { t } from '@/i18n/index.js';
 
 /**
@@ -169,4 +170,34 @@ export function buildChecklist(ruleIds, issues) {
     // ბლოკერი = ყოველი error-შენიშვნა (ჩეკლისტის გარეთა ფორმატის შეცდომებიც)
     blocking: issues.filter((i) => i.severity === 'error'),
   };
+}
+
+/** F9: ინგლისურ ვერსიაში ცალკე მოწმდება — ტექსტთან დაკავშირებული წესები. */
+export const EN_CODES = Object.freeze([
+  'altMissing',
+  'headingOrder',
+  'linkText',
+  'linkBroken',
+  'excerptLength',
+  'plainMissing',
+]);
+
+/**
+ * ინგლისური ვერსიის შემოწმება (თუ თარგმანი არის): ქართულზე ზემოდან დადებული თარგმანი →
+ * იგივე წესები; შენიშვნის ველი — `translations.en.<გზა>` (შეცდომების ჯამი ინგლისურ ველზე მიდის).
+ * @param {import('../content-types.js').ContentType} type
+ * @param {Record<string, any>} values
+ * @param {Set<string>} articleSlugs
+ * @returns {Issue[]}
+ */
+export function validateTranslation(type, values, articleSlugs) {
+  if (!isTranslated(values, 'en')) return [];
+  const merged = localize(values, 'en');
+  return validateEntity(type, merged, articleSlugs)
+    .filter((issue) => EN_CODES.includes(issue.code))
+    .map((issue) => ({
+      ...issue,
+      field: `translations.en.${issue.field}`,
+      message: `${issue.message} (English)`,
+    }));
 }

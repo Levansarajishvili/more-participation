@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { Button, ContentState, Skeleton } from '@/components/ui/index.js';
 import { durationAttribute, VideoPlayer } from '@/components/media/index.js';
 import { label } from '@/content/taxonomy.js';
@@ -48,12 +49,15 @@ export default function VideoStage({ state, empty = false, headingRef, playerRef
             tabIndex={-1}
             data-route-focus=""
             className="mc-video-stage__title"
+            lang={contentLang(video)}
           >
             {title}
           </h2>
           {video && (
             <>
-              <p className="mc-video-stage__lead">{video.excerpt}</p>
+              <p className="mc-video-stage__lead" lang={contentLang(video)}>
+                {video.excerpt}
+              </p>
               <p className="mc-video-stage__person">
                 {t('videos.person', { name: video.person.name, role: video.person.role })}
               </p>

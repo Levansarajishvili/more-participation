@@ -1,3 +1,5 @@
+import { t } from '@/i18n/index.js';
+
 import UiLink from './UiLink.jsx';
 import { cx } from './utils.js';
 
@@ -26,6 +28,8 @@ import { cx } from './utils.js';
  * @param {boolean} [props.newTab=false]
  * @param {() => void} [props.onSelect]          ღილაკი ბმულის ნაცვლად (მაგ. ვიდეო ფლეიერში)
  * @param {string} [props.titleLang]
+ * @param {string} [props.contentLang]  F9: მასალის ენა, თუ გვერდისას არ ემთხვევა (`contentLang(item)`) —
+ *   `lang` სათაურზე, ტექსტსა და მედიაზე + ნიშანი „In Georgian“ მეტაში
  * @param {import('react').ReactNode} [props.eyebrow]   კატეგორია / ტიპი
  * @param {import('react').ReactNode} [props.media]
  * @param {import('react').ReactNode} [props.overlay]   მედიის ზემოთ (SaveToggle)
@@ -48,6 +52,7 @@ export default function Card({
   newTab = false,
   onSelect,
   titleLang,
+  contentLang,
   eyebrow,
   media,
   overlay,
@@ -97,7 +102,7 @@ export default function Card({
       {...rest}
     >
       <div className="mc-card__body">
-        <Heading className="mc-card__title" lang={titleLang}>
+        <Heading className="mc-card__title" lang={titleLang ?? contentLang}>
           {heading}
         </Heading>
         {icon && (
@@ -106,11 +111,26 @@ export default function Card({
           </span>
         )}
         {eyebrow && <p className="mc-card__eyebrow">{eyebrow}</p>}
-        {children && <div className="mc-card__text">{children}</div>}
-        {meta && <div className="mc-card__meta">{meta}</div>}
+        {children && (
+          <div className="mc-card__text" lang={contentLang}>
+            {children}
+          </div>
+        )}
+        {(meta || contentLang) && (
+          <div className="mc-card__meta">
+            {meta}
+            {contentLang && (
+              <span className="mc-card__lang">{t('common.inLanguage.' + contentLang)}</span>
+            )}
+          </div>
+        )}
         {actions && <div className="mc-card__actions">{actions}</div>}
       </div>
-      {media && <div className="mc-card__media">{media}</div>}
+      {media && (
+        <div className="mc-card__media" lang={contentLang}>
+          {media}
+        </div>
+      )}
       {aside && <div className="mc-card__aside">{aside}</div>}
       {overlay && <div className="mc-card__overlay">{overlay}</div>}
     </Tag>

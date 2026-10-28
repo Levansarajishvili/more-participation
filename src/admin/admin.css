@@ -1038,3 +1038,22 @@
     }
   }
 }
+
+/* F9: ენის გადამრთველი ადმინის header-სა და შესვლის ზოლში (`LanguageSwitch`) */
+@layer components {
+  .mc-admin-lang {
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.75rem;
+    padding: 0 1rem;
+    border: 2px solid var(--mc-ink);
+    border-radius: var(--radius-pill);
+    color: var(--mc-ink);
+    font-size: var(--text-small);
+    font-weight: 700;
+    text-decoration: none;
+  }
+  .mc-admin-lang:hover {
+    background-color: var(--mc-hover);
+  }
+}

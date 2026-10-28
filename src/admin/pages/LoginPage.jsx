@@ -14,6 +14,7 @@ import {
 import A11yMenu from '@/features/a11y/A11yMenu.jsx';
 import { usePreferences } from '@/features/a11y/usePreferences.js';
 import { t } from '@/i18n/index.js';
+import LanguageSwitch from '@/components/layout/LanguageSwitch.jsx';
 
 import { useAuth } from '../auth/auth-context.js';
 import { safeNext, validateLogin, validateRegister } from '../auth/auth-forms.js';
@@ -69,6 +70,7 @@ export default function LoginPage() {
     <div className="mc-auth">
       <header className="mc-auth__bar">
         <A11yMenu className="mc-admin-a11y" />
+        <LanguageSwitch className="mc-admin-lang" />
         <IconButton
           icon="moon"
           size="sm"

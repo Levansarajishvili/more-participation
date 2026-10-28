@@ -54,6 +54,7 @@ const pad2 = (n) => String(n).padStart(2, '0');
  * @param {string} [props.className]
  */
 export default function Slider({
+  contentLang,
   slides,
   title,
   tone = 'navy',
@@ -142,8 +143,12 @@ export default function Slider({
           <div className="mc-slide__content">
             <p className="mc-slide__kicker">{t(`development.kicker.${slide.kind}`)}</p>
             {slide.number != null && <p className="mc-slide__num">{pad2(slide.number)}</p>}
-            <Heading className="mc-slide__title">{slide.title}</Heading>
-            <p className="mc-slide__body">{slide.body}</p>
+            <Heading className="mc-slide__title" lang={contentLang}>
+              {slide.title}
+            </Heading>
+            <p className="mc-slide__body" lang={contentLang}>
+              {slide.body}
+            </p>
           </div>
           <div className="mc-slide__foot" aria-hidden="true">
             <span>{handle}</span>

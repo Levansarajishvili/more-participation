@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { Accordion, Button, ContentState, Skeleton } from '@/components/ui/index.js';
 import { Slider } from '@/components/media/index.js';
 import { cx } from '@/components/ui/utils.js';
@@ -95,6 +96,7 @@ export default function SeriesDeck({ state, empty = false, handle, headingRef })
     body = (
       <>
         <Slider
+          contentLang={contentLang(series)}
           key={series.slug}
           slides={series.slides}
           title={series.title}

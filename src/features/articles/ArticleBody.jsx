@@ -21,10 +21,11 @@ import './reading.css';
  * @param {Block[]} props.blocks
  * @param {import('react').Ref<HTMLDivElement>} [props.ref]
  * @param {string} [props.className]
+ * @param {string} [props.lang]  F9: ტექსტის ენა, თუ გვერდისას არ ემთხვევა
  */
-export default function ArticleBody({ blocks, ref, className }) {
+export default function ArticleBody({ blocks, ref, className, lang }) {
   return (
-    <div ref={ref} className={cx('mc-prose', className)}>
+    <div ref={ref} className={cx('mc-prose', className)} lang={lang}>
       {blocks.map((block, index) => (
         <BlockView key={index} block={block} />
       ))}

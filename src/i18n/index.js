@@ -1,5 +1,6 @@
 import { formatNumber } from './format.js';
 import ka from './ka.js';
+import { LANG_TAG, getLocale } from './locale.js';
 
 export {
   LOCALE,
@@ -16,8 +17,26 @@ export {
   toDateAttribute,
 } from './format.js';
 
-/** ინტერფეისის ენა (`<html lang>`). en.js ჯერ placeholder-ებია. */
-export const LANG = 'ka';
+export {
+  DEFAULT_LOCALE,
+  EN_PREFIX,
+  LANG_TAG,
+  LOCALES,
+  alternatePath,
+  getLocale,
+  isLocale,
+  localeFromPath,
+  localizePath,
+  setLocale,
+  storeLocale,
+  storedLocale,
+  stripLocale,
+} from './locale.js';
+
+/** მიმდინარე ინტერფეისის ენის კოდი (`<html lang>`, `lang` ატრიბუტი). */
+export function getLang() {
+  return getLocale();
+}
 
 /** @typedef {typeof ka} Dictionary */
 /** @typedef {Record<string, string | number | null | undefined>} TranslateVars */
@@ -50,15 +69,48 @@ function devWarn(message) {
   console.warn(`[i18n] ${message}`);
 }
 
+/** @type {Map<string, Intl.PluralRules>} */
+const pluralRules = new Map();
+
 /**
- * ლექსიკონიდან თარგმნის ფუნქცია. უცნობი გასაღები → თავად გასაღები (dev-ში გაფრთხილებით),
- * რიცხვი ka-GE ფორმატით ჩაისმება, დაკარგული ცვლადი `{name}`-ად რჩება.
+ * მრავლობითი (ინგლისური): `{ one: '{count} article', other: '{count} articles' }` — არჩევანი
+ * `vars.count`-ით (`Intl.PluralRules`). ქართულს plural არ სჭირდება — იქ ფორმა ერთია.
+ * @param {unknown} value
+ * @param {TranslateVars | undefined} vars
+ * @param {string} lang
+ * @returns {unknown}
+ */
+function pickPlural(value, vars, lang) {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    typeof (/** @type {any} */ (value).other) !== 'string'
+  ) {
+    return value;
+  }
+  const count = Number(vars?.count);
+  let rules = pluralRules.get(lang);
+  if (!rules) {
+    rules = new Intl.PluralRules(lang);
+    pluralRules.set(lang, rules);
+  }
+  const form = Number.isFinite(count) ? rules.select(count) : 'other';
+  return /** @type {Record<string, string>} */ (value)[form] ?? /** @type {any} */ (value).other;
+}
+
+/**
+ * ლექსიკონიდან თარგმნის ფუნქცია. უცნობი გასაღები → სარეზერვო ლექსიკონი (ქართული) → თავად
+ * გასაღები (dev-ში გაფრთხილებით), რიცხვი მიმდინარე ენის ფორმატით ჩაისმება, დაკარგული ცვლადი
+ * `{name}`-ად რჩება; `{ one, other }` — მრავლობითი `count`-ით.
  * @param {object} dict
+ * @param {{ fallback?: object, lang?: string }} [options]
  * @returns {Translate}
  */
-export function createT(dict) {
+export function createT(dict, { fallback, lang = 'ka-GE' } = {}) {
   return function translate(key, vars) {
-    const value = lookup(dict, key);
+    let value = pickPlural(lookup(dict, key), vars, lang);
+    if (typeof value !== 'string' && fallback)
+      value = pickPlural(lookup(fallback, key), vars, lang);
     if (typeof value !== 'string') {
       devWarn(`გასაღები არ არის: ${key}`);
       return key;
@@ -75,8 +127,40 @@ export function createT(dict) {
   };
 }
 
-/** ქართული თარგმანი — ინტერფეისის ყველა სტრიქონი აქედან. */
-export const t = createT(ka);
+const tKa = createT(ka, { lang: LANG_TAG.ka });
+/** ინგლისური ლექსიკონი ცალკე chunk-ია — იტვირთება მხოლოდ `/en`-ზე (main.jsx). @type {Translate | null} */
+let tEn = null;
+
+/**
+ * F9: ენის ლექსიკონის რეგისტრაცია (ინგლისური — main.jsx დინამიკური import-ით, ტესტებში — setup).
+ * ქართველ მომხმარებელს ინგლისური ტექსტი არ ჩამოტვირთავს.
+ * @param {'en'} locale
+ * @param {object} dict
+ */
+export function registerDictionary(locale, dict) {
+  if (locale === 'en') tEn = createT(dict, { fallback: ka, lang: LANG_TAG.en });
+}
+
+/**
+ * ინტერფეისის ყველა სტრიქონი აქედან — მიმდინარე ენით (`getLocale()`): ქართული `ka.js`,
+ * ინგლისური `en.js` (დაკარგული გასაღები — ქართულიდან).
+ * @type {Translate}
+ */
+export function t(key, vars) {
+  return getLocale() === 'en' && tEn ? tEn(key, vars) : tKa(key, vars);
+}
+
+/**
+ * ენის-წყვილი ლექსიკონი (ადმინის `ta()`): იგივე წესები, მიმდინარე ენით.
+ * @param {object} kaDict
+ * @param {object} enDict
+ * @returns {Translate}
+ */
+export function createLocalizedT(kaDict, enDict) {
+  const a = createT(kaDict, { lang: LANG_TAG.ka });
+  const b = createT(enDict, { fallback: kaDict, lang: LANG_TAG.en });
+  return (key, vars) => (getLocale() === 'en' ? b(key, vars) : a(key, vars));
+}
 
 /**
  * ხანგრძლივობა წასაკითხად (aria-label, ეკრანის მკითხველი): 270 → „4 წუთი 30 წამი“.

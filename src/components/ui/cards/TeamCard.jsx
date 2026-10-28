@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import Card from '../Card.jsx';
 import Media from '../Media.jsx';
 
@@ -14,6 +15,7 @@ export default function TeamCard({ member, headingLevel = 'h3', className, ...re
   const { name, role, bio, photo } = member;
   return (
     <Card
+      contentLang={contentLang(member)}
       title={name}
       headingLevel={headingLevel}
       eyebrow={role}

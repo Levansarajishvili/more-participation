@@ -4,7 +4,8 @@ import { Link, Outlet, useLocation, useMatches, useNavigate, useParams } from 'r
 import { Breadcrumbs, Button, IconButton, Logo, VisuallyHidden } from '@/components/ui/index.js';
 import A11yMenu from '@/features/a11y/A11yMenu.jsx';
 import { usePreferences } from '@/features/a11y/usePreferences.js';
-import { t } from '@/i18n/index.js';
+import { localizePath, t } from '@/i18n/index.js';
+import LanguageSwitch from '@/components/layout/LanguageSwitch.jsx';
 import { useContent } from '@/hooks/useContent.js';
 
 import { stats as fetchStats } from '../api/adminAdapter.js';
@@ -280,10 +281,11 @@ function HeaderTools({ inert, isEditor, createType }) {
   return (
     <div className="mc-admin-header__tools" inert={inert}>
       <div className="mc-admin-header__actions">
-        <Button variant="secondary" size="sm" href="/" newTab iconEnd="external">
+        <Button variant="secondary" size="sm" href={localizePath('/')} newTab iconEnd="external">
           {ta('header.viewSite')}
         </Button>
         <A11yMenu className="mc-admin-a11y" />
+        <LanguageSwitch className="mc-admin-lang" />
         <IconButton
           icon="moon"
           size="sm"

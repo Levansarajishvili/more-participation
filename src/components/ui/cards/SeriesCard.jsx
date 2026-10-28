@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { label, SERIES_TOPIC_TERMS } from '@/content/taxonomy.js';
 import { t } from '@/i18n/index.js';
 
@@ -38,6 +39,7 @@ export default function SeriesCard({ series, headingLevel = 'h3', className, ...
   );
   return (
     <Card
+      contentLang={contentLang(series)}
       to={`/development?series=${slug}`}
       title={title}
       headingLevel={headingLevel}

@@ -17,6 +17,9 @@ node_modules-შია (vitest-axe-ის დამოკიდებულე�
 - media   — ფლეიერი რეალური ფაილით (ffmpeg-ის WebM + VTT, `--fixtures`): დაკვრა, PiP-ის სინქრონი,
             სუბტიტრი overlay-ში, აუდიოაღწერა, მალსახმობები, ტრანსკრიპტი, axe;
 - bundle  — dist/assets-ის gzip ზომები;
+- en      — F9: ინგლისური ვერსია — საჯარო როუტები `/en`-ით + ადმინი `/en/admin` (შესვლა, დაფა, სია,
+            რედაქტორი English ჩანართით, პარამეტრები) × light / dark / contrast × 1440 / 390: axe,
+            ჰორიზ. სქროლი, `<html lang="en">` (EN_THEMES / EN_WIDTHS — ნაწილ-ნაწილ);
 - admin   — F8: ადმინის როუტები (შესვლა / რეგისტრაცია / მდგომარეობები, დაფა, სიები, ანგარიში,
             ძიება, 403, 404, გახსნილი compact-მენიუ) × light / dark / contrast × 1440 / 390 — axe +
             ჰორიზ. სქროლი; Tab-ით გავლა (რგოლი, ხილვადობა, ≥ 24px) შესვლაზე, დაფასა და სიაზე.
@@ -322,7 +325,7 @@ def admin_login(page, email='admin@example.org'):
     admin_ready(page)
 
 
-EDITOR_PATH = __import__('re').compile(r'^/admin/(articles|news|series|videos|events|pages)/([a-z]-\d+|new)$')
+EDITOR_PATH = __import__('re').compile(r'^(?:/en)?/admin/(articles|news|series|videos|events|pages)/([a-z]-\d+|new)$')
 
 
 def admin_nav(page, path):
@@ -410,6 +413,47 @@ def audit_admin(browser, report):
             }
             context.close()
     report['admin'] = {'axe': rows, 'keyboard': keyboard}
+
+
+# ───────────────────────────────────────────────────────────────── en (F9)
+EN_PUBLIC = ['/en' + (p if p != '/' else '') for p in ROUTES if p != '/ar-arsebuli']
+EN_ADMIN = ['/en/admin', '/en/admin/articles', '/en/admin/articles/a-002', '/en/admin/settings', '/en/admin/media']
+
+
+def audit_en(browser, report):
+    themes = [t for t in os.environ.get('EN_THEMES', ','.join(THEMES)).split(',') if t]
+    widths = [int(w) for w in os.environ.get('EN_WIDTHS', ','.join(map(str, WIDTHS))).split(',') if w]
+    rows = []
+    for theme in themes:
+        for width in widths:
+            context, page = new_page(browser, width, theme)
+            for path in EN_PUBLIC:
+                goto(page, path)
+                print(f'  en {path} {theme} {width}', file=sys.stderr, flush=True)
+                rows.append({'path': path, 'theme': theme, 'width': width, **run_axe(page),
+                             'scroll': page.evaluate(OVERFLOW)['scroll'],
+                             'lang': page.evaluate('document.documentElement.lang')})
+            page.goto(PREVIEW + '/en/admin/login')
+            admin_ready(page)
+            rows.append({'path': '/en/admin/login', 'theme': theme, 'width': width, **axe_admin(page),
+                         'scroll': page.evaluate(OVERFLOW)['scroll'],
+                         'lang': page.evaluate('document.documentElement.lang')})
+            page.fill('#login-email', 'admin@example.org')
+            page.fill('#login-password', 'mc-dev-password')
+            page.click('#auth-panel-login button[type=submit]')
+            page.wait_for_selector('.mc-admin')
+            admin_ready(page)
+            for path in EN_ADMIN:
+                admin_nav(page, path)
+                if path.endswith('a-002'):
+                    page.click('#editor-lang-tab-en')
+                    page.wait_for_timeout(300)
+                print(f'  en {path} {theme} {width}', file=sys.stderr, flush=True)
+                rows.append({'path': path + (' [English]' if path.endswith('a-002') else ''), 'theme': theme,
+                             'width': width, **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll'],
+                             'lang': page.evaluate('document.documentElement.lang')})
+            context.close()
+    report['en'] = {'axe': rows}
 
 
 # ───────────────────────────────────────────────────────────────── keyboard
@@ -736,7 +780,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default='audit.json')
     parser.add_argument('--fixtures', default=str(ROOT / '.audit-fixtures'))
-    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin')
+    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin,en')
     parser.add_argument('--make-fixtures', action='store_true')
     args = parser.parse_args()
     fixtures = pathlib.Path(args.fixtures)
@@ -752,7 +796,7 @@ def main():
             report['axeCore'] = json.loads((AXE.parent / 'package.json').read_text())['version']
             for name, fn in [('axe', audit_axe), ('keyboard', audit_keyboard), ('motion', audit_motion),
                              ('reflow', audit_reflow), ('placeholders', audit_placeholders),
-                             ('admin', audit_admin)]:
+                             ('admin', audit_admin), ('en', audit_en)]:
                 if name in parts:
                     t0 = time.time()
                     fn(browser, report)

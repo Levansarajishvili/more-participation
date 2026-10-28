@@ -1,3 +1,4 @@
+import { contentLang as contentLangOf } from '@/content/localize.js';
 import { useCallback, useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 
 import {
@@ -500,6 +501,7 @@ export default function VideoPlayer({
         </p>
       )}
       <Transcript
+        contentLang={contentLangOf(video)}
         id={ids.transcript}
         lines={video.transcript}
         currentTime={playback.currentTime}

@@ -2,6 +2,7 @@ import { ScrollRestoration } from 'react-router';
 
 import PreferencesProvider from '@/features/a11y/PreferencesProvider.jsx';
 
+import { AlternateLinks } from './LanguageSwitch.jsx';
 import PageShell from './PageShell.jsx';
 
 /**
@@ -12,6 +13,7 @@ import PageShell from './PageShell.jsx';
 export default function RootLayout() {
   return (
     <PreferencesProvider>
+      <AlternateLinks />
       <PageShell />
       <ScrollRestoration />
     </PreferencesProvider>

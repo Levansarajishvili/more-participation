@@ -18,7 +18,9 @@ import { schemaFor } from '../schemas/index.js';
 import { useAdminPage } from '../shell/admin-page.js';
 
 import { autosaveDelay } from './autosave.js';
-import { buildChecklist, validateEntity } from './checklist.js';
+import { EN_CODES, buildChecklist, validateEntity, validateTranslation } from './checklist.js';
+import TranslationFields from './TranslationFields.jsx';
+import { EN_PREFIX } from './translation.js';
 import { DateTimeField } from './fields/FieldRenderer.jsx';
 import FieldRenderer from './fields/FieldRenderer.jsx';
 import { parsePath, resolveFieldId, sameValue, setIn } from './path.js';
@@ -145,11 +147,28 @@ export default function EntityEditor({ type, routeId }) {
   /* ─── შემოწმება ────────────────────────────────────────────────────── */
 
   const sections = type === 'pages' && values.slug === 'about' ? ABOUT_SECTIONS : schema.sections;
-  const issues = useMemo(
+  const [lang, setLang] = useState(/** @type {'ka' | 'en'} */ ('ka'));
+  const baseIssues = useMemo(
     () => (loadState === 'ready' ? validateEntity(type, values, articleSlugs) : []),
     [type, values, articleSlugs, loadState],
   );
-  const checklist = useMemo(() => buildChecklist(schema.rules, issues), [schema.rules, issues]);
+  // F9: ინგლისური ვერსია (თუ თარგმანი არის) — alt, სათაურები, ბმულები, მოკლე აღწერა, მარტივი ენა
+  const enIssues = useMemo(
+    () => (loadState === 'ready' ? validateTranslation(type, values, articleSlugs) : []),
+    [type, values, articleSlugs, loadState],
+  );
+  const issues = useMemo(() => [...baseIssues, ...enIssues], [baseIssues, enIssues]);
+  const checklist = useMemo(() => {
+    const visible =
+      lang === 'en'
+        ? [...enIssues, ...baseIssues.filter((i) => !EN_CODES.includes(i.code))]
+        : baseIssues;
+    return {
+      ...buildChecklist(schema.rules, visible),
+      blocking: issues.filter((i) => i.severity === 'error'),
+    };
+  }, [schema.rules, lang, baseIssues, enIssues, issues]);
+  const translated = Boolean(/** @type {any} */ (values).translations?.en?.title?.trim?.());
 
   const errorFor = useCallback(
     (/** @type {string} */ path) => {
@@ -270,6 +289,8 @@ export default function EntityEditor({ type, routeId }) {
 
   /** @param {string} path */
   function labelFor(path) {
+    if (path.startsWith(`${EN_PREFIX}.`))
+      return `${labelFor(path.slice(EN_PREFIX.length + 1))} (English)`;
     const keys = parsePath(path).filter((k) => typeof k === 'string');
     for (const section of sections) {
       for (const field of section.fields) {
@@ -500,20 +521,36 @@ export default function EntityEditor({ type, routeId }) {
           <h2 id="editor-form-title" className="sr-only">
             {ta('editor.formTitle', { type: typeLabel(type, 'one') })}
           </h2>
-          {sections.map((section) => (
-            <section
-              key={section.id}
-              className="mc-admin-panel mc-editor__section"
-              aria-labelledby={`sec-${section.id}`}
-            >
-              <h3 id={`sec-${section.id}`} className="mc-admin-panel__title">
-                {ta(section.title)}
-              </h3>
-              {section.fields.map((field) => (
-                <FieldRenderer key={field.name} field={field} ctx={ctx} />
+          <LangTabs value={lang} onChange={setLang} />
+          <div
+            role="tabpanel"
+            id={`editor-lang-${lang}`}
+            aria-labelledby={`editor-lang-tab-${lang}`}
+            className="mc-editor__form"
+          >
+            {lang === 'en' && (
+              <p className="mc-admin-panel mc-editor__lang-note">
+                {ta(translated ? 'editor.lang.enDone' : 'editor.lang.enNone')}{' '}
+                {ta('editor.lang.enHint')}
+              </p>
+            )}
+            {lang === 'en' && <TranslationFields sections={sections} ctx={ctx} />}
+            {lang === 'ka' &&
+              sections.map((section) => (
+                <section
+                  key={section.id}
+                  className="mc-admin-panel mc-editor__section"
+                  aria-labelledby={`sec-${section.id}`}
+                >
+                  <h3 id={`sec-${section.id}`} className="mc-admin-panel__title">
+                    {ta(section.title)}
+                  </h3>
+                  {section.fields.map((field) => (
+                    <FieldRenderer key={field.name} field={field} ctx={ctx} />
+                  ))}
+                </section>
               ))}
-            </section>
-          ))}
+          </div>
         </form>
 
         <aside className="mc-editor__aside" aria-label={ta('editor.asideLabel')}>
@@ -720,6 +757,52 @@ export default function EntityEditor({ type, routeId }) {
           </>
         }
       />
+    </div>
+  );
+}
+
+/**
+ * მასალის ენის ჩანართები (WAI-ARIA tabs: ← → Home End, roving tabindex) — ქართული (ძირითადი
+ * ვერსია) / English (`translations.en`). ჩეკლისტი არჩეული ენის ვერსიას აჩვენებს.
+ * @param {{ value: 'ka' | 'en', onChange: (lang: 'ka' | 'en') => void }} props
+ */
+function LangTabs({ value, onChange }) {
+  const tabs = /** @type {const} */ (['ka', 'en']);
+  /** @param {import('react').KeyboardEvent} event */
+  function onKeyDown(event) {
+    const index = tabs.indexOf(value);
+    let next = null;
+    if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') next = tabs[(index + 1) % 2];
+    else if (event.key === 'Home') next = tabs[0];
+    else if (event.key === 'End') next = tabs[1];
+    if (!next) return;
+    event.preventDefault();
+    onChange(next);
+    document.getElementById(`editor-lang-tab-${next}`)?.focus();
+  }
+  return (
+    <div
+      role="tablist"
+      aria-label={ta('editor.lang.tabsLabel')}
+      className="mc-tabs mc-editor__lang"
+    >
+      {tabs.map((id) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          id={`editor-lang-tab-${id}`}
+          aria-selected={value === id}
+          aria-controls={`editor-lang-${id}`}
+          tabIndex={value === id ? 0 : -1}
+          lang={id === 'en' ? 'en' : undefined}
+          className="mc-tabs__tab"
+          onClick={() => onChange(id)}
+          onKeyDown={onKeyDown}
+        >
+          {ta(`editor.lang.${id}`)}
+        </button>
+      ))}
     </div>
   );
 }

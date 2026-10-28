@@ -1,6 +1,7 @@
 import RootLayout from '@/components/layout/RootLayout.jsx';
 import RootError from '@/pages/RootError.jsx';
 import RouteError from '@/pages/RouteError.jsx';
+import { stripLocale } from '@/i18n/locale.js';
 
 /**
  * გვერდის lazy-ჩატვირთვა Data Mode-ში: ყოველი გვერდი ცალკე chunk-ია.
@@ -121,7 +122,8 @@ export function createRouterOptions() {
   let loading = null;
   return {
     async patchRoutesOnNavigation({ path, patch }) {
-      if (!ADMIN_PATH.test(path)) return;
+      // F9: `/en` basename-ზე გზა პრეფიქსით მოდის (`/en/admin`)
+      if (!ADMIN_PATH.test(stripLocale(path))) return;
       loading ??= import('@/admin/routes.jsx').then(({ createAdminRoutes }) => {
         patch(null, createAdminRoutes());
       });

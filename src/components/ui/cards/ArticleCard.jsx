@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { label } from '@/content/taxonomy.js';
 import { formatDate, t, toDateAttribute } from '@/i18n/index.js';
 
@@ -38,6 +39,7 @@ export default function ArticleCard({
   const categoryLabel = label('articleCategory', category);
   return (
     <Card
+      contentLang={contentLang(article)}
       to={`/articles/${slug}`}
       title={title}
       headingLevel={headingLevel}

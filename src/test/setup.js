@@ -51,3 +51,9 @@ afterEach(() => {
     document.documentElement.removeAttribute(name);
   }
 });
+
+// F9: ინგლისური ლექსიკონი (აპლიკაციაში — დინამიკური import `/en`-ზე)
+import en from '@/i18n/en.js';
+import { registerDictionary } from '@/i18n/index.js';
+
+registerDictionary('en', en);

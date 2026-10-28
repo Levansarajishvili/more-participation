@@ -13,6 +13,7 @@ import { useContent } from '@/hooks/useContent.js';
 
 import { content, settings } from '../api/adminAdapter.js';
 import FieldRenderer from '../editor/fields/FieldRenderer.jsx';
+import TranslationFields from '../editor/TranslationFields.jsx';
 import { setIn } from '../editor/path.js';
 import { ta } from '../i18n/index.js';
 import '../editor/editor.css';
@@ -39,7 +40,12 @@ const SECTIONS = [
         required: true,
       },
       { name: 'contacts.messenger.label', kind: 'text', label: 'settings.fields.messengerLabel' },
-      { name: 'contacts.messenger.value', kind: 'text', label: 'settings.fields.messengerValue' },
+      {
+        name: 'contacts.messenger.value',
+        kind: 'text',
+        label: 'settings.fields.messengerValue',
+        translate: false,
+      },
       {
         name: 'contacts.messenger.url',
         kind: 'text',
@@ -156,7 +162,12 @@ const SECTIONS = [
           },
         ],
       },
-      { name: 'socialHandle', kind: 'text', label: 'settings.fields.socialHandle' },
+      {
+        name: 'socialHandle',
+        kind: 'text',
+        label: 'settings.fields.socialHandle',
+        translate: false,
+      },
     ],
   },
 ];
@@ -255,6 +266,24 @@ export default function SettingsPage() {
                 ))}
               </section>
             ))}
+            <section className="mc-editor__form" aria-labelledby="set-english">
+              <h2 id="set-english" className="mc-admin-panel__title">
+                {ta('settings.sections.english')}
+              </h2>
+              <p className="mc-admin-note">{ta('settings.hints.english')}</p>
+              <TranslationFields
+                sections={SECTIONS}
+                ctx={{
+                  values: site,
+                  setValue,
+                  onBlur: () => {},
+                  errorFor: () => null,
+                  upload: async () => null,
+                  checkSlug: async () => true,
+                  type: 'pages',
+                }}
+              />
+            </section>
             <section className="mc-admin-panel mc-editor__section" aria-labelledby="set-featured">
               <h2 id="set-featured" className="mc-admin-panel__title">
                 {ta('settings.sections.featured')}

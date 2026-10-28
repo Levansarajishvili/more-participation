@@ -43,6 +43,7 @@ export default function RichTextEditor({
   onBlur,
   onUpload,
   required,
+  lang = 'ka',
 }) {
   const labelId = `${id}-label`;
   const hintId = `${id}-hint`;
@@ -65,7 +66,7 @@ export default function RichTextEditor({
         ...(required && { 'aria-required': 'true' }),
         class: 'mc-rte__content mc-prose',
         spellcheck: 'true',
-        lang: 'ka',
+        lang,
       },
     },
     onUpdate: ({ editor: instance }) => {

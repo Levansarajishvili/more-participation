@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { label } from '@/content/taxonomy.js';
 import { formatDate, t, toDateAttribute } from '@/i18n/index.js';
 
@@ -41,6 +42,7 @@ export default function NewsCard({
   if (variant === 'compact' || variant === 'list') {
     return (
       <Card
+        contentLang={contentLang(item)}
         to={to}
         title={title}
         headingLevel={headingLevel}
@@ -58,6 +60,7 @@ export default function NewsCard({
   const feature = variant === 'feature';
   return (
     <Card
+      contentLang={contentLang(item)}
       to={to}
       title={title}
       headingLevel={headingLevel}

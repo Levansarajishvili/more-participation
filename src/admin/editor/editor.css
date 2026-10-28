@@ -446,3 +446,23 @@
     }
   }
 }
+
+/* F9: მასალის ენის ჩანართები და ინგლისური ვერსიის ველები */
+@layer components {
+  .mc-editor__lang {
+    max-width: 24rem;
+  }
+  .mc-editor__lang-note {
+    margin: 0;
+    font-size: var(--text-small);
+    line-height: 1.5;
+  }
+  .mc-en-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  .mc-en-original {
+    margin: 0;
+  }
+}

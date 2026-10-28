@@ -1,3 +1,4 @@
+import { contentLang } from '@/content/localize.js';
 import { label } from '@/content/taxonomy.js';
 import { formatDuration, formatDurationLabel, t } from '@/i18n/index.js';
 
@@ -75,6 +76,7 @@ export default function VideoCard({
   );
   return (
     <Card
+      contentLang={contentLang(video)}
       to={onSelect ? undefined : (to ?? `/videos?video=${slug}`)}
       onSelect={onSelect}
       title={title}
