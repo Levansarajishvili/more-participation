@@ -44,7 +44,7 @@ export default function AdminShell() {
   );
   const [menuOpen, setMenuOpen] = useState(false);
   const previousPath = useRef(location.pathname);
-  // მრიცხველები ყოველ გადასვლაზე ახლდება (არქივის / შექმნის შემდეგ)
+  // მრიცხველები ყოველ გადასვლაზე ახლდება (წაშლის / შექმნის შემდეგ)
   const refreshKey = location.pathname;
   const statsState = useContent(() => {
     void refreshKey;

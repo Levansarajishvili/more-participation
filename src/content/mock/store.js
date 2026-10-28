@@ -8,7 +8,8 @@ import { createMockData } from './data.js';
  * იმავე სესიაში საიტზეც ჩანს. გვერდის გადატვირთვისას საცავი თავიდან იქმნება (backend-მდე).
  *
  * ჩანაწერი = `{ id, item, meta }`: `item` — მოდელის ობიექტი (Article, Video…) უცვლელი სახით,
- * `meta` — ადმინის მონაცემი (ვერსია, ავტორი, დრო, არქივი), რომელიც საჯარო პასუხში არ ხვდება.
+ * `meta` — ადმინის მონაცემი (ვერსია, ავტორი, დრო), რომელიც საჯარო პასუხში არ ხვდება. წაშლილი
+ * ჩანაწერი (`remove`) საცავიდან სრულად ქრება — საჯარო საიტიდანაც.
  * ჩანაწერი იცვლება მხოლოდ მთლიანად (immutable): ძველ ობიექტს არავინ ცვლის, ამიტომ პასუხის
  * ასლი (`structuredClone`) საკმარისია.
  */
@@ -26,7 +27,6 @@ import { createMockData } from './data.js';
  * @property {string} createdAt     ISO
  * @property {string} updatedAt     ISO
  * @property {string | null} updatedBy  მომხმარებლის id (seed-ის ჩანაწერზე null)
- * @property {boolean} archived     არქივი საჯარო საიტზეც და სიებშიც არ ჩანს
  */
 
 /**
@@ -60,13 +60,14 @@ export const COLLECTIONS = Object.freeze([
 /**
  * @typedef {object} MockStore
  * @property {() => number} now
- * @property {(name: CollectionName) => StoreRecord[]} records      არქივის ჩათვლით, ჩასმის რიგით
+ * @property {(name: CollectionName) => StoreRecord[]} records      ჩასმის რიგით
  * @property {(name: CollectionName, id: string) => StoreRecord | null} find
  * @property {(name: CollectionName, slug: string) => StoreRecord | null} findBySlug
  * @property {(name: CollectionName, item: object, options?: { by?: string | null, id?: string }) => StoreRecord} insert
  * @property {(name: CollectionName, id: string, item: object, options?: { by?: string | null, version?: number }) => StoreRecord} replace
  * @property {(name: CollectionName, id: string, patch: Partial<RecordMeta>) => StoreRecord} setMeta
- * @property {() => ContentSnapshot} snapshot     საჯარო ნაკრები: არქივის გარეშე (სტატუსს query.js ფილტრავს)
+ * @property {(name: CollectionName, id: string) => StoreRecord} remove   სამუდამო წაშლა (აბრუნებს წაშლილს)
+ * @property {() => ContentSnapshot} snapshot     საჯარო ნაკრები (სტატუსს query.js ფილტრავს)
  * @property {(settings: ContentSnapshot['settings']) => void} setSettings
  * @property {(org: { team?: ContentSnapshot['team'], partners?: ContentSnapshot['partners'] }) => void} setOrg
  * @property {Map<string, unknown>} extra         ადმინის მოდულის მდგომარეობა (მომხმარებლები, მედია…)
@@ -106,7 +107,6 @@ export function createMockStore(options = {}) {
         createdAt: created,
         updatedAt: /** @type {{ updatedAt?: string }} */ (item).updatedAt ?? created,
         updatedBy: null,
-        archived: false,
       });
     }
   }
@@ -167,7 +167,7 @@ export function createMockStore(options = {}) {
       const record = pushRecord(
         name,
         item,
-        { version: 1, createdAt: at, updatedAt: at, updatedBy: by, archived: false },
+        { version: 1, createdAt: at, updatedAt: at, updatedBy: by },
         id,
       );
       changed();
@@ -207,13 +207,18 @@ export function createMockStore(options = {}) {
       return next;
     },
 
+    remove(name, id) {
+      const record = required(name, id);
+      const list = records(name);
+      list.splice(list.indexOf(record), 1);
+      changed();
+      return record;
+    },
+
     snapshot() {
       if (cached) return cached;
       /** @param {CollectionName} name */
-      const visible = (name) =>
-        records(name)
-          .filter((record) => !record.meta.archived)
-          .map((record) => record.item);
+      const visible = (name) => records(name).map((record) => record.item);
       cached = /** @type {ContentSnapshot} */ ({
         articles: visible('articles'),
         series: visible('series'),

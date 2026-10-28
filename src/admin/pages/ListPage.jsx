@@ -32,7 +32,7 @@ export const PAGE_SIZE = 10;
  * - ფილტრი, ძიება და გვერდი URL-შია: `?status=draft&q=…&page=2&check=altMissing`; ჩიპი და
  *   ძიება — push, გვერდი 1-ზე ბრუნდება. რაოდენობა `role="status"`-ით ცხადდება, ფოკუსი ფილტრზე რჩება.
  * - ცხრილი: სათაური, კატეგორია, სტატუსი, განახლდა, მოქმედება; მოქმედების სახელი სათაურს შეიცავს
- *   („რედაქტირება: [სათაური]“ — დამალული ნაწილით). „არქივი“ — ნატიური `<dialog>`-ით დადასტურება.
+ *   („რედაქტირება: [სათაური]“ — დამალული ნაწილით). „წაშლა“ — სამუდამოა, ნატიური `<dialog>`-ით დადასტურების შემდეგ (ფოკუსი „გაუქმებაზე“).
  * - 390-ზე ცხრილი `overflow-x: auto` რეგიონშია (`role="region"`, `tabindex="0"`, caption-ით) —
  *   WCAG 1.4.10 ცხრილს გამონაკლისს აძლევს; ბარათებად (`display: block`) არ იქცევა — Safari ცხრილის
  *   სემანტიკას კარგავს.
@@ -79,10 +79,10 @@ function ContentList({ type }) {
   }
   const [statusText, setStatusText] = useState('');
   const [message, setMessage] = useState('');
-  const [archiving, setArchiving] = useState(
+  const [deleting, setDeleting] = useState(
     /** @type {import('../api/adminAdapter.js').ContentRow | null} */ (null),
   );
-  const [archiveError, setArchiveError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
   const [busy, setBusy] = useState(false);
   const regionRef = useRef(/** @type {HTMLDivElement | null} */ (null));
   const focusRegion = useRef(false);
@@ -104,7 +104,7 @@ function ContentList({ type }) {
     );
   }
 
-  // გვერდის / არქივის შემდეგ ფოკუსი ცხრილზე (ბოლო გვერდზე „შემდეგი“ ბმული აღარ არის)
+  // გვერდის / წაშლის შემდეგ ფოკუსი ცხრილზე (ბოლო გვერდზე „შემდეგი“ ბმული აღარ არის)
   useEffect(() => {
     if (list.status !== 'success' || !focusRegion.current) return;
     focusRegion.current = false;
@@ -122,18 +122,18 @@ function ContentList({ type }) {
     setParams(copy, { preventScrollReset: true });
   }
 
-  async function confirmArchive() {
-    if (!archiving) return;
+  async function confirmDelete() {
+    if (!deleting) return;
     setBusy(true);
-    setArchiveError('');
+    setDeleteError('');
     try {
-      await content.archive(archiving.id);
-      setMessage(ta('list.archived', { title: archiving.title }));
-      setArchiving(null);
+      await content.remove(deleting.id);
+      setMessage(ta('list.deleted', { title: deleting.title }));
+      setDeleting(null);
       focusRegion.current = true;
       list.reload();
     } catch (error) {
-      setArchiveError(ta('list.archiveFailed', { message: /** @type {Error} */ (error).message }));
+      setDeleteError(ta('list.deleteFailed', { message: /** @type {Error} */ (error).message }));
     } finally {
       setBusy(false);
     }
@@ -270,17 +270,17 @@ function ContentList({ type }) {
                             {ta('list.edit')}
                             <VisuallyHidden>{`: ${row.title}`}</VisuallyHidden>
                           </Button>
-                          {config.archivable && (
+                          {config.deletable && (
                             <Button
                               variant="secondary"
                               size="sm"
-                              icon="archive"
+                              icon="trash"
                               onClick={() => {
-                                setArchiveError('');
-                                setArchiving(row);
+                                setDeleteError('');
+                                setDeleting(row);
                               }}
                             >
-                              {ta('list.archive')}
+                              {ta('list.delete')}
                               <VisuallyHidden>{`: ${row.title}`}</VisuallyHidden>
                             </Button>
                           )}
@@ -329,18 +329,18 @@ function ContentList({ type }) {
       </ContentState>
 
       <ConfirmDialog
-        open={archiving !== null}
-        title={archiving ? ta('list.archiveTitle', { title: archiving.title }) : ''}
-        description={ta('list.archiveText')}
-        confirmLabel={ta('list.archiveConfirm')}
-        cancelLabel={ta('list.archiveCancel')}
+        open={deleting !== null}
+        title={deleting ? ta('list.deleteTitle', { title: deleting.title }) : ''}
+        description={ta('list.deleteText')}
+        confirmLabel={ta('list.deleteConfirm')}
+        cancelLabel={ta('list.deleteCancel')}
         busy={busy}
-        onConfirm={confirmArchive}
-        onCancel={() => setArchiving(null)}
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleting(null)}
       >
-        {archiveError && (
+        {deleteError && (
           <p role="alert" className="mc-dialog__error">
-            {archiveError}
+            {deleteError}
           </p>
         )}
       </ConfirmDialog>

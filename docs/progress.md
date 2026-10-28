@@ -931,7 +931,7 @@ frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ი�
 
 **adminAdapter** (`@/admin/api/adminAdapter.js`; ყველა → Promise, შეცდომა → `ContentError`):
 - `auth`: `login({ email, password, remember })`, `register({ name, email, invite, password })`, `logout()`, `me() → Session`, `extendSession()`; `Session = { user: AdminUser, expiresAt }`, `AdminUser = { id, name, email, role: 'admin' | 'editor', status: 'active' | 'invited' | 'deactivated' }`.
-- `content`: `list({ type: ContentType | 'all', status, q, page, limit = 10, check }) → { items: ContentRow[], total, page, pages, limit }`, `get(id) → ContentRecord` (+ `working` — გამოქვეყნებულის სამუშაო ასლი), `create(type, data)`, `update(id, data, { version, autosave })` (ძველი ვერსია → `conflict`; `autosave` გამოქვეყნებულზე/დაგეგმილზე → სამუშაო ასლი, საიტი არ იცვლება), `checkSlug(type, slug, id) → { available }`, `archive(id)`, `publish(id, { version, data })`, `schedule(id, at, { version, data })` (ბლოკერი → `validation` + `fields` — ველის გზა → `{ code, message }`), `versions(id) → VersionInfo[]`, `restoreVersion(id, version)`, `search(q) → ContentRow[]`. id ტიპის პრეფიქსითაა (`a-001`, `s-`, `v-`, `n-`, `e-`, `p-`).
+- `content`: `list({ type: ContentType | 'all', status, q, page, limit = 10, check }) → { items: ContentRow[], total, page, pages, limit }`, `get(id) → ContentRecord` (+ `working` — გამოქვეყნებულის სამუშაო ასლი), `create(type, data)`, `update(id, data, { version, autosave })` (ძველი ვერსია → `conflict`; `autosave` გამოქვეყნებულზე/დაგეგმილზე → სამუშაო ასლი, საიტი არ იცვლება), `checkSlug(type, slug, id) → { available }`, `remove(id)` (F8.1: სამუდამო წაშლა — ჩანაწერი, ვერსიები და სამუშაო ასლი; 7 გვერდი → `bad-request`), `publish(id, { version, data })`, `schedule(id, at, { version, data })` (ბლოკერი → `validation` + `fields` — ველის გზა → `{ code, message }`), `versions(id) → VersionInfo[]`, `restoreVersion(id, version)`, `search(q) → ContentRow[]`. id ტიპის პრეფიქსითაა (`a-001`, `s-`, `v-`, `n-`, `e-`, `p-`).
 - `media`: `list({ kind: 'image' | 'document', missingAlt })`, `upload(file, meta)`, `updateAlt(id, alt)` (ყველა გამოყენებაში აისახება), `update(id, patch)` (დოკუმენტი: `title`, `lang`, `tagged`), `remove(id)` (გამოყენებული → `conflict`), `usage(id)`. `MediaItem = { id, kind, src, alt, title, ratio, size, lang, tagged, usage: { type, id, title, field }[] }`.
 - `users`: `list()`, `invite({ email?, role }) → { code, link: '/admin/login?tab=register&invite=…', expiresAt, role }`, `setRole(id, role)`, `deactivate(id)` (საკუთარ თავზე → `bad-request`).
 - `settings`: `get() → { site: SiteSettings, featured: { weeklyVideo, featuredArticle, featuredSeries, featuredNews } }` (id-ები), `update(patch)` — ახალი რჩეული წინას ხსნის.
@@ -939,7 +939,7 @@ frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ი�
 - `setAdminAdapter(adapter | null)`, `UNAUTHORIZED_EVENT` ('mc-admin:unauthorized' — სესიის გარეთ 401 → შესვლის გვერდი).
 - mock: `createMockAdminAdapter({ store, delay, sessionTtl })`, `adminState(store)`, `MOCK_PASSWORD`, `MOCK_INVITE`, `SESSION_TTL_MS` (30 წთ), `PAGE_DEFS`. HTTP: `createHttpAdminAdapter({ baseUrl, fetch })` — `credentials: 'include'`, CSRF double-submit (`mc-csrf` cookie → `X-CSRF-Token`), `readCsrfToken()`; ჩაირთვება `VITE_ADMIN_API`-ით.
 
-**საერთო mock-საცავი** (`@/content/mock/store.js`, რეექსპორტი `mock/index.js`-იდან): `createMockStore({ now, data }) → MockStore` (`records`, `find`, `findBySlug`, `insert`, `replace` (ვერსია → `conflict`), `setMeta`, `snapshot()` — საჯარო ნაკრები არქივის გარეშე, `setSettings`, `setOrg({ team, partners })`, `extra`, `subscribe`), `getSharedMockStore()`, `setSharedMockStore()`, `ID_PREFIX`, `COLLECTIONS`. `createMockAdapter({ store })` — საჯარო adapter-ი საცავს ყოველ მოთხოვნაზე კითხულობს (`snapshot` — getter).
+**საერთო mock-საცავი** (`@/content/mock/store.js`, რეექსპორტი `mock/index.js`-იდან): `createMockStore({ now, data }) → MockStore` (`records`, `find`, `findBySlug`, `insert`, `replace` (ვერსია → `conflict`), `setMeta`, `remove`, `snapshot()` — საჯარო ნაკრები, `setSettings`, `setOrg({ team, partners })`, `extra`, `subscribe`), `getSharedMockStore()`, `setSharedMockStore()`, `ID_PREFIX`, `COLLECTIONS`. `createMockAdapter({ store })` — საჯარო adapter-ი საცავს ყოველ მოთხოვნაზე კითხულობს (`snapshot` — getter).
 
 **შეცდომის კოდები (+):** `unauthorized` (401), `forbidden` (403), `conflict` (409), `rate-limited` (429).
 
@@ -951,7 +951,7 @@ frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ი�
 
 **რედაქტორი:** `<EntityEditor type routeId>`; სქემა — `EntitySchema = { type, sections: { id, title, fields: FieldSchema[] }[], defaults(now), rules: string[] }`, `FieldSchema = { name (გზა), kind: 'text' | 'slug' | 'textarea' | 'select' | 'radio' | 'richtext' | 'image' | 'file' | 'repeater' | 'datetime' | 'checkbox' | 'duration', label, hint?, required?, max?, taxonomy? + ids?, options?, ratio?, accept?, template?, fields?, newItem?, itemLabel?, itemTitle?, addLabel?, importVtt?, inputType?, lang? }`; `SCHEMAS`, `schemaFor(type)`, `ABOUT_SECTIONS`. `checklist.js`: `RULES`, `validateEntity(type, values, articleSlugs)`, `validatePage(page)`, `buildChecklist(rules, issues) → { items, done, total, blocking }`. `serialize.js`: `blocksToDoc(blocks)`, `docToBlocks(doc)`, `mergeRuns(runs)`. `path.js`: `parsePath`, `getIn`, `setIn`, `fieldId(path)` (`cover.alt` → `f-cover-alt`), `resolveFieldId(path)`, `sameValue`. `datetime.js`: `splitTbilisi`, `joinTbilisi` (ISO `+04:00`), `toClock`, `fromClock`. `vtt.js`: `parseVtt(text)`, `parseTimestamp`. `autosave.js`: `autosaveDelay()`, `setAutosaveDelay(ms)` (ტესტები). `EDITOR_EXTENSIONS` (TipTap).
 
-**ტოკენები:** ახალი არ არის. **ხატულები (+14):** `dashboard`, `article`, `news`, `pages`, `image`, `document`, `users`, `settings`, `lock`, `clock`, `pencil`, `eye`, `archive`, `logout`.
+**ტოკენები:** ახალი არ არის. **ხატულები (+14):** `dashboard`, `article`, `news`, `pages`, `image`, `document`, `users`, `settings`, `lock`, `clock`, `pencil`, `eye`, `trash`, `logout`.
 
 **i18n:** ადმინის ტექსტი — ცალკე ლექსიკონი `@/admin/i18n/ka.js` + `ta()` (ადმინის chunk-შია, ka.js-ში არა); ჯგუფები: meta, brand, types, pageNames, roles, nav, header, user, auth, fieldErrors, session, status, issues, dashboard, list, a11y, search, errors, common, editor, preview, library, documents, users, settings.
 
@@ -1002,3 +1002,15 @@ frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ი�
 ### შემდეგი
 
 8 ნაბიჯი დასრულებულია. შემდეგი ეტაპი — backend / CMS-ის არჩევა (§9.4): `ContentAdapter` + `AdminAdapter`-ის რეალიზაცია, ჰოსტინგი (`X-Robots-Tag`, rate limit, prerender), რეალური კონტენტი `[ფრჩხილების]` ნაცვლად (`npm run placeholders`).
+
+
+## F8.1 — წაშლა არქივის ნაცვლად (2026-10-27)
+
+**მოთხოვნა:** კონტენტის სიაში „არქივი“ → სამუდამო „წაშლა“.
+
+- `content.archive(id)` → **`content.remove(id)`** (mock: `store.remove` + ვერსიები + სამუშაო ასლი; HTTP: `DELETE /items/:id`). წაშლილი მასალა ქრება ადმინის სიიდან, საჯარო საიტიდან, ძიებიდან და მედიის ბიბლიოთეკიდან (მისი ჩადგმული ფოტო / PDF); მასზე სხვა მასალის ბმული ჩეკლისტში „არარსებულ მასალად“ ჩნდება. 7 საჯარო გვერდი არ იშლება (`bad-request`, ღილაკი არ ჩანს).
+- `RecordMeta.archived` და საცავის / adapter-ის არქივის ფილტრები ამოღებულია; `TYPE_CONFIG[type].archivable` → `deletable`.
+- სია: ღილაკი „წაშლა: [სათაური]“ (ხატულა `trash`, `archive` სპრაიტიდან ამოღებულია); დადასტურება — ნატიური `<dialog>` „წაშლა: „[სათაური]““, აღწერა „სამუდამოდ წაიშლება … დაბრუნება შეუძლებელია“, ფოკუსი „გაუქმებაზე“, დადასტურების ღილაკი — „სამუდამოდ წაშლა“; შედეგი — `role="status"` „„[სათაური]“ წაიშალა.“, ფოკუსი ცხრილზე.
+- უფლება — `content.write` (რედაქტორი და ადმინისტრატორი, როგორც არქივზე იყო).
+- **Gate:** lint ✓ · test ✓ (34 ფაილი, 624; არქივის ორი ტესტი → წაშლის სამი) · Chromium axe — სია გახსნილი წაშლის დიალოგით, 3 თემა × 1440 / 390: 0 დარღვევა; 390-ზე დიალოგის სათაური და აღწერა axe-ს „incomplete“-ია (top-layer `<dialog>`-ის გადაფარვა — `bgOverlap`), computed style-ით: 15.39 / 13.59 / 21:1 · build + check-dist ✓.
+- **ღია საკითხი:** წაშლა შეუქცევადია — რეალურ backend-ზე „სანაგვე“ (რბილი წაშლა N დღით) ან წაშლის უფლება მხოლოდ ადმინისტრატორს — დასადასტურებელია.

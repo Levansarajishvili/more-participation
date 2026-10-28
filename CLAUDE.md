@@ -181,7 +181,7 @@ src/
                           vtt.js, autosave.js, PreviewPage; editor.css
     schemas/              ველების კონფიგი თითო ტიპზე (articles, news, events, series, videos, pages)
     i18n/                 ადმინის ლექსიკონი (ka.js) + ta()
-    content-types.js      ტიპები, სვეტი „კატეგორია“, საჯარო გზა, creatable / archivable
+    content-types.js      ტიპები, სვეტი „კატეგორია“, საჯარო გზა, creatable / deletable
     __tests__/            admin-helpers.jsx (setupAdmin, signInDirect, renderAdmin, fillLogin), ტესტები
   content/
     adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk

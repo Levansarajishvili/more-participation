@@ -261,7 +261,7 @@ export function createMockAdminAdapter(options = {}) {
   function recordOf(id) {
     const type = typeOf(id);
     const record = store.find(TYPE_CONFIG[type].collection, id);
-    if (!record || record.meta.archived) throw new ContentError('not-found', { detail: id });
+    if (!record) throw new ContentError('not-found', { detail: id });
     return { type, record };
   }
 
@@ -271,7 +271,7 @@ export function createMockAdminAdapter(options = {}) {
     return new Set(
       store
         .records('articles')
-        .filter((r) => !r.meta.archived && isPublic(/** @type {any} */ (r.item), at))
+        .filter((r) => isPublic(/** @type {any} */ (r.item), at))
         .map((r) => /** @type {{ slug: string }} */ (r.item).slug),
     );
   }
@@ -353,10 +353,7 @@ export function createMockAdminAdapter(options = {}) {
   function allRows(types) {
     const slugs = publicArticleSlugs();
     return types.flatMap((type) =>
-      store
-        .records(TYPE_CONFIG[type].collection)
-        .filter((r) => !r.meta.archived)
-        .map((r) => toRow(type, r, slugs)),
+      store.records(TYPE_CONFIG[type].collection).map((r) => toRow(type, r, slugs)),
     );
   }
 
@@ -429,7 +426,6 @@ export function createMockAdminAdapter(options = {}) {
     const items = [];
     for (const type of CONTENT_TYPES) {
       for (const record of store.records(TYPE_CONFIG[type].collection)) {
-        if (record.meta.archived) continue;
         const item = /** @type {Record<string, any>} */ (record.item);
         for (const { field, image } of imagesOf(item)) {
           items.push({
@@ -642,18 +638,19 @@ export function createMockAdminAdapter(options = {}) {
           return { available: !found || found.id === id };
         }),
 
-      archive: (id) =>
+      // სამუდამო წაშლა: ჩანაწერი, მისი ვერსიები და სამუშაო ასლი ქრება — საჯარო საიტიდანაც.
+      // ჩადგმული ფოტო / PDF მასთან ერთად იშლება; სხვა მასალის ბმული მასზე ჩეკლისტში „არარსებულ
+      // მასალად“ გამოჩნდება. 7 საჯარო გვერდი არ იშლება.
+      remove: (id) =>
         respond(() => {
-          const user = requireUser('content.write');
+          requireUser('content.write');
           const { type, record } = recordOf(id);
-          if (!TYPE_CONFIG[type].archivable) {
-            throw new ContentError('bad-request', { detail: `archive ${type}` });
+          if (!TYPE_CONFIG[type].deletable) {
+            throw new ContentError('bad-request', { detail: `remove ${type}` });
           }
-          store.setMeta(TYPE_CONFIG[type].collection, record.id, {
-            archived: true,
-            updatedBy: user.id,
-            updatedAt: iso(now()),
-          });
+          store.remove(TYPE_CONFIG[type].collection, record.id);
+          state.versions.delete(record.id);
+          state.working.delete(record.id);
           return /** @type {const} */ ({ ok: true });
         }),
 
@@ -919,7 +916,6 @@ export function createMockAdminAdapter(options = {}) {
           const items = [];
           for (const type of CONTENT_TYPES) {
             for (const record of store.records(TYPE_CONFIG[type].collection)) {
-              if (record.meta.archived) continue;
               const item = /** @type {Record<string, any>} */ (record.item);
               const issues = issuesOf(type, item, slugs);
               if (issues.length) {
@@ -979,9 +975,8 @@ export function createMockAdminAdapter(options = {}) {
   function settingsBundle() {
     /** @param {ContentType} type */
     const featuredId = (type) =>
-      store
-        .records(TYPE_CONFIG[type].collection)
-        .find((r) => !r.meta.archived && /** @type {any} */ (r.item).featured)?.id ?? null;
+      store.records(TYPE_CONFIG[type].collection).find((r) => /** @type {any} */ (r.item).featured)
+        ?.id ?? null;
     return {
       site: store.snapshot().settings,
       featured: {

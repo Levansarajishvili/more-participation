@@ -39,7 +39,7 @@ async function code(promise) {
 }
 
 describe('mock adminAdapter + საერთო საცავი', () => {
-  it('ადმინში გამოქვეყნებული მასალა იმავე სესიაში საჯარო adapter-ში ჩანს; არქივი — ქრება', async () => {
+  it('ადმინში გამოქვეყნებული მასალა იმავე სესიაში საჯარო adapter-ში ჩანს; წაშლილი — ქრება', async () => {
     const { pub, admin } = env();
     await login(admin);
     const draft = (await admin.content.list({ type: 'articles', status: 'draft' })).items.find(
@@ -52,9 +52,32 @@ describe('mock adminAdapter + საერთო საცავი', () => {
     const record = await admin.content.get(id);
     await admin.content.publish(id, { version: record.version });
     expect((await pub.getArticle(slug)).slug).toBe(slug);
-    await admin.content.archive(id);
+    await admin.content.update(
+      id,
+      { title: '[ვერსია 2]' },
+      { version: (await admin.content.get(id)).version },
+    );
+    await admin.content.remove(id);
+    expect(await code(admin.content.versions(id))).toBe('not-found');
     expect(await code(pub.getArticle(slug))).toBe('not-found');
     expect(await code(admin.content.get(id))).toBe('not-found');
+  });
+
+  it('წაშლა: 7 საჯარო გვერდი არ იშლება; სესიის გარეშე — unauthorized; წაშლილი ფოტო მედიიდანაც ქრება', async () => {
+    const { admin, store } = env();
+    expect(await code(admin.content.remove('a-001'))).toBe('unauthorized');
+    await login(admin);
+    const page = store.records('pages')[0];
+    expect(await code(admin.content.remove(page.id))).toBe('bad-request');
+    const before = (await admin.media.list({ kind: 'image' })).filter(
+      (m) => m.usage[0]?.id === 'a-001',
+    );
+    expect(before.length).toBeGreaterThan(0);
+    await admin.content.remove('a-001');
+    expect(
+      (await admin.media.list({ kind: 'image' })).some((m) => m.usage[0]?.id === 'a-001'),
+    ).toBe(false);
+    expect(await code(admin.content.remove('a-001'))).toBe('not-found');
   });
 
   it('ძველი ვერსიით შენახვა → conflict (409); ვერსიების ისტორია და აღდგენა', async () => {

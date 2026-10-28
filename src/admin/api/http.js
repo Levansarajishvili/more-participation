@@ -109,7 +109,7 @@ export function createHttpAdminAdapter({
       update: (itemId, data, { version, autosave }) =>
         patch(`/items/${id(itemId)}`, { data, version, autosave }),
       checkSlug: (type, slug, itemId) => get(`/content/${id(type)}/slug`, { slug, id: itemId }),
-      archive: (itemId) => post(`/items/${id(itemId)}/archive`),
+      remove: (itemId) => del(`/items/${id(itemId)}`),
       publish: (itemId, { version, data }) =>
         post(`/items/${id(itemId)}/publish`, { version, data }),
       schedule: (itemId, at, { version, data }) =>

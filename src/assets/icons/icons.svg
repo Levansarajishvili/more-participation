@@ -209,7 +209,7 @@
     <path class="main" d="M12 4v11M7 10l5 5 5-5M5 20h14" />
   </symbol>
 
-  <!-- F8: ადმინ პანელი (AdminPanel / AdminAuth დაფები; clock, pencil, eye, archive, logout — ზოგადი) -->
+  <!-- F8: ადმინ პანელი (AdminPanel / AdminAuth დაფები; clock, pencil, eye, trash, logout — ზოგადი) -->
   <symbol id="dashboard" viewBox="0 0 24 24" data-label="დაფა">
     <path class="main" d="M4 13h7V4H4zM13 20h7v-9h-7zM13 8h7V4h-7zM4 20h7v-4H4z" />
   </symbol>
@@ -247,8 +247,8 @@
   <symbol id="eye" viewBox="0 0 24 24" data-label="ჩვენება">
     <path class="main" d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12zM15 12a3 3 0 1 1-6 0a3 3 0 1 1 6 0z" />
   </symbol>
-  <symbol id="archive" viewBox="0 0 24 24" data-label="არქივი">
-    <path class="main" d="M3.5 4.5h17v4h-17zM5 8.5V19h14V8.5M10 12.5h4" />
+  <symbol id="trash" viewBox="0 0 24 24" data-label="წაშლა">
+    <path class="main" d="M4 7h16M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" />
   </symbol>
   <symbol id="logout" viewBox="0 0 24 24" data-label="გასვლა">
     <path class="main" d="M10 4H5v16h5M14 8l4 4-4 4M18 12H9" />

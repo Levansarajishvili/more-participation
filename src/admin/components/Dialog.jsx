@@ -9,7 +9,7 @@ import { cx } from '@/components/ui/utils.js';
  *
  * - `role="alertdialog"` — მოთხოვნა, რომელიც პასუხს ითხოვს (სესიის ვადა); სახელი — სათაური,
  *   აღწერა — `description` (`aria-describedby`).
- * - დადასტურების დიალოგი (არქივი, აღდგენა) — `ConfirmDialog`.
+ * - დადასტურების დიალოგი (წაშლა, აღდგენა) — `ConfirmDialog`.
  *
  * @param {object} props
  * @param {boolean} props.open

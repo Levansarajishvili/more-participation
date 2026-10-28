@@ -101,7 +101,7 @@ import { normalizeError } from '@/content/errors.js';
  * @property {number} scheduled
  * @property {string | null} nextScheduledAt
  * @property {number} a11yIssues       მასალა ≥ 1 ბლოკერით
- * @property {Record<ContentType, number>} counts   არქივის გარეშე
+ * @property {Record<ContentType, number>} counts
  * @property {{ images: number, documents: number }} library
  */
 
@@ -142,7 +142,7 @@ import { normalizeError } from '@/content/errors.js';
  *   create(type: ContentType, data: object): Promise<ContentRecord>,
  *   update(id: string, data: object, o: { version: number, autosave?: boolean }): Promise<ContentRecord>,
  *   checkSlug(type: ContentType, slug: string, id?: string | null): Promise<{ available: boolean }>,
- *   archive(id: string): Promise<{ ok: true }>,
+ *   remove(id: string): Promise<{ ok: true }>,   სამუდამო წაშლა (ვერსიების ჩათვლით)
  *   publish(id: string, o: { version: number, data?: object }): Promise<ContentRecord>,
  *   schedule(id: string, at: string, o: { version: number, data?: object }): Promise<ContentRecord>,
  *   versions(id: string): Promise<VersionInfo[]>,
@@ -244,7 +244,7 @@ export const content = {
   create: (type, data) => call('content', 'create', type, data),
   update: (id, data, o) => call('content', 'update', id, data, o),
   checkSlug: (type, slug, id) => call('content', 'checkSlug', type, slug, id),
-  archive: (id) => call('content', 'archive', id),
+  remove: (id) => call('content', 'remove', id),
   publish: (id, o) => call('content', 'publish', id, o),
   schedule: (id, at, o) => call('content', 'schedule', id, at, o),
   versions: (id) => call('content', 'versions', id),

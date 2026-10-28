@@ -4,7 +4,7 @@ import { ta } from './i18n/index.js';
 
 /**
  * ადმინის კონტენტის ტიპები (`/admin/:type`). ერთი ჩანაწერი → სიის სვეტი „კატეგორია“, საჯარო
- * მისამართი („გადახედვა“, „საიტის ნახვა“), შექმნა / არქივი. რედაქტორის ველები — ნაწილ ბ-ში
+ * მისამართი („გადახედვა“, „საიტის ნახვა“), შექმნა / წაშლა. რედაქტორის ველები — ნაწილ ბ-ში
  * (`admin/schemas/*.js`).
  */
 
@@ -20,7 +20,7 @@ import { ta } from './i18n/index.js';
  * @property {(id: string) => string} categoryLabel
  * @property {(item: Record<string, any>) => string} publicPath
  * @property {boolean} creatable
- * @property {boolean} archivable
+ * @property {boolean} deletable
  */
 
 /** @type {readonly ContentType[]} */
@@ -43,7 +43,7 @@ export const TYPE_CONFIG = Object.freeze({
     categoryLabel: (id) => label('articleCategory', id),
     publicPath: (item) => `/articles/${item.slug}`,
     creatable: true,
-    archivable: true,
+    deletable: true,
   },
   series: {
     id: 'series',
@@ -53,7 +53,7 @@ export const TYPE_CONFIG = Object.freeze({
     categoryLabel: (id) => label('seriesTopic', id),
     publicPath: (item) => `/development?series=${item.slug}`,
     creatable: true,
-    archivable: true,
+    deletable: true,
   },
   videos: {
     id: 'videos',
@@ -63,7 +63,7 @@ export const TYPE_CONFIG = Object.freeze({
     categoryLabel: (id) => label('videoCategory', id),
     publicPath: (item) => `/videos?video=${item.slug}`,
     creatable: true,
-    archivable: true,
+    deletable: true,
   },
   news: {
     id: 'news',
@@ -73,7 +73,7 @@ export const TYPE_CONFIG = Object.freeze({
     categoryLabel: (id) => label('newsType', id),
     publicPath: (item) => `/news/${item.slug}`,
     creatable: true,
-    archivable: true,
+    deletable: true,
   },
   events: {
     id: 'events',
@@ -83,7 +83,7 @@ export const TYPE_CONFIG = Object.freeze({
     categoryLabel: (id) => label('eventFormat', id),
     publicPath: () => '/news',
     creatable: true,
-    archivable: true,
+    deletable: true,
   },
   pages: {
     id: 'pages',
@@ -93,7 +93,7 @@ export const TYPE_CONFIG = Object.freeze({
     categoryLabel: (id) => id,
     publicPath: (item) => item.path ?? '/',
     creatable: false,
-    archivable: false,
+    deletable: false,
   },
 });
 

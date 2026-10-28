@@ -166,30 +166,29 @@ describe('სია', () => {
     expect(await axe(container, AXE)).toHaveNoViolations();
   });
 
-  it('არქივი: <dialog> დადასტურებით (ფოკუსი „გაუქმებაზე“); მასალა საჯარო საიტიდანაც ქრება', async () => {
-    const { user, pub } = await open(
-      '/admin/articles?q=%E1%83%9B%E1%83%9D%E1%83%9C%E1%83%90%E1%83%AE%E1%83%90%E1%83%96%E1%83%98',
-    );
-    void pub;
+  it('წაშლა: <dialog> დადასტურებით (ფოკუსი „გაუქმებაზე“); მასალა სამუდამოდ ქრება — საჯარო საიტიდანაც', async () => {
+    const { user, store } = await open('/admin/articles?status=published');
     const before = (await listArticles({ limit: 50 })).total;
-    const firstArchive = (await screen.findAllByRole('button', { name: /^არქივი: / }))[0];
-    const title = firstArchive.textContent?.replace(/^არქივი: ?/, '') ?? '';
-    await user.click(firstArchive);
-    const dialog = screen.getByRole('dialog', { name: /^დაარქივება:/ });
+    const first = (await screen.findAllByRole('button', { name: /^წაშლა: / }))[0];
+    const title = first.textContent?.replace(/^წაშლა: ?/, '') ?? '';
+    await user.click(first);
+    const dialog = screen.getByRole('dialog', { name: `წაშლა: „${title}“` });
+    expect(dialog).toHaveAccessibleDescription(/სამუდამოდ წაიშლება/);
     expect(within(dialog).getByRole('button', { name: 'გაუქმება' })).toHaveFocus();
     await user.click(within(dialog).getByRole('button', { name: 'გაუქმება' }));
-    expect(firstArchive).toHaveFocus();
+    expect(first).toHaveFocus();
+    expect(store.records('articles').some((r) => r.item.title === title)).toBe(true);
 
-    await user.click(firstArchive);
+    await user.click(first);
     await user.click(
-      within(screen.getByRole('dialog')).getByRole('button', { name: 'დაარქივება' }),
+      within(screen.getByRole('dialog')).getByRole('button', { name: 'სამუდამოდ წაშლა' }),
     );
-    await screen.findByText(`„${title}“ დაარქივდა.`);
+    await screen.findByText(`„${title}“ წაიშალა.`);
     await waitFor(() =>
       expect(screen.queryByText(title, { selector: '.mc-admin-table__title' })).toBeNull(),
     );
-    // მონახაზი საჯარო სიაში არ ჩანდა — საჯარო ჯამი უცვლელია; დაარქივებული ადმინის სიიდანაც ქრება
-    expect((await listArticles({ limit: 50 })).total).toBe(before);
+    expect(store.records('articles').some((r) => r.item.title === title)).toBe(false);
+    expect((await listArticles({ limit: 50 })).total).toBe(before - 1);
   });
 
   it('?check=altMissing — მხოლოდ ხარვეზიანი მასალა, ფილტრის მოხსნა', async () => {
@@ -200,10 +199,10 @@ describe('სია', () => {
     expect(router.state.location.search).toBe('');
   });
 
-  it('გვერდები: 7 ფიქსირებული, არქივის ღილაკის გარეშე', async () => {
+  it('გვერდები: 7 ფიქსირებული, წაშლის ღილაკის გარეშე', async () => {
     await open('/admin/pages');
     expect(screen.getAllByRole('link', { name: /^რედაქტირება: / })).toHaveLength(7);
-    expect(screen.queryByRole('button', { name: /^არქივი/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /^წაშლა/ })).toBeNull();
     expect(screen.getByRole('link', { name: 'ახალი მასალა: სტატია' })).toBeInTheDocument();
   });
 });
