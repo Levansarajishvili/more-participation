@@ -8,6 +8,7 @@ import { ruleLabel } from '../a11y-rules.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { typeLabel } from '../content-types.js';
 import { ta } from '../i18n/index.js';
+import { rowTitle } from '../display.js';
 
 /**
  * ხელმისაწვდომობის სრული ანგარიში (`/admin/a11y`): ჯამი `role="status"`-ით, შემდეგ ორი ცხრილი —
@@ -121,8 +122,12 @@ function IssueTable({ report, severity, id, title, empty }) {
               {rows.map(({ item, issue, key }) => (
                 <tr key={key}>
                   <td>
-                    <Link to={`/admin/${item.type}/${item.id}`} className="mc-admin-table__title">
-                      {item.title}
+                    <Link
+                      to={`/admin/${item.type}/${item.id}`}
+                      className="mc-admin-table__title"
+                      lang={rowTitle(item).lang}
+                    >
+                      {rowTitle(item).text}
                     </Link>
                   </td>
                   <td>{typeLabel(item.type, 'one')}</td>

@@ -1,6 +1,6 @@
 /**
- * ინტერფეისის ენა (F9: ქართული / ინგლისური). ქართული — ძირი (`/`), ინგლისური — `/en` პრეფიქსი
- * (საჯარო საიტი); ადმინი — `/admin` ორივე ენაზე, ენა პარამეტრად ინახება (`mc-lang`).
+ * ინტერფეისის ენა (F9: ქართული / ინგლისური). ქართული — ძირი (`/`, `/admin`), ინგლისური — `/en`
+ * პრეფიქსი (`/en/articles`, `/en/admin`).
  *
  * მიმდინარე ენა მოდულის მდგომარეობაა: `t()`, თარიღის ფორმატი და ხმოვანი რეჟიმი მას კითხულობს.
  * საჯარო საიტზე მას URL განსაზღვრავს (RootLayout → `setLocale` render-ამდე), ადმინში — ენის
@@ -56,18 +56,16 @@ export function stripLocale(pathname) {
   return pathname.startsWith(`${EN_PREFIX}/`) ? pathname.slice(EN_PREFIX.length) : pathname;
 }
 
-/** `/admin`-ის გზები ენის პრეფიქსს არ იღებს. @param {string} path */
-const isAdmin = (path) => /^\/admin(?:[/?#]|$)/.test(path);
-
 /**
- * საიტის შიდა გზა მიმდინარე (ან მითითებულ) ენაზე: ინგლისურზე `/en` ემატება. გარე ბმული,
- * `#`, `?`, `mailto:` / `tel:`, ფარდობითი გზა და `/admin` უცვლელია; უკვე პრეფიქსიანი — ორჯერ არა.
+ * საიტის შიდა გზა მიმდინარე (ან მითითებულ) ენაზე: ინგლისურზე `/en` ემატება — ადმინსაც
+ * (`/admin` → `/en/admin`). გარე ბმული, `#`, `?`, `mailto:` / `tel:` და ფარდობითი გზა უცვლელია;
+ * უკვე პრეფიქსიანი — ორჯერ არა.
  * @param {string} path
  * @param {Locale} [locale]
  * @returns {string}
  */
 export function localizePath(path, locale = current) {
-  if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//') || isAdmin(path)) {
+  if (typeof path !== 'string' || !path.startsWith('/') || path.startsWith('//')) {
     return path;
   }
   const bare = stripLocale(path.split(/[?#]/)[0]) + path.slice(path.split(/[?#]/)[0].length);

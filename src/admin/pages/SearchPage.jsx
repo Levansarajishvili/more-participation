@@ -7,6 +7,7 @@ import { content } from '../api/adminAdapter.js';
 import StatusBadge from '../components/StatusBadge.jsx';
 import { typeLabel } from '../content-types.js';
 import { ta } from '../i18n/index.js';
+import { rowTitle } from '../display.js';
 import { useAdminPage } from '../shell/admin-page.js';
 
 /**
@@ -40,8 +41,12 @@ export default function SearchPage() {
             <ul role="list" className="mc-admin-panel mc-search-results">
               {results.data?.map((row) => (
                 <li key={row.id} className="mc-search-results__item">
-                  <Link to={`/admin/${row.type}/${row.id}`} className="mc-admin-table__title">
-                    {row.title}
+                  <Link
+                    to={`/admin/${row.type}/${row.id}`}
+                    className="mc-admin-table__title"
+                    lang={rowTitle(row).lang}
+                  >
+                    {rowTitle(row).text}
                   </Link>
                   <span className="mc-admin-table__meta">{typeLabel(row.type, 'one')}</span>
                   <StatusBadge status={row.status} />

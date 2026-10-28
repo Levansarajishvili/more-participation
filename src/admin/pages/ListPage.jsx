@@ -20,6 +20,7 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import StatusBadge, { IssueBadge } from '../components/StatusBadge.jsx';
 import { TYPE_CONFIG, isContentType, typeLabel } from '../content-types.js';
 import { ta } from '../i18n/index.js';
+import { rowTitle } from '../display.js';
 import { useAdminPage } from '../shell/admin-page.js';
 
 import AdminNotFound from './AdminNotFound.jsx';
@@ -246,7 +247,9 @@ function ContentList({ type }) {
                   {data?.items.map((row) => (
                     <tr key={row.id}>
                       <td>
-                        <span className="mc-admin-table__title">{row.title}</span>
+                        <span className="mc-admin-table__title" lang={rowTitle(row).lang}>
+                          {rowTitle(row).text}
+                        </span>
                         <span className="mc-admin-table__meta">
                           <span lang="en">{type === 'pages' ? row.category : row.slug}</span>
                           <IssueBadge count={row.issues.errors} />
@@ -268,7 +271,10 @@ function ContentList({ type }) {
                         <span className="mc-admin-table__actions">
                           <Button variant="secondary" size="sm" to={`/admin/${type}/${row.id}`}>
                             {ta('list.edit')}
-                            <VisuallyHidden>{`: ${row.title}`}</VisuallyHidden>
+                            <VisuallyHidden>
+                              {': '}
+                              <span lang={rowTitle(row).lang}>{rowTitle(row).text}</span>
+                            </VisuallyHidden>
                           </Button>
                           {config.deletable && (
                             <Button
@@ -281,7 +287,10 @@ function ContentList({ type }) {
                               }}
                             >
                               {ta('list.delete')}
-                              <VisuallyHidden>{`: ${row.title}`}</VisuallyHidden>
+                              <VisuallyHidden>
+                                {': '}
+                                <span lang={rowTitle(row).lang}>{rowTitle(row).text}</span>
+                              </VisuallyHidden>
                             </Button>
                           )}
                         </span>

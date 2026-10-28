@@ -108,4 +108,37 @@ describe('F9: ადმინი ინგლისურად (/en/admin)', ()
     expect(store.find('articles', id)?.item).toMatchObject({ status: 'published' });
     expect(await axe(container, AXE)).toHaveNoViolations();
   });
+
+  it('ქართულ ადმინში ენის გადამრთველი /en/admin-ზე მიდის (იმავე გვერდზე, query-ით)', async () => {
+    setLocale('ka');
+    const { admin } = setupAdmin();
+    signInDirect(admin, 'editor');
+    const router = createMemoryRouter(createRoutes(), {
+      ...createRouterOptions(),
+      initialEntries: ['/admin/articles?status=draft'],
+    });
+    render(<RouterProvider router={router} />);
+    await screen.findByRole('heading', { level: 1, name: 'სტატიები' }, { timeout: 8000 });
+    const toEn = screen.getByRole('link', { name: 'English' });
+    expect(toEn).toHaveAttribute('href', '/en/admin/articles?status=draft');
+    expect(toEn).toHaveAttribute('lang', 'en');
+  });
+
+  it('ინგლისურ სიაში თარგმნილი მასალა ინგლისური სათაურით, დანარჩენი — ქართულად lang="ka"', async () => {
+    const { admin } = setupAdmin();
+    signInDirect(admin, 'editor');
+    renderEn('/en/admin/articles?q=rogor');
+    expect(
+      await screen.findByText(
+        '[How to turn failure into learning]',
+        { selector: '.mc-admin-table__title' },
+        { timeout: 15_000 },
+      ),
+    ).not.toHaveAttribute('lang');
+    const georgian = document.querySelectorAll('.mc-admin-table__title[lang="ka"]');
+    expect(georgian.length).toBeGreaterThan(0);
+    expect(
+      screen.getByRole('link', { name: 'Edit: [How to turn failure into learning]' }),
+    ).toBeInTheDocument();
+  }, 20_000);
 });

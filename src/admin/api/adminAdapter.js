@@ -42,6 +42,7 @@ import { normalizeError } from '@/content/errors.js';
  * @property {string} id
  * @property {ContentType} type
  * @property {string} title
+ * @property {string | null} titleEn   F9: ინგლისური სათაური (`translations.en.title`), თუ არის
  * @property {string} slug
  * @property {Status} status
  * @property {string} publishedAt
@@ -189,7 +190,11 @@ function loadDefault() {
   // TODO(backend): CMS-მდე mock წარმოებაშიც მუშაობს — სატესტო ანგარიშით. რეალურ გაშვებამდე
   // VITE_ADMIN_API აუცილებელია (project-context §9.4).
   return import('./mock.js').then(({ createMockAdminAdapter }) =>
-    createMockAdminAdapter({ delay: import.meta.env.MODE === 'development' ? DEV_DELAY : 0 }),
+    createMockAdminAdapter({
+      delay: import.meta.env.MODE === 'development' ? DEV_DELAY : 0,
+      // F9: ენის გადართვა სრული გადატვირთვაა — mock-ის სესია sessionStorage-ში რჩება
+      persist: true,
+    }),
   );
 }
 

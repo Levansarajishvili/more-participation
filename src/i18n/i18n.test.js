@@ -240,7 +240,8 @@ describe('F9: ინგლისური ენა', () => {
     expect(localizePath('/', 'en')).toBe('/en');
     expect(localizePath('/en/articles', 'ka')).toBe('/articles');
     expect(localizePath('/en/articles?x=1', 'en')).toBe('/en/articles?x=1');
-    expect(localizePath('/admin/articles', 'en')).toBe('/admin/articles');
+    expect(localizePath('/admin/articles', 'en')).toBe('/en/admin/articles');
+    expect(localizePath('/en/admin/articles', 'ka')).toBe('/admin/articles');
     expect(localizePath('https://example.org/x', 'en')).toBe('https://example.org/x');
     expect(localizePath('#main', 'en')).toBe('#main');
     expect(alternatePath({ pathname: '/news', search: '?type=event', hash: '#top' }, 'en')).toBe(

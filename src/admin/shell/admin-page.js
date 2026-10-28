@@ -8,6 +8,7 @@ import { createContext, useContext, useEffect } from 'react';
  * @typedef {{ to?: string, label: string }} Crumb
  * @typedef {object} AdminPageInfo
  * @property {string} [title]
+ * @property {'ka' | undefined} [titleLang]  F9: სათაური მასალისაა და გვერდის ენაზე არ არის
  * @property {Crumb[]} [crumbs]          ბილიკი „ადმინი“-სა და მიმდინარე ეკრანს შორის
  * @property {string | null} [type]      „ახალი მასალა“-ს ტიპი
  * @property {boolean} [editor]          რედაქტორის ეკრანი: header-ის CTA → secondary

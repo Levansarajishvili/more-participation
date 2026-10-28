@@ -128,7 +128,13 @@ export default function AdminShell() {
                   className="mc-admin-crumbs"
                 />
               )}
-              <h1 ref={headingRef} tabIndex={-1} data-route-focus="" className="mc-admin-title">
+              <h1
+                ref={headingRef}
+                tabIndex={-1}
+                data-route-focus=""
+                className="mc-admin-title"
+                lang={page?.titleLang}
+              >
                 {title}
               </h1>
             </div>

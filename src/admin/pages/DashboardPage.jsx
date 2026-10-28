@@ -11,6 +11,7 @@ import StatusBadge from '../components/StatusBadge.jsx';
 import { typeLabel } from '../content-types.js';
 import { ruleLabel } from '../a11y-rules.js';
 import { ta } from '../i18n/index.js';
+import { rowTitle } from '../display.js';
 
 /**
  * დაფა (`/admin`, AdminPanel დაფის „დაფა“):
@@ -155,8 +156,12 @@ function RecentTable({ rows }) {
           {rows.map((row) => (
             <tr key={row.id}>
               <td>
-                <Link to={`/admin/${row.type}/${row.id}`} className="mc-admin-table__title">
-                  {row.title}
+                <Link
+                  to={`/admin/${row.type}/${row.id}`}
+                  className="mc-admin-table__title"
+                  lang={rowTitle(row).lang}
+                >
+                  {rowTitle(row).text}
                 </Link>
               </td>
               <td>{typeLabel(row.type, 'one')}</td>

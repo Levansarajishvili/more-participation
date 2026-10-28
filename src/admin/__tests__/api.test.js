@@ -218,6 +218,27 @@ describe('mock adminAdapter + საერთო საცავი', () => {
   });
 });
 
+describe('F9: mock-ის სესია ენის გადართვისას', () => {
+  it('persist: სესიის ჩანაწერი (id + ვადა) sessionStorage-ში — ახალი adapter-ი (გადატვირთვა) აღადგენს; გასვლა შლის', async () => {
+    window.sessionStorage.clear();
+    const first = createMockAdminAdapter({ store: createMockStore(), persist: true });
+    await login(first);
+    expect(
+      JSON.parse(window.sessionStorage.getItem('mc-admin-mock-session') ?? 'null'),
+    ).toMatchObject({ userId: 'u-001' });
+    const second = createMockAdminAdapter({ store: createMockStore(), persist: true });
+    expect((await second.auth.me()).user.id).toBe('u-001');
+    await second.auth.logout();
+    expect(window.sessionStorage.getItem('mc-admin-mock-session')).toBeNull();
+    const third = createMockAdminAdapter({ store: createMockStore(), persist: true });
+    expect(await code(third.auth.me())).toBe('unauthorized');
+    // persist-ის გარეშე (ტესტები, ნაგულისხმევი) — არაფერი ინახება
+    const plain = createMockAdminAdapter({ store: createMockStore() });
+    await login(plain);
+    expect(window.sessionStorage.getItem('mc-admin-mock-session')).toBeNull();
+  });
+});
+
 describe('როლები', () => {
   it('ადმინისტრატორი — ყველაფერი; რედაქტორი — კონტენტი და მედია', () => {
     expect(ROLES).toEqual(['admin', 'editor']);

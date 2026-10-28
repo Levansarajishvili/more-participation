@@ -45,6 +45,20 @@ export const MOCK_INVITE = 'MC-INVITE-0001';
 /** სესიის ხანგრძლივობა (mock). რეალური მნიშვნელობა სერვერის პოლიტიკაა — [ვადა]. */
 export const SESSION_TTL_MS = 30 * 60_000;
 export const DEFAULT_LIMIT = 10;
+/** მხოლოდ mock: სესიის ჩანაწერი ენის გადართვისთვის (იხ. `persistSession`). */
+export const MOCK_SESSION_KEY = 'mc-admin-mock-session';
+
+/** @returns {{ userId: string, expiresAt: number } | null} */
+function restoreSession() {
+  try {
+    const value = JSON.parse(window.sessionStorage.getItem(MOCK_SESSION_KEY) ?? 'null');
+    return value && typeof value.userId === 'string' && typeof value.expiresAt === 'number'
+      ? value
+      : null;
+  } catch {
+    return null;
+  }
+}
 const DAY = 86_400_000;
 const STATE_KEY = 'admin';
 
@@ -197,13 +211,36 @@ export function adminState(store) {
  * @param {MockStore} [options.store]   ნაგულისხმევი — საჯარო საიტის საერთო საცავი
  * @param {number} [options.delay=0]
  * @param {number} [options.sessionTtl]
+ * @param {boolean} [options.persist=false]  სესიის ჩანაწერი sessionStorage-ში (მხოლოდ აპლიკაციის mock-ი)
  * @returns {AdminAdapter & { store: MockStore, state: AdminState }}
  */
 export function createMockAdminAdapter(options = {}) {
   const store = options.store ?? getSharedMockStore();
-  const { delay = 0, sessionTtl = SESSION_TTL_MS } = options;
+  const { delay = 0, sessionTtl = SESSION_TTL_MS, persist = false } = options;
+
+  /**
+   * მხოლოდ mock: სესიის ჩანაწერი (მომხმარებლის id + ვადა, არა token) sessionStorage-ში, რომ ენის
+   * გადართვამ (სრული გადატვირთვა, `/admin` ↔ `/en/admin`) სატესტო რეჟიმში ანგარიშიდან არ გამოგიყვანოს.
+   * რეალურ API-ზე სესია httpOnly cookie-შია — JS-ში არაფერი ინახება.
+   * @param {{ userId: string, expiresAt: number } | null} session
+   */
+  function persistSession(session) {
+    if (!persist) return;
+    try {
+      if (session) window.sessionStorage.setItem(MOCK_SESSION_KEY, JSON.stringify(session));
+      else window.sessionStorage.removeItem(MOCK_SESSION_KEY);
+    } catch {
+      // storage მიუწვდომელია
+    }
+  }
   const state = adminState(store);
   const now = () => store.now();
+  if (!state.session && persist) {
+    const saved = restoreSession();
+    if (saved && saved.expiresAt > now() && state.users.some((u) => u.id === saved.userId)) {
+      state.session = saved;
+    }
+  }
   const iso = (/** @type {number} */ ms) => new Date(ms).toISOString();
 
   /**
@@ -227,6 +264,7 @@ export function createMockAdminAdapter(options = {}) {
     const session = state.session;
     if (!session || session.expiresAt <= now()) {
       state.session = null;
+      persistSession(null);
       throw new ContentError('unauthorized', { detail: 'mock: no session' });
     }
     const user = state.users.find((u) => u.id === session.userId && u.status === 'active');
@@ -244,6 +282,7 @@ export function createMockAdminAdapter(options = {}) {
   /** @param {string} userId */
   function startSession(userId) {
     state.session = { userId, expiresAt: now() + sessionTtl };
+    persistSession(state.session);
     return sessionPayload();
   }
 
@@ -332,6 +371,7 @@ export function createMockAdminAdapter(options = {}) {
       id: record.id,
       type,
       title: item.title ?? '',
+      titleEn: item.translations?.en?.title?.trim() || null,
       slug: item.slug ?? '',
       status: item.status,
       publishedAt: item.publishedAt,
@@ -563,6 +603,7 @@ export function createMockAdminAdapter(options = {}) {
       logout: () =>
         respond(() => {
           state.session = null;
+          persistSession(null);
           return /** @type {const} */ ({ ok: true });
         }),
 
@@ -945,6 +986,7 @@ export function createMockAdminAdapter(options = {}) {
                   id: record.id,
                   type,
                   title: item.title ?? '',
+                  titleEn: item.translations?.en?.title?.trim() || null,
                   status: item.status,
                   issues,
                 });

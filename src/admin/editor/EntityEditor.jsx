@@ -7,6 +7,7 @@ import { formatDate, formatTime } from '@/i18n/index.js';
 
 import { content, media } from '../api/adminAdapter.js';
 import { ruleLabel } from '../a11y-rules.js';
+import { baseLang } from '../display.js';
 import { useAuth, useSessionFlush } from '../auth/auth-context.js';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
 import Dialog from '../components/Dialog.jsx';
@@ -448,6 +449,7 @@ export default function EntityEditor({ type, routeId }) {
     ],
     type,
     editor: true,
+    titleLang: titleText ? baseLang() : undefined,
   });
 
   if (loadState === 'loading') {
