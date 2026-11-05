@@ -2,15 +2,22 @@ import { randomUUID } from 'node:crypto';
 
 import Fastify, { LogController } from 'fastify';
 
+import { createRepositories } from './db/index.js';
+import { registerAuth } from './lib/auth.js';
 import { registerErrorHandlers } from './lib/errors.js';
 import { loggerOptions, registerRequestLog } from './lib/logger.js';
 import { createAjv, loadSpec } from './lib/openapi.js';
+import { createRateLimiter } from './lib/rate-limit.js';
 import { registerSecurity } from './lib/security.js';
+import { registerAuthRoutes } from './routes/auth.js';
 import { registerHealth } from './routes/health.js';
+import { registerUsersRoutes } from './routes/users.js';
 
 /**
  * Fastify-ის აპი (B1): ვალიდაცია spec-იდან, header-ები, ლოგი, შეცდომის handler, health.
- * B3–B6-ის route-ები აქ ერთვება `route(app, spec, operationId, handler)`-ით.
+ * B3: cookie, guard-ები spec-იდან (`security`, `x-permission`, `x-rate-limit` — `lib/auth.js`),
+ * auth / users. B4–B6-ის route-ები აქ ერთვება `route(app, spec, operationId, handler)`-ით —
+ * guard-ს ავტომატურად იღებს.
  */
 
 /** @typedef {import('./config.js').Config} Config */
@@ -23,13 +30,21 @@ import { registerHealth } from './routes/health.js';
  * @property {import('node:stream').Writable} [logStream]  ტესტი: ლოგის დაჭერა
  * @property {(app: import('fastify').FastifyInstance) => void | Promise<void>} [extend]
  *   ტესტი: დამატებითი route-ები შეცდომის handler-ის რეგისტრაციის შემდეგ
+ * @property {() => number} [now]  საათი (სესია, მოწვევა, rate limit); ტესტში — მართვადი
  */
 
 /**
  * @param {AppOptions} options
  * @returns {Promise<import('fastify').FastifyInstance>}
  */
-export async function buildApp({ config, db = null, spec = loadSpec(), logStream, extend }) {
+export async function buildApp({
+  config,
+  db = null,
+  spec = loadSpec(),
+  logStream,
+  extend,
+  now = Date.now,
+}) {
   const app = Fastify({
     logger: loggerOptions({
       level: config.logLevel,
@@ -70,11 +85,33 @@ export async function buildApp({ config, db = null, spec = loadSpec(), logStream
   app.decorate('db', db);
   app.decorate('spec', spec);
   app.decorate('apiRoutes', apiRoutes);
+  app.decorate('now', now);
+  app.decorate(
+    'repos',
+    db
+      ? createRepositories(
+          { client: db.client, db },
+          {
+            now,
+            keepVersions: config.retention.versionsKeep,
+            session: config.session,
+            invites: config.invites,
+          },
+        )
+      : null,
+  );
+  app.decorate('rateLimits', {
+    auth: createRateLimiter({ ...config.rateLimit.auth, now }),
+    forms: createRateLimiter({ ...config.rateLimit.forms, now }),
+  });
 
   registerRequestLog(app);
   await registerSecurity(app);
   registerErrorHandlers(app);
+  await registerAuth(app);
   registerHealth(app, { spec });
+  registerAuthRoutes(app);
+  registerUsersRoutes(app);
   if (extend) await extend(app);
   return app;
 }

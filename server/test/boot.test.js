@@ -79,16 +79,36 @@ describe('node server/index.js', () => {
 
   it('development MONGODB_URI-ის გარეშე: დროებითი in-memory ბაზა + გაფრთხილება', async () => {
     const port = await freePort();
-    const server = start({ NODE_ENV: 'development', PORT: String(port), LOG_LEVEL: 'info' });
+    const password = 'dev ტესტის პაროლი — ერთჯერადი';
+    const server = start({
+      NODE_ENV: 'development',
+      PORT: String(port),
+      LOG_LEVEL: 'info',
+      // B3: in-memory ბაზაზე ადმინისტრატორი მხოლოდ env-იდან (ნაგულისხმევი ანგარიში არ არსებობს)
+      ADMIN_EMAIL: 'dev-admin@example.org',
+      ADMIN_NAME: '[დეველოპერი]',
+      ADMIN_PASSWORD: password,
+    });
     // გაფრთხილება listen-მდე იწერება — მოთხოვნა მხოლოდ „Server listening“-ის შემდეგ
     await server.waitFor(/Server listening/, 120_000);
     expect(server.output().stdout).toMatch(/in-memory/);
     // B2: in-memory ბაზაზე მიგრაცია + mock-ის seed ავტომატურად
     expect(server.output().stdout).toMatch(/"seeded":58/);
+    expect(server.output().stdout).toMatch(/"admin":"created"/);
     const res = await fetch(`http://127.0.0.1:${port}/api/health`);
     expect(res.status).toBe(200);
+    const login = await fetch(`http://127.0.0.1:${port}/api/admin/auth/login`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'dev-admin@example.org', password }),
+    });
+    expect(login.status).toBe(200);
+    expect((await login.json()).user.role).toBe('admin');
     server.child.kill('SIGINT');
     expect(await server.exited).toBe(0);
+    const { stdout, stderr } = server.output();
+    expect(stdout + stderr).not.toContain(password);
+    expect(stdout + stderr).not.toContain('dev-admin@example.org');
   }, 150_000);
 
   it('production MONGODB_URI-ის გარეშე → exit 1, ცვლადის სახელით', async () => {

@@ -40,6 +40,16 @@ export function isEmail(value) {
 }
 
 /**
+ * ელფოსტა შედარებისა და შენახვისთვის (B3): კიდეების ჰარები იშლება, ასოები — პატარა. ერთი წესი
+ * ადმინის ანგარიშს, მოწვევას (mock და სერვერი) და გამოწერას (B6) — ბაზის `email` ამ ფორმითაა.
+ * @param {unknown} value
+ * @returns {string}  არა-სტრიქონი → ''
+ */
+export function normalizeEmail(value) {
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+/**
  * ტელეფონი: ციფრები, ჰარი, `+`, `-`, ფრჩხილები; 7–15 ციფრი (E.164-ის ზღვარი).
  * @param {unknown} value
  * @returns {boolean}

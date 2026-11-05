@@ -16,6 +16,12 @@ describe('loadConfig', () => {
       bodyLimit: 1_048_576,
       mongo: { uri: null, dbName: 'meti-chartuloba' },
       retention: { messagesDays: 30, versionsKeep: 30 },
+      session: { idleMs: 30 * 60_000, maxMs: 12 * 3_600_000 },
+      invites: { ttlMs: 7 * 86_400_000 },
+      rateLimit: {
+        auth: { max: 10, windowMs: 900_000 },
+        forms: { max: 10, windowMs: 600_000 },
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.mongo)).toBe(true);
@@ -90,6 +96,31 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ VERSIONS_KEEP: 'all' })).toThrow(/VERSIONS_KEEP/);
   });
 
+  it('სესია, მოწვევა, rate limit (B3): env → წამი / ms; უმოქმედობა ≤ მაქსიმუმი', () => {
+    const config = loadConfig({
+      SESSION_IDLE_MINUTES: '15',
+      SESSION_MAX_HOURS: '8',
+      INVITE_TTL_DAYS: '3',
+      RATE_LIMIT_AUTH_MAX: '5',
+      RATE_LIMIT_AUTH_WINDOW_SECONDS: '60',
+      RATE_LIMIT_FORMS_MAX: '3',
+      RATE_LIMIT_FORMS_WINDOW_SECONDS: '120',
+    });
+    expect(config.session).toEqual({ idleMs: 900_000, maxMs: 28_800_000 });
+    expect(config.invites).toEqual({ ttlMs: 3 * 86_400_000 });
+    expect(config.rateLimit).toEqual({
+      auth: { max: 5, windowMs: 60_000 },
+      forms: { max: 3, windowMs: 120_000 },
+    });
+    expect(Object.isFrozen(config.rateLimit.auth)).toBe(true);
+    expect(() => loadConfig({ SESSION_IDLE_MINUTES: '120', SESSION_MAX_HOURS: '1' })).toThrow(
+      /SESSION_IDLE_MINUTES/,
+    );
+    expect(() => loadConfig({ SESSION_MAX_HOURS: '48' })).toThrow(/SESSION_MAX_HOURS/);
+    expect(() => loadConfig({ RATE_LIMIT_AUTH_MAX: '0' })).toThrow(/RATE_LIMIT_AUTH_MAX/);
+    expect(() => loadConfig({ INVITE_TTL_DAYS: 'week' })).toThrow(/INVITE_TTL_DAYS/);
+  });
+
   it('სხვა env ცვლადებს არ კითხულობს', () => {
     expect(ENV_KEYS).toEqual([
       'NODE_ENV',
@@ -102,6 +133,13 @@ describe('loadConfig', () => {
       'MONGODB_DB',
       'MESSAGES_TTL_DAYS',
       'VERSIONS_KEEP',
+      'SESSION_IDLE_MINUTES',
+      'SESSION_MAX_HOURS',
+      'INVITE_TTL_DAYS',
+      'RATE_LIMIT_AUTH_MAX',
+      'RATE_LIMIT_AUTH_WINDOW_SECONDS',
+      'RATE_LIMIT_FORMS_MAX',
+      'RATE_LIMIT_FORMS_WINDOW_SECONDS',
     ]);
     expect(() => loadConfig({ SOMETHING_ELSE: 'x', PATH: '/bin' })).not.toThrow();
   });

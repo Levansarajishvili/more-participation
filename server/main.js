@@ -49,6 +49,19 @@ export async function main({ env = process.env, signals = true } = {}) {
     const { counts } = await seedDatabase(database);
     seeded = Object.values(counts).reduce((sum, n) => sum + n, 0);
   }
+  // B3: in-memory ბაზაზე მომხმარებელი არ არის — ადმინისტრატორი env-იდან (ADMIN_EMAIL / ADMIN_NAME /
+  // ADMIN_PASSWORD), თუ მითითებულია; ნაგულისხმევი ანგარიში / პაროლი არ არსებობს
+  let admin = 'none';
+  if (memory && env.ADMIN_EMAIL && env.ADMIN_PASSWORD) {
+    const { createRepositories } = await import('./db/index.js');
+    const { createFirstAdmin } = await import('./lib/first-admin.js');
+    await createFirstAdmin(createRepositories(database), {
+      email: env.ADMIN_EMAIL,
+      name: env.ADMIN_NAME || 'ადმინისტრატორი',
+      password: env.ADMIN_PASSWORD,
+    });
+    admin = 'created';
+  }
   const app = await buildApp({ config, db: database.db });
   app.addHook('onClose', async () => {
     await database.close();
@@ -60,6 +73,11 @@ export async function main({ env = process.env, signals = true } = {}) {
       'MONGODB_URI არ არის — დროებითი in-memory ბაზა (მონაცემი გადატვირთვისას იკარგება)',
     );
     app.log.info({ seeded }, 'in-memory ბაზა: მიგრაცია + seed (mock-ის მონაცემი)');
+    if (admin === 'none') {
+      app.log.warn(
+        'ადმინისტრატორი არ არის — dev: ADMIN_EMAIL / ADMIN_NAME / ADMIN_PASSWORD env-ით გაუშვი',
+      );
+    } else app.log.info({ admin }, 'in-memory ბაზა: ადმინისტრატორი env-იდან');
   }
   const setName = await replicaSetName(database.db);
   if (!setName) app.log.warn('ბაზა replica set არ არის — ტრანზაქციები (B4) ვერ იმუშავებს');

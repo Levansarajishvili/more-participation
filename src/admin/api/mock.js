@@ -1,4 +1,5 @@
 import { ContentError } from '@/content/errors.js';
+import { normalizeEmail } from '@/content/forms.js';
 import { isTranslated, localize } from '@/content/localize.js';
 import { tbilisi } from '@/content/mock/helpers.js';
 import { ID_PREFIX, getSharedMockStore } from '@/content/mock/store.js';
@@ -560,7 +561,7 @@ export function createMockAdminAdapter(options = {}) {
         respond(() => {
           const fields = validateLogin(payload ?? {});
           if (Object.keys(fields).length) throw new ContentError('validation', { fields });
-          const email = payload.email.trim().toLowerCase();
+          const email = normalizeEmail(payload.email);
           const user = state.users.find((u) => u.email === email && u.status === 'active');
           // ერთი და იგივე შეცდომა უცნობ ელფოსტაზე და არასწორ პაროლზე — ანგარიში არ მჟღავნდება
           if (!user || user.password !== payload.password) {
@@ -573,7 +574,7 @@ export function createMockAdminAdapter(options = {}) {
         respond(() => {
           const fields = validateRegister(payload ?? {});
           if (Object.keys(fields).length) throw new ContentError('validation', { fields });
-          const email = payload.email.trim().toLowerCase();
+          const email = normalizeEmail(payload.email);
           const invite = state.invites.find(
             (i) =>
               i.code === payload.invite.trim() &&
@@ -905,7 +906,7 @@ export function createMockAdminAdapter(options = {}) {
           state.invites.push({
             code,
             role,
-            email: email?.trim().toLowerCase() || null,
+            email: normalizeEmail(email) || null,
             expiresAt,
             used: false,
           });

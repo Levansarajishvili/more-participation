@@ -76,7 +76,7 @@ describe('header-ები და CORS', () => {
         "default-src 'none';base-uri 'none';form-action 'none';frame-ancestors 'none'",
       );
       expect(res.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
-      expect(res.headers['strict-transport-security']).toBe('max-age=15552000');
+      expect(res.headers['strict-transport-security']).toBe('max-age=31536000');
       expect(res.headers['x-content-type-options']).toBe('nosniff');
       expect(res.headers['cross-origin-resource-policy']).toBe('same-origin');
       expect(res.headers['cache-control']).toBe('no-store');
@@ -226,7 +226,7 @@ describe('ლოგი — პერსონალური მონაცე�
       method: 'POST',
       url: '/api/v1/contact?ref=person%40example.ge',
       remoteAddress: '203.0.113.77',
-      headers: { cookie: 'mc-session=secret-token', 'x-forwarded-for': '198.51.100.9' },
+      headers: { cookie: '__Host-mc-session=secret-token', 'x-forwarded-for': '198.51.100.9' },
       payload: { ...VALID_CONTACT, name: 'ნინო ბერიძე' },
     });
     await app.inject({ method: 'POST', url: '/api/v1/contact', payload: VALID_CONTACT });

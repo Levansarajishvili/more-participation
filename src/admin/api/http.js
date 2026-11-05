@@ -6,8 +6,10 @@ import { ContentError } from '@/content/errors.js';
  * უსაფრთხოება:
  * - სესია httpOnly + Secure + SameSite=Lax cookie-შია: `credentials: 'include'`; token JS-ში და
  *   localStorage / sessionStorage-ში არასოდეს ინახება;
- * - CSRF — double-submit: სერვერი `mc-csrf` cookie-ს (არა httpOnly) აყენებს, ყოველი არა-GET
- *   მოთხოვნა მას `X-CSRF-Token` header-ით აბრუნებს;
+ * - CSRF — double-submit: სერვერი `__Host-mc-csrf` cookie-ს (არა httpOnly) აყენებს, ყოველი
+ *   არა-GET მოთხოვნა მას `X-CSRF-Token` header-ით აბრუნებს; token სესიაზეა მიბმული (სერვერზე
+ *   მისი hash ინახება). `__Host-` (B3): Secure, `Path=/`, Domain-ის გარეშე — ქვედომენი cookie-ს
+ *   ვერ ჩაანაცვლებს; სახელი სერვერიც აქედან იღებს (`server/lib/auth.js`);
  * - 401 → `unauthorized` (UI შესვლის გვერდზე გადადის `?next=`-ით), 403 → `forbidden`,
  *   409 → `conflict` (ვერსია), 422 + `{ fields }` → `validation`, 429 → `rate-limited`.
  *
@@ -17,7 +19,7 @@ import { ContentError } from '@/content/errors.js';
 
 /** @typedef {import('./adminAdapter.js').AdminAdapter} AdminAdapter */
 
-export const CSRF_COOKIE = 'mc-csrf';
+export const CSRF_COOKIE = '__Host-mc-csrf';
 export const CSRF_HEADER = 'X-CSRF-Token';
 
 /**

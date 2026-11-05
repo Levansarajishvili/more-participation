@@ -1,5 +1,7 @@
 import helmet from '@fastify/helmet';
 
+import { ContentError } from '@/content/errors.js';
+
 /**
  * უსაფრთხოების header-ები და CORS-ის პოლიტიკა (§12, B0 #4, #5).
  *
@@ -8,7 +10,13 @@ import helmet from '@fastify/helmet';
  * - `text/plain` parser ამოღებულია: ასეთი სხეული „მარტივი მოთხოვნაა“ (preflight-ის გარეშე) და
  *   CSRF-ის კარს ხსნიდა. მიიღება მხოლოდ `application/json` (B5 — + `multipart/form-data`).
  * - `Referrer-Policy: strict-origin-when-cross-origin` — helmet-ის `no-referrer` YouTube-ის
- *   ჩაშენებას არღვევს (F10). HSTS — `includeSubDomains`-ის გარეშე, სანამ დომენი არ არის (B7).
+ *   ჩაშენებას არღვევს (F10). HSTS — 1 წელი (B3: ASVS 3.4.1 L1 ≥ 1 წელი; B1-ში 180 დღე იყო),
+ *   `includeSubDomains`-ის გარეშე, სანამ დომენი არ არის (B7; L2).
+ * - Fetch Metadata (B3): `/api/*`-ზე ცვლილების მოთხოვნა (POST / PUT / PATCH / DELETE), რომლის
+ *   `Sec-Fetch-Site` არის `cross-site` ან `same-site` → 403. ერთ origin-ზე ნამდვილი მოთხოვნა
+ *   `same-origin`-ია; `none` (მომხმარებლის ქმედება) და header-ის არქონა (ძველი ბრაუზერი, curl)
+ *   გადის — მათ CSRF token / JSON-ის Content-Type იცავს. შესვლასა და რეგისტრაციას (სესია ჯერ არ
+ *   არის, CSRF token არ ითხოვება) ეს ფარავს login CSRF-ისგან.
  * - CSP — API-ს JSON-ისთვის (`default-src 'none'`). საიტის HTML-ის CSP (`YOUTUBE_CSP`) — B7,
  *   სტატიკურ ფაილებთან ერთად.
  * - `/api/*`: `Cache-Control: no-store` (საჯარო GET-ის ქეში — B6), `X-Robots-Tag: noindex, nofollow`.
@@ -21,7 +29,14 @@ export const API_CSP = Object.freeze({
   frameAncestors: ["'none'"],
 });
 
-export const HSTS_MAX_AGE = 15_552_000; // 180 დღე
+export const HSTS_MAX_AGE = 31_536_000; // 365 დღე (ASVS 3.4.1)
+
+/** `Sec-Fetch-Site`-ის დასაშვები მნიშვნელობები ცვლილების მოთხოვნაზე. */
+export const ALLOWED_FETCH_SITES = Object.freeze(['same-origin', 'none']);
+const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/** @param {string} url */
+const isApi = (url) => url === '/api' || url.startsWith('/api/') || url.startsWith('/api?');
 
 /**
  * @param {import('fastify').FastifyInstance} app
@@ -41,10 +56,15 @@ export async function registerSecurity(app) {
 
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+    if (!UNSAFE_METHODS.has(request.method) || !isApi(request.url)) return;
+    const site = request.headers['sec-fetch-site'];
+    if (site !== undefined && !ALLOWED_FETCH_SITES.includes(String(site))) {
+      throw new ContentError('forbidden', { detail: 'sec-fetch-site' });
+    }
   });
 
   app.addHook('onSend', async (request, reply, payload) => {
-    if (request.url === '/api' || request.url.startsWith('/api/')) {
+    if (isApi(request.url)) {
       reply.header('cache-control', 'no-store');
       reply.header('x-robots-tag', 'noindex, nofollow');
     }

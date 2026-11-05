@@ -133,6 +133,8 @@ export default {
     required: 'This field is required.',
     email: 'An email address looks like this: name@example.ge',
     passwordShort: 'The password must be at least 12 characters — it is {length} now.',
+    passwordCommon:
+      'This password is on a list of commonly used passwords — choose another, for example a phrase of several words.',
     invite: 'The invitation code is wrong, has expired or is for another email address.',
     tooLong: 'The text is too long — at most {max} characters.',
     slugTaken: 'This address (slug) is already taken.',

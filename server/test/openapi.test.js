@@ -134,10 +134,32 @@ describe('server/openapi.yaml', () => {
     }
   });
 
-  it('სერვერზე რეგისტრირებულია ზუსტად `x-step: B1` ოპერაციები, spec-ის გზით', async () => {
+  it('x-rate-limit: auth | forms, მხოლოდ 429-იან ოპერაციაზე; ცვლილების 429 — x-rate-limit-ით', () => {
+    for (const { operation, operationId, method } of operations) {
+      const policy = operation['x-rate-limit'];
+      const has429 = '429' in operation.responses;
+      if (policy !== undefined) {
+        expect(['auth', 'forms'], operationId).toContain(policy);
+        expect(has429, operationId).toBe(true);
+      }
+      if (has429 && method !== 'GET') expect(policy, operationId).toBeDefined();
+    }
+    const limited = operations.filter((op) => op.operation['x-rate-limit']);
+    expect(limited.map((op) => op.operationId).sort()).toEqual(
+      ['login', 'register', 'sendContact', 'subscribe'].sort(),
+    );
+  });
+
+  it('ცვლილების ოპერაცია /api/*-ზე 403-ს აცხადებს (CSRF ან Fetch Metadata)', () => {
+    for (const { operation, operationId, method } of operations) {
+      if (method !== 'GET') expect(Object.keys(operation.responses), operationId).toContain('403');
+    }
+  });
+
+  it('სერვერზე რეგისტრირებულია ზუსტად `x-step: B1 | B3` ოპერაციები, spec-ის გზით', async () => {
     const app = await makeApp();
     const expected = operations
-      .filter((op) => op.operation['x-step'] === 'B1')
+      .filter((op) => ['B1', 'B3'].includes(op.operation['x-step']))
       .map((op) => ({ method: op.method, url: fastifyPath(op.path), operationId: op.operationId }));
     expect(/** @type {any} */ (app).apiRoutes).toEqual(expected);
     await app.close();

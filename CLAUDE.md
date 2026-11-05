@@ -95,7 +95,7 @@
 | ESLint | 9.39.5 + jsx-a11y (strict), react, react-hooks, react-refresh, prettier | 10-ზე jsx-a11y-ის peer ჯერ არ არის |
 | ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, user-event 14.6.7, vitest-axe | `expect.extend(axeMatchers)` setup-ში; კლავიატურა — `userEvent.setup()` |
 
-npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება).
+npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება); B3: `server:create-admin` (პირველი ადმინისტრატორი — `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env-ით ან ტერმინალიდან; ნაგულისხმევი პაროლი არ არსებობს).
 
 ## ფოლდერების რუკა
 
@@ -241,10 +241,19 @@ server/                   B1: API — ცალკე package (npm workspace), N
     openapi.js            loadSpec, createAjv (Ajv2020), routeSchema, route(app, spec, operationId, handler)
     errors.js             შეცდომის ერთი handler: ContentError / ajv → { code, message, fields? } + HTTP
     logger.js             pino-ს ოფციები PII-ის გარეშე, ერთი ხაზი პასუხზე
-    security.js           helmet (CSP, Referrer-Policy, HSTS…), CORS-ის გარეშე, text/plain-ის გარეშე, /api/* — no-store
+    security.js           helmet (CSP, Referrer-Policy, HSTS 1 წელი…), CORS-ის გარეშე, text/plain-ის გარეშე,
+                          /api/* — no-store; B3: Fetch Metadata (cross-site / same-site ცვლილება → 403)
+    auth.js               B3: `__Host-` cookie-ები, guard-ები spec-იდან (security, x-permission, x-rate-limit)
+    password.js           B3: argon2id (OWASP), dummy hash, ცნობილი პაროლები, registerFieldErrors
+    tokens.js             B3: CSPRNG token (256 ბიტი), sha256, safeEqual, მოწვევის კოდი (MC- + base32)
+    rate-limit.js         B3: fixed window მეხსიერებაში (IP / ანგარიში), 429 + Retry-After
+    first-admin.js        B3: createFirstAdmin (CLI და dev-ის in-memory ბაზა)
     db.js                 connectDb / pingDb / replicaSetName (`mongodb` driver)
     dev-db.js             startMemoryReplicaSet (MongoDB 8.0.34) — dev და ტესტი
   routes/health.js        GET /api/health — 200 / 503
+  routes/auth.js          B3: login, register, logout, me, extendSession
+  routes/users.js         B3: listUsers, createInvite, setUserRole, deactivateUser (users.manage)
+  data/common-passwords.txt  B3: top-3000 ცნობილი პაროლი (≥ 12, SecLists) — ASVS 6.2.4
   db/                     B2: ბაზის ფენა
     schema.js             OpenAPI `*Draft` → `$jsonSchema` (toBsonSchema, partialTextSchema — translations.en)
     collections.js        9 კოლექცია: validator + ინდექსები (TTL), DEFAULT_RETENTION, DRAFT_SCHEMA
@@ -252,18 +261,25 @@ server/                   B1: API — ცალკე package (npm workspace), N
     errors.js             11000 / 121 → ContentError (slugDuplicate, conflict, validation + ველის გზა)
     content.js            content + versions repository (mock store-ის / ადმინის mock-ის სემანტიკა)
     settings.js           settings repository (`_id: 'site'`)
-    index.js              createRepositories → { content, settings, snapshot }
+    users.js              B3: users repository (toAdminUser — hash API-ში არ გადის)
+    sessions.js           B3: sessions (token / CSRF — მხოლოდ sha256; create, findActive, extend, remove)
+    invites.js            B3: invites (კოდი — sha256; create, claim — ერთჯერადი, ტრანზაქციაში)
+    index.js              createRepositories → { content, settings, users, sessions, invites, snapshot }
     seed.js               seedSource / seedDatabase (createMockData + adminState-ის გვერდები)
   migrations/             B2: ensure.js (იდემპოტენტური DDL), 001-init.js, index.js (migrate, countChanges)
   scripts/shared-smoke.js საერთო მოდულები სუფთა Node-ში (Vite-ის გარეშე)
   scripts/migrate.js      B2: `npm run server:migrate`
   scripts/seed.js         B2: `npm run server:seed [-- --reset]`
+  scripts/create-admin.js B3: `npm run server:create-admin` (env ან ტერმინალი, ფარული პაროლი)
   scripts/db-cli.js       CLI-ების საერთო: config, კავშირი, შეცდომის ტექსტი საიდუმლოს გარეშე
   vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server)
   test/                   config, app, db, openapi, shared-modules, boot (`node server/index.js`);
     contract/             spec-match.js, public-plan.js (B6-ის გეგმა), requests / responses / constants
     db/                   B2: schema, collections (მიგრაცია, validator-ები, TTL), content, seed (+ CLI),
                           differential (ajv ↔ MongoDB), parity (↔ mock), translations (↔ რედაქტორი)
+    auth/                 B3: units, session (შესვლა, CSRF, Fetch Metadata, header-ები), users (როლები,
+                          მოწვევა, რეგისტრაცია), limits (429, ლოგი), http-adapter (createHttpAdminAdapter
+                          რეალურ სერვერზე), create-admin (CLI)
 ```
 
 ## კოდის კონვენციები (F1)
@@ -499,3 +515,14 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **ფოტო:** ჩადგმული ობიექტი (`{ src, alt, ratio }`, project-context §12); ფაილის გამოყენება — `mediaKeys` (`src` → `/media/<key>`).
 - **seed:** მხოლოდ dev / staging; მომხმარებელს არ ქმნის; `validateContent` → 0 (ტესტი და CLI). mock-ის მონაცემის ცვლილება → seed-ის ტესტი ამოწმებს.
 - **ტესტის ბაზა:** `test/db/helpers.js` — `freshDatabase(label)` (მიგრაციით), `clock()`; failpoint (`failCommand`) — მხოლოდ ტესტის replica set-ზე (`enableTestCommands`).
+
+## კოდის კონვენციები (B3 — ავტორიზაცია)
+
+- **guard-ი spec-იდან:** route-ში სესიის / როლის შემოწმება ხელით არ იწერება. ოპერაციის `security` (`session`, `csrf`), `x-permission` და `x-rate-limit` (`auth` | `forms`) `server/lib/auth.js`-ის `onRoute` hook-ით ედება; handler-ში — `request.auth` (`{ session, user }`). ახალი ადმინის endpoint — spec-ში `security` + `x-permission`, მეტი არაფერი.
+- **cookie-ები:** მხოლოდ `setSessionCookies` / `clearSessionCookies` (`__Host-`: Secure, `Path=/`, Domain-ის გარეშე); `CSRF_COOKIE` / `CSRF_HEADER` — `src/admin/api/http.js`-იდან (ერთი სახელი ორივე მხარეს), `SESSION_COOKIE` — მხოლოდ სერვერზე (httpOnly).
+- **საიდუმლო ბაზაში:** token, CSRF token, მოწვევის კოდი — მხოლოდ `hashToken` (sha256); პაროლი — მხოლოდ `hashPassword` (argon2id, `ARGON2_OPTIONS`). შედარება — `safeEqual`. ახალი შემთხვევითი მნიშვნელობა — `newToken()` (CSPRNG, 256 ბიტი).
+- **ზოგადი პასუხი:** ანგარიშის არსებობა არასოდეს მჟღავნდება — შესვლა: 401 + `dummyHash` უცნობ ელფოსტაზე; რეგისტრაცია: 422 `fields.invite` ნებისმიერ უარზე, hash ყოველთვის ითვლება; rate limit-ის ანგარიშის გასაღები — ელფოსტის sha256, არსებობის მიუხედავად.
+- **ვალიდაცია:** `validateLogin` / `validateRegister` (`auth-forms.js`) + `registerFieldErrors` (ცნობილი პაროლი, მხოლოდ სერვერზე); ელფოსტა — `normalizeEmail` (`forms.js`); პაროლი არასოდეს trim-დება.
+- **დრო:** `buildApp({ now })` → repository, rate limit, cookie-ს `Max-Age`; ტესტში საათი რეალური დროიდან იწყება (`test/auth/helpers.js`) — წარსულის `expiresAt`-ს ბაზის TTL monitor ტესტის შუაში წაშლიდა.
+- **ლოგი:** `request.log.info({ event: 'auth.login' }, 'auth')` — მხოლოდ მოვლენის სახელი; user id, ელფოსტა, IP, token, კოდი — არასოდეს (`test/auth/limits.test.js` ამოწმებს).
+- **ტესტი:** `test/auth/helpers.js` — `authApp(label, { env, extend, logStream })`, `agent(app, { ip })` (cookie jar + `X-CSRF-Token`, როგორც `http.js`), `addUser`; frontend-ის adapter-ი რეალურ სერვერზე — `http-adapter.test.js`.

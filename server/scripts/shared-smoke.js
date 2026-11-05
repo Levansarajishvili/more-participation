@@ -34,6 +34,11 @@ const { ContentError } = await import('@/content/errors.js');
 const { validateVideo } = await import('@/content/validate.js');
 const { parseCaptions } = await import('@/content/vtt.js');
 const { parseYouTube } = await import('@/content/youtube.js');
+const { normalizeEmail } = await import('@/content/forms.js');
+// B3: ადმინის საერთო მოდულები სერვერზე — cookie-ს სახელი, პაროლის წესი, როლი × უფლება
+const { CSRF_COOKIE, CSRF_HEADER } = await import('@/admin/api/http.js');
+const { PASSWORD_MIN, validateRegister } = await import('@/admin/auth/auth-forms.js');
+const { ROLE_PERMISSIONS, can } = await import('@/admin/api/permissions.js');
 
 const result = {
   node: process.versions.node,
@@ -53,6 +58,14 @@ const result = {
     .sort(),
   captions: parseCaptions('WEBVTT\n\n00:00.000 --> 00:01.500\nგამარჯობა').ok,
   youtube: parseYouTube('https://youtu.be/dQw4w9WgXcQ'),
+  admin: {
+    csrf: [CSRF_COOKIE, CSRF_HEADER],
+    passwordMin: PASSWORD_MIN,
+    registerFields: Object.keys(validateRegister({})),
+    roles: Object.keys(ROLE_PERMISSIONS),
+    editorUsers: can({ role: 'editor' }, 'users.manage'),
+    email: normalizeEmail('  Nino@Example.GE '),
+  },
 };
 
 process.stdout.write(JSON.stringify(result));

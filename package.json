@@ -26,6 +26,7 @@
     "server:start": "node server/index.js",
     "server:migrate": "node --env-file-if-exists=server/.env server/scripts/migrate.js",
     "server:seed": "node --env-file-if-exists=server/.env server/scripts/seed.js",
+    "server:create-admin": "node --env-file-if-exists=server/.env server/scripts/create-admin.js",
     "server:test": "vitest run --config server/vitest.config.js",
     "server:lint": "eslint server --max-warnings=0 && prettier --check server"
   },

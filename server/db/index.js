@@ -1,13 +1,16 @@
 import { CONTENT_TYPES } from '@/admin/content-types.js';
 
 import { createContentRepository } from './content.js';
+import { createInvitesRepository } from './invites.js';
+import { createSessionsRepository } from './sessions.js';
 import { createSettingsRepository } from './settings.js';
+import { createUsersRepository } from './users.js';
 
 /**
  * ბაზის ფენა (B2): repository-ები + მთელი ნაკრები (`ContentSnapshot`) — `validateContent`-ის
  * შესავალი და mock-ის `store.snapshot()`-ის ანალოგი. გუნდი, პარტნიორები და „ჩვენი გზა“ (`stages`)
  * „ჩვენ შესახებ“ გვერდის (`pages`, slug `about`) ჩანაწერშია — ადმინის mock-ის იგივე წყარო
- * (`setOrg`); `stages` — B2-ის დამატება (`PageDraft`).
+ * (`setOrg`); `stages` — B2-ის დამატება (`PageDraft`). B3: `users`, `sessions`, `invites`.
  */
 
 /** საჯარო ნაკრების ტიპები (გვერდების გარეშე). */
@@ -15,12 +18,24 @@ export const SNAPSHOT_TYPES = Object.freeze(CONTENT_TYPES.filter((type) => type 
 export const ABOUT_SLUG = 'about';
 
 /**
+ * @typedef {object} RepositoryOptions
+ * @property {() => number} [now]
+ * @property {number} [keepVersions]
+ * @property {{ idleMs: number, maxMs: number }} [session]  B3 — `config.session`
+ * @property {{ ttlMs: number }} [invites]                  B3 — `config.invites`
+ */
+
+/**
  * @param {{ client: import('mongodb').MongoClient, db: import('mongodb').Db }} database
- * @param {{ now?: () => number, keepVersions?: number }} [options]
+ * @param {RepositoryOptions} [options]
  */
 export function createRepositories(database, options = {}) {
+  const { now } = options;
   const content = createContentRepository(database, options);
   const settings = createSettingsRepository(database, options);
+  const users = createUsersRepository(database, { now });
+  const sessions = createSessionsRepository(database, { now, ...options.session });
+  const invites = createInvitesRepository(database, { now, ...options.invites });
 
   /**
    * სტატუსის ფილტრის გარეშე, როგორც mock-ის `snapshot()` (ხილვადობას `query.js` ფილტრავს).
@@ -42,7 +57,15 @@ export function createRepositories(database, options = {}) {
     });
   }
 
-  return { content, settings, snapshot };
+  return { client: database.client, content, settings, users, sessions, invites, snapshot };
 }
 
-export { createContentRepository, createSettingsRepository };
+/** @typedef {ReturnType<typeof createRepositories>} Repositories */
+
+export {
+  createContentRepository,
+  createInvitesRepository,
+  createSessionsRepository,
+  createSettingsRepository,
+  createUsersRepository,
+};

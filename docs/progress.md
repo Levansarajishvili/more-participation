@@ -1553,3 +1553,158 @@ OpenAPI 3.1 adapter-ებიდან (`Video.youtube`, `CaptionTrack.cues` / `
 ### შემდეგი: B3 — ავტორიზაცია და უსაფრთხოება
 
 argon2id, cookie-სესია (`sessions`: token-ის hash, `csrfHash`, უმოქმედობა / 12 სთ), CSRF (`__Host-` ორივე მხარეს), rate limit, როლები / 403, მოწვევა (`invites`), პირველი ადმინისტრატორის ერთჯერადი სკრიპტი; repository — `server/db/users.js`, `sessions.js`, `invites.js` (B2-ის კონვენციით).
+
+## B3 — ავტორიზაცია, სესია, როლები, უსაფრთხოება ✅ (2026-11-05)
+
+**Gate:**
+- frontend — `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (42 ფაილი, **722 / 722**; `docs/project-context.md`-ის ცვლილების შემდეგაც) · `npm run build` ✓ + check-dist ✓ (44 JS chunk). `dist/` B3-მდე build-ს ჩანკ-ჩანკ შევადარე (სახელი hash-ის გარეშე): საჯარო `index` +73 B (+12 B gzip) — `normalizeEmail` (`forms.js`, ადმინის mock მას იმპორტებს); ადმინის i18n +446 B (`fieldErrors.passwordCommon` ka / en); mock −41 B; დანარჩენი — მხოლოდ import-ის hash-ის სახელები. `http.js` წარმოების bundle-ში ისევ არ ხვდება (`VITE_ADMIN_API` არ არის — B7).
+- server: `npm run server:lint` ✓ · `npm run server:test` ✓ (**22 ფაილი, 231 ტესტი**; B2 — 16 / 178) — ზედიზედ სამი გაშვება მწვანეა, ~58 წმ. zip-ის სუფთა ასლზე `npm ci` (573 პაკეტი) → `server:test` ✓ (22 / 231) · `server:lint` ✓.
+- **frontend-ის ავტორიზაციის ტესტები HTTP adapter-ით მწვანეა:** `createHttpAdminAdapter` რეალურ სერვერზე (`listen`, HTTP, cookie jar — httpOnly JS-ს არ უჩანს), adminAdapter-ის `auth.login / me / extendSession / logout / register`, `users.list / invite / setRole / deactivate`, `normalizeError`-ის კოდები (`unauthorized`, `forbidden`, `validation`, `bad-request`, `not-found`, `rate-limited`); ყოველი პასუხი spec-ის სქემას აკმაყოფილებს; ყოველი `Set-Cookie` — `__Host-`-ის წესით.
+- **შესვლის ზოგადი შეცდომა:** უცნობი ელფოსტა, არასწორი პაროლი, დეაქტივირებული — ერთი სტატუსი და სხეული (401), `Set-Cookie`-ს გარეშე; დრო — მედიანების ფარდობა 0.5–2 (7 + 7 მცდელობა; sandbox-ში ≈ 1).
+- **CSRF-ის გარეშე → 403** (header არ არის / სხვა მნიშვნელობა / სხვა სესიის წყვილი); **rate limit → 429 + `Retry-After`** (IP, ანგარიში, რეგისტრაცია, საჯარო ფორმა); **ამოწურული სესია → 401** (საათის გადაწევით და რეალური დროით უკვე ამოწურული ჩანაწერით, რომელიც ბაზაში ჯერ არსებობს) — cookie-ები სუფთავდება.
+- **პაროლი, token, CSRF token, სესიის id (sha256), მოწვევის კოდი, ელფოსტა, სახელი, IP ლოგში არ ჩანს** — სრული ნაკადი production-ის ლოგით (`limits.test.js`); მოვლენა — მხოლოდ სახელით.
+- `.env.example` — მხოლოდ placeholder-ები (`ADMIN_*` — კომენტარად, `[…]`-ით).
+- ინტერაქტიული `create-admin` (pty, `script`): ფარული პაროლი ეკრანზე არ ჩანს, ორჯერ — exit 0 (ხელით; ავტოტესტი env-ით).
+- ქსელი: ახალი დომენი არ დასჭირდა (npm registry; ASVS და OWASP Cheat Sheet — `github.com` / `raw.githubusercontent.com`; SecLists — `raw.githubusercontent.com`).
+
+### შექმნილი ფაილები
+
+`server/lib/`: `auth.js`, `password.js`, `tokens.js`, `rate-limit.js`, `first-admin.js`; `server/db/`: `users.js`, `sessions.js`, `invites.js`; `server/routes/`: `auth.js`, `users.js`; `server/scripts/create-admin.js`; `server/data/common-passwords.txt`; `server/test/auth/`: `helpers.js`, `units.test.js` (10), `session.test.js` (16), `users.test.js` (9), `limits.test.js` (4), `http-adapter.test.js` (6), `create-admin.test.js` (5).
+
+**შეიცვალა:**
+- `server/app.js` — `@fastify/cookie`, guard-ები (`registerAuth`), `app.repos` (`createRepositories`), `app.rateLimits`, `app.now`, `buildApp({ now })`; auth / users route-ები.
+- `server/config.js` — `SESSION_IDLE_MINUTES`, `SESSION_MAX_HOURS`, `INVITE_TTL_DAYS`, `RATE_LIMIT_AUTH_*`, `RATE_LIMIT_FORMS_*` → `config.session`, `config.invites`, `config.rateLimit`; უმოქმედობა ≤ მაქსიმუმი.
+- `server/db/index.js` — `createRepositories` → + `users`, `sessions`, `invites`, `client`.
+- `server/lib/security.js` — HSTS 365 დღე (B1 — 180), Fetch Metadata; `server/lib/logger.js` — `REDACT_KEYS` + `passwordHash`, `csrf`, `csrfToken`, `invite`, `session`.
+- `server/main.js` — dev-ის in-memory ბაზაზე ადმინისტრატორი `ADMIN_*` env-იდან (თუ არის), სხვაგვარად — გაფრთხილება.
+- `server/openapi.yaml` — cookie-ების სახელები (`__Host-`), `x-rate-limit` (`login`, `register`: `auth`; `subscribe`, `sendContact`: `forms`), `403` — `login`, `register`, `subscribe`, `sendContact` (Fetch Metadata), აღწერები (სესიის ვადა, მოწვევის კოდი, `passwordCommon`).
+- `server/.env.example`, `server/package.json` (`argon2`, `@fastify/cookie`, `create-admin`), `server/scripts/shared-smoke.js` (ადმინის საერთო მოდულები სუფთა Node-ში).
+- ტესტები: `config.test.js` (+1), `openapi.test.js` (+2: `x-rate-limit`, ცვლილების 403; რეგისტრირებული route-ები = B1 + B3), `app.test.js` (HSTS, cookie-ს სახელი), `boot.test.js` (dev: ადმინისტრატორი env-იდან → შესვლა 200, პაროლი / ელფოსტა გამოსავალში არ ჩანს), `shared-modules.test.js`.
+- `package.json` — `server:create-admin`; `package-lock.json`.
+- frontend: `src/admin/api/http.js` — `CSRF_COOKIE = '__Host-mc-csrf'`; `src/content/forms.js` — `normalizeEmail`; `src/admin/api/mock.js` — `normalizeEmail` (სამი ადგილი, ასლის ნაცვლად); `src/admin/i18n/ka.js`, `en.js` — `fieldErrors.passwordCommon`; `src/admin/__tests__/api.test.js` — cookie `Secure; Path=/`-ით (jsdom `__Host-`-ის წესს იცავს).
+- `CLAUDE.md` — npm სკრიპტები, რუკა, „კოდის კონვენციები (B3 — ავტორიზაცია)“; `docs/project-context.md` — §9 #20, #27, #28; §10 (cookie, HSTS, „Backend — ავტორიზაცია და უსაფრთხოება (B3)“); §12 (სტეკი, წესები, B0 #4, შენახვის ვადები, B3 ✅).
+
+**დამოკიდებულებები** (ზუსტი ვერსიები, ყველა ≥ 14 დღის; ზღვარი 2026-10-22): `argon2` 0.45.1 (2026-07-21; 0.45.2 — 2026-11-03, ახალია), `@fastify/cookie` 11.1.3 (2026-10-08; 11.1.4 / 11.1.5 — 2026-10-27, ახალია). transitive: `cookie` 2.0.1, `fastify-plugin` 6.0.1, `@phc/format` 1.0.0, `node-addon-api` 8.9.2, `node-gyp-build` 4.8.4, `cross-env` 10.1.0 — ყველა ≥ 14 დღის. `argon2`-ის prebuilt binary პაკეტშია (ჩამოტვირთვა არ სჭირდება). `@fastify/rate-limit` არ დაყენებულა.
+
+### endpoint → როლი → შეცდომის კოდები
+
+ყველგან + 500 `server`. guard spec-იდან: `security` → სესია / CSRF, `x-permission` → `permissions.js`, `x-rate-limit` → 429.
+
+| endpoint | როლი | შეცდომები |
+|---|---|---|
+| `POST /api/admin/auth/login` | სესიის გარეშე; `x-rate-limit: auth` (IP + ელფოსტა) | 400 (უცნობი ველი / ტიპი / Content-Type) · 401 `unauthorized` (ერთი პასუხი) · 403 (Fetch Metadata) · 422 (`validateLogin`) · 429 |
+| `POST /api/admin/auth/register` | სესიის გარეშე; `auth` (IP) | 400 · 403 · 422 (`validateRegister`, `passwordCommon`; კოდი / დაკავებული ელფოსტა → `fields.invite`) · 429 |
+| `POST /api/admin/auth/logout` | სესია + CSRF | 401 · 403 |
+| `GET /api/admin/auth/me` | სესია | 401 |
+| `POST /api/admin/auth/session` | სესია + CSRF | 401 (ამოწურული / მაქსიმუმი) · 403 |
+| `GET /api/admin/users` | ადმინისტრატორი (`users.manage`) | 401 · 403 |
+| `POST /api/admin/users/invites` | ადმინისტრატორი + CSRF | 400 (უცნობი ველი) · 401 · 403 · 422 (`fields.email`, როლი) |
+| `PATCH /api/admin/users/{id}` | ადმინისტრატორი + CSRF | 400 (საკუთარი როლის შეცვლა, არასწორი id) · 401 · 403 · 404 · 422 (როლი) |
+| `POST /api/admin/users/{id}/deactivate` | ადმინისტრატორი + CSRF | 400 (საკუთარი) · 401 · 403 · 404 |
+
+რიგი: Fetch Metadata (403) → სესია (401) → CSRF (403) → როლი (403) → სხეულის ვალიდაცია (400 / 422) → rate limit (429) → handler. სესიის გარეშე მოთხოვნა ველის შეცდომას ვერ ხედავს.
+
+### cookie → ატრიბუტები → რატომ
+
+| cookie | ატრიბუტები | რატომ |
+|---|---|---|
+| `__Host-mc-session` | 32 ბაიტი (256 ბიტი) base64url; `HttpOnly; Secure; SameSite=Lax; Path=/`; Domain არ არის; სესიის cookie, „დამიმახსოვრე“ → `Max-Age` = `maxExpiresAt − now` (≤ 12 სთ) | JS-ში არასოდეს ჩანს (XSS); `__Host-` — ბრაუზერი მხოლოდ Secure + `Path=/` + host-only-ს იღებს, ქვედომენი ვერ ჩაანაცვლებს (session fixation, ASVS 3.3.1); `Lax` — სხვა საიტის POST-ს cookie არ ახლავს; ბაზაში მხოლოდ sha256 (`sessions._id`) |
+| `__Host-mc-csrf` | 256 ბიტი; `Secure; SameSite=Lax; Path=/` (არა HttpOnly); იგივე `Max-Age` | `http.js` მას `/admin/*` გვერდიდან `document.cookie`-ით კითხულობს (`Path=/api`-ით ვერ დაინახავდა) და `X-CSRF-Token`-ად აბრუნებს; სერვერზე — header = cookie და sha256 = `sessions.csrfHash` (სესიაზე მიბმული: სხვისი / ძველი წყვილი არ გადის) |
+| ორივე — გასუფთავება | `Max-Age=0` + იგივე ატრიბუტები (`__Host-`-ს Secure / `Path=/` გასუფთავებისასაც სჭირდება) | გასვლა, ყალბი / ამოწურული სესია (401), დეაქტივირებული |
+
+### OWASP ASVS 5.0 L1 — მოთხოვნა → სად სრულდება → ტესტი
+
+წყარო — OWASP/ASVS, `5.0/en` (commit 62981c6, 2026-11-04); ჩამონათვალი — L1-ის მოთხოვნები, რომლებსაც B3 ეხება.
+
+| მოთხოვნა | სად | ტესტი |
+|---|---|---|
+| 2.2.1 / 2.2.2 შემავალი სქემით, სერვერზე | spec (`LoginRequest`…, `additionalProperties: false`) + `validateLogin` / `registerFieldErrors` სერვერზე | session (422, უცნობი ველი → 400), users |
+| 3.3.1 cookie — Secure + `__Host-` | `lib/auth.js` `COOKIE_OPTIONS` | session („წარმატება“), http-adapter (ყოველი `Set-Cookie`) |
+| 3.4.1 HSTS ≥ 1 წელი | `lib/security.js` `HSTS_MAX_AGE` = 31 536 000 | app, session |
+| 3.4.2 CORS | header-ები არ იგზავნება, preflight → 404 | session (CORS) |
+| 3.5.1 anti-forgery token | double-submit, სესიაზე მიბმული | session (CSRF), http-adapter |
+| 3.5.2 preflight-ის გვერდის ავლით მოთხოვნა არ გადის | მხოლოდ `application/json` (text/plain, urlencoded, multipart → 400) | session |
+| 3.5.3 სახიფათო მეთოდი + Sec-Fetch | POST / PATCH; Fetch Metadata → 403 | session |
+| 4.1.1 Content-Type + charset | Fastify (`application/json; charset=utf-8`) | session |
+| 6.1.1 დოკუმენტირებული brute force-ის კონტროლი და ბოროტი დაბლოკვა | `lib/rate-limit.js`, ეს ფაილი: IP — ყოველ მცდელობაზე; ანგარიში — მხოლოდ წარუმატებელზე; დაბლოკვა ≤ ერთი ფანჯარა | limits |
+| 6.2.1 / 6.2.5 სიგრძე ≥ 8 (ჩვენთან 12), შედგენილობის წესის გარეშე | `auth-forms.js` `PASSWORD_MIN` | users (`passwordShort`), units |
+| 6.2.4 top-3000 (პოლიტიკის შესაბამისი) | `server/data/common-passwords.txt`, `isCommonPassword` | units, users (`passwordCommon`), create-admin |
+| 6.2.8 პაროლი ზუსტად ისე, როგორც მოვიდა | `verifyPassword` (trim / ნორმალიზება არა) | units, session |
+| 6.3.1 brute force | rate limit | limits, http-adapter |
+| 6.3.2 ნაგულისხმევი ანგარიში არ არსებობს | seed მომხმარებელს არ ქმნის; `server:create-admin` / dev — მხოლოდ ოპერატორის მონაცემით | create-admin, boot |
+| 6.4.1 აქტივაციის კოდი — შემთხვევითი, ვადიანი, ერთჯერადი | `invites` (128 ბიტი, 7 დღე, `claim` ტრანზაქციაში) | users |
+| 6.4.2 მინიშნება / საიდუმლო კითხვა | არ არსებობს | — |
+| 7.2.1 / 7.2.2 სესია backend-ზე, დინამიკური reference token | `sessions` + guard | session |
+| 7.2.3 CSPRNG ≥ 128 ბიტი | `newToken()` — 256 ბიტი | units |
+| 7.2.4 ახალი token შესვლისას, ძველის გაუქმება | `startSession` ძველს შლის | session (fixation) |
+| 7.4.1 გასვლის შემდეგ სესია არ მოქმედებს | `sessions.remove` + cookie-ების გასუფთავება | session, http-adapter |
+| 7.4.2 დეაქტივაცია ყველა სესიას წყვეტს | `sessions.removeForUser` | users, http-adapter |
+| 8.1.1 / 8.2.1 / 8.3.1 ფუნქციის დონის უფლება სერვერზე | `x-permission` → `can()` (`permissions.js`) | users, http-adapter |
+| 11.4.1 დამტკიცებული hash | sha256, argon2id | units |
+| 15.3.1 მხოლოდ საჭირო ველები | `toAdminUser` (hash / დრო / ბოლო შესვლა არა) | users |
+| **6.2.2 / 6.2.3 პაროლის შეცვლა** | ✗ კონტრაქტში და F8-ში არ არის | ღია #1 |
+| **14.2.1 საიდუმლო URL-ში** | ⚠ token / CSRF — არასოდეს; მოწვევის კოდი `?invite=`-შია | ღია #2 |
+| 6.2.6 / 6.2.7 `type=password`, ჩასმა | frontend (F8) — B3-ში არ გადამოწმებულა | ღია #8 |
+| 14.3.1 კლიენტის მონაცემის გასუფთავება | httpOnly cookie-ები სუფთავდება; ადმინის სესია მეხსიერებაშია (`AuthProvider`); `Clear-Site-Data` არ გამოიყენება (სხვა cookie-საც წაშლიდა) | session (გასვლა) |
+
+### rate limit, ვადები, env
+
+| env | ნაგულისხმევი | რისთვის |
+|---|---|---|
+| `SESSION_IDLE_MINUTES` | 30 (5–720) | უმოქმედობა: `expiresAt` = min(ბოლო გაგრძელება + ეს, `maxExpiresAt`) |
+| `SESSION_MAX_HOURS` | 12 (1–24) | აბსოლუტური ზღვარი; უმოქმედობა ≤ მაქსიმუმი (სხვაგვარად — `ConfigError`) |
+| `INVITE_TTL_DAYS` | 7 (1–30) | მოწვევის ვადა (mock — 14) |
+| `RATE_LIMIT_AUTH_MAX` / `RATE_LIMIT_AUTH_WINDOW_SECONDS` | 10 / 900 | შესვლა (IP ყოველ მცდელობაზე; ელფოსტის sha256 — წარუმატებელზე) და რეგისტრაცია (IP) — `[N]` / `[ვადა]` დასადასტურებელი |
+| `RATE_LIMIT_FORMS_MAX` / `RATE_LIMIT_FORMS_WINDOW_SECONDS` | 10 / 600 | საჯარო ფორმები (B6: `subscribe`, `sendContact`), IP |
+| `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` | — | მხოლოდ `server:create-admin` და dev-ის in-memory ბაზა; `config.js` მათ არ კითხულობს |
+
+### საჯარო API (server)
+
+- `buildApp({ …, now })` — დეკორატორები `app.repos` (`Repositories` | null), `app.rateLimits` (`{ auth, forms }`), `app.now`; `request.auth` — `{ session, user }` (guard-ის შემდეგ).
+- `lib/auth.js`: `SESSION_COOKIE` (`__Host-mc-session`), `CSRF_COOKIE` / `CSRF_HEADER` (`http.js`-იდან), `COOKIE_OPTIONS`, `setSessionCookies(reply, { token, csrfToken, maxAge? })`, `clearSessionCookies(reply)`, `sessionToken(request)`, `repositories(app)`, `guardsFor(spec, operationId) → { session, csrf, permission, rateLimit }`, `registerAuth(app)`; ტიპი `RequestAuth`.
+- `lib/password.js`: `ARGON2_OPTIONS` (argon2id, 19 456 KiB, t=2, p=1), `hashPassword`, `verifyPassword`, `needsRehash`, `dummyHash`, `commonPasswords`, `isCommonPassword`, `registerFieldErrors`, `COMMON_PASSWORDS_URL`.
+- `lib/tokens.js`: `TOKEN_BYTES` (32), `TOKEN_PATTERN`, `newToken`, `hashToken` (sha256 hex), `safeEqual`, `newInviteCode` (`MC-` + 26), `normalizeInviteCode`, `INVITE_PATTERN`, `INVITE_PREFIX`, `INVITE_BYTES`.
+- `lib/rate-limit.js`: `createRateLimiter({ max, windowMs, now?, maxKeys? }) → { blocked, hit, consume, size }`, `rateLimited(reply, seconds)`, `MAX_KEYS` (10 000).
+- `lib/first-admin.js`: `createFirstAdmin(repos, { email, name, password })`.
+- `db/users.js`: `createUsersRepository` (`findById`, `findByEmail`, `list`, `insert`, `setRole`, `deactivate`, `recordLogin`, `countActive`), `toAdminUser`, `newUserId` (`u-` + ObjectId); `db/sessions.js`: `createSessionsRepository` (`create` → `{ token, csrfToken, session }`, `findActive`, `extend`, `remove`, `removeForUser`), `DEFAULT_SESSION`; `db/invites.js`: `createInvitesRepository` (`create` → `{ code, invite }`, `claim`), `DEFAULT_INVITE_TTL_MS`.
+- `routes/auth.js`: `registerAuthRoutes`, `sessionPayload`; `routes/users.js`: `registerUsersRoutes`, `inviteLink`.
+- spec: გაფართოება `x-rate-limit: auth | forms` (ოპერაციას 429 აქვს — ტესტით).
+- საერთო მოდული: `normalizeEmail(value)` (`src/content/forms.js`).
+- ტესტის დამხმარე: `test/auth/helpers.js` — `authApp`, `agent` (cookie jar + CSRF), `addUser`, `median`, `PASSWORD`.
+- npm: `npm run server:create-admin` (`server/.env`-ით).
+
+### გადახვევები prompt-იდან და §12-იდან
+
+1. **cookie-ების სახელი `__Host-mc-session` / `__Host-mc-csrf`, `Path=/`** (prompt: `mc-session`, `Path=/api`): `__Host-` მხოლოდ `Path=/`-ს უშვებს; ASVS 5.0 L1 3.3.1 პრეფიქსს ითხოვს (`mc-session` L1-ს ვერ გადიოდა); CSRF cookie `Path=/api`-ით `/admin/*`-ზე `document.cookie`-ში არ გამოჩნდებოდა. B0 #4 / B1-ის ღია #5 — დახურულია ორივე მხარეს, ტესტით (სერვერი სახელს `http.js`-იდან იღებს).
+2. **login / register CSRF token-ს არ ითხოვს** (prompt: „ყოველ არა-GET-ზე“): სესია და token ჯერ არ არსებობს; login CSRF-ისგან იცავს Fetch Metadata (`cross-site` / `same-site` → 403), მხოლოდ-JSON (preflight) და `SameSite=Lax`. spec-ის `security: []` უცვლელია.
+3. **Fetch Metadata — ყველა `/api/*` ცვლილებაზე** (prompt-ში არ იყო; B6-ის საჯარო ფორმებიც) — spec-ში `403` `login`, `register`, `subscribe`, `sendContact`-ზე.
+4. **საკუთარი rate limiter** (§12: `@fastify/rate-limit`): ორი გასაღები, ანგარიში — მხოლოდ წარუმატებელზე (ბოროტი დაბლოკვის ზღვარი), ჩანაცვლებადი საათი; ერთ პროცესზე.
+5. **HSTS 180 დღე → 1 წელი** (B1-ის გადაწყვეტილება): ASVS 3.4.1 L1.
+6. **ცნობილი პაროლების სია** (prompt-ში არ იყო; ASVS 6.2.4 L1) — მხოლოდ სერვერზე, ახალი ველის კოდი `passwordCommon` (ადმინის i18n ka / en); client bundle-ში არ ხვდება.
+7. **გაგრძელება მხოლოდ `POST /auth/session`-ით** (ჩუმი გაგრძელება არა; `me` ვადას არ ცვლის) — `AuthProvider`-ის ტაიმერს ემთხვევა (WCAG 2.2.1).
+8. **„დამიმახსოვრე“** — `Max-Age` სესიის მაქსიმუმამდე (mock მას აიგნორებდა); სხვაგვარად — სესიის cookie.
+9. **მოწვევის კოდი** — `MC-` + 26 Crockford base32 (128 ბიტი), რეგისტრის / კიდეების ჰარის გარეშე; ელფოსტით გაგზავნა — არა (B0 #8: გამგზავნი B7-მდე ღიაა → ბმული პასუხშია, როგორც mock-ში).
+10. **რეგისტრაციაზე hash ყოველთვის ითვლება** (კოდის შემოწმებამდე) და კოდის დახარჯვა + ანგარიში ერთ ტრანზაქციაშია — დაკავებულ ელფოსტაზე მოწვევა არ იწვება.
+11. **`create-admin` უარს ამბობს, თუ აქტიური ადმინისტრატორი უკვე არსებობს** და არგუმენტს არ იღებს (პაროლი ბრძანების ხაზში / ისტორიაში არ უნდა მოხვდეს); dev-ის in-memory ბაზაზე `server:dev` ადმინისტრატორს `ADMIN_*` env-იდან ქმნის (prompt-ში არ იყო).
+12. **ლოგში მხოლოდ მოვლენის სახელი** (`auth.login`, `auth.login.failed`, `auth.register`, `auth.logout`, `users.invite`, `users.role`, `users.deactivate`) — user id-ის გარეშე (§12-ის მკაცრი წაკითხვა); ვინ რა გააკეთა — ბაზაში (`invites.createdBy` / `usedBy`, `updatedBy`).
+13. **`normalizeEmail` — საერთო `forms.js`-ში** (mock-ის სამი ასლის ნაცვლად): საჯარო `index` +73 B.
+14. **საკუთარ თავზე იგივე როლი → 200** (mock-ის იგივე), განსხვავებული → 400.
+15. **B2-ის ღია #6 (`passwordHash` `invited`-ზე)** — მიგრაცია არ დასჭირდა: მომხმარებელი მხოლოდ რეგისტრაციით / `create-admin`-ით იქმნება.
+16. **`CORS`** — B1-ის მდგომარეობა (ერთი origin, header-ების გარეშე) უცვლელია, B3-ში მხოლოდ ტესტით დადასტურდა.
+
+### ღია საკითხები
+
+1. **პაროლის შეცვლა / აღდგენა** — ASVS 6.2.2 / 6.2.3 (L1); F8-ის UI-ში და კონტრაქტში არ არის — ცალკე ნაბიჯი (frontend + spec + server, ტესტით).
+2. **მოწვევის კოდი URL-ის query-შია** (`?invite=`, ASVS 14.2.1) — `#invite=`-ზე გადასატანი (frontend `LoginPage` + `inviteLink` + spec). ახლა: ერთჯერადი, 7 დღე, `Referrer-Policy: strict-origin-when-cross-origin`, ლოგში query არ იწერება.
+3. **ნაგულისხმევი მნიშვნელობები** — `[N]` / `[ვადა]`: auth 10 / 15 წთ, forms 10 / 10 წთ; სესია 30 წთ / 12 სთ; მოწვევა 7 დღე — დასადასტურებელი (კონფიდენციალურობის პოლიტიკა).
+4. **rate limit ერთ პროცესზე** — Render-ის ერთ ინსტანციაზე საკმარისია; რამდენიმეზე — საერთო საცავი (B7). `TRUST_PROXY` წარმოებაში ზუსტად (Render — 1, + Cloudflare — 2): ნაკლები — ყველა მომხმარებელი ერთი IP-ა, მეტი — `X-Forwarded-For` ყალბდება.
+5. **ბოროტი დაბლოკვა:** თავდამსხმელს კონკრეტული ანგარიშის შესვლის დაბლოკვა ერთი ფანჯრით (≤ 15 წთ) შეუძლია — დოკუმენტირებული ფასი (ASVS 6.1.1); ალტერნატივა — გასაღები (ანგარიში, IP), თუ ეს პრობლემა გახდება.
+6. **dev ბრაუზერში:** `__Host-` / Secure cookie `http://localhost`-ზე — Chrome ✓ (jsdom-იც), Firefox / Safari `[შესამოწმებელი]`; Vite-ის `/api` proxy ან staging HTTPS — B7.
+7. **მოწვევის ელფოსტით გაგზავნა** — B6 / B7 (Resend, დომენი, DNS).
+8. **ASVS 6.2.6 / 6.2.7** (`type=password`, ჩასმა / პაროლის მენეჯერი) — F8-ის frontend, B3-ში არ გადამოწმებულა.
+9. **ცნობილი პაროლების სია** — SecLists `Passwords/Common-Credentials/xato-net-10-million-passwords-1000000.txt` (MIT, commit 48c951a3c3af), პირველი 3000 უნიკალური (პატარა ასოებით) ≥ 12 სიმბოლო; განახლება — იგივე წესით.
+10. HSTS `includeSubDomains` (L2) — დომენის შემდეგ (B7). B0 / B1 / B2-ის ღია საკითხები (ბიუჯეტი, დომენი, სერვერის შეცდომის ენა, `Translations`, `[YouTube-ის id]`) ძალაშია — project-context §9 #24, #26–#28.
+
+### შემდეგი: B4 — კონტენტი (ადმინი)
+
+CRUD, ავტოშენახვის სამუშაო ასლი, გამოქვეყნება / დაგეგმვა (სერვერზე `validate.js`, ka + en; `[…]` YouTube-ის id-ში — შეცდომა), ვერსიები / აღდგენა, 409, წაშლა, ძიება, stats, a11yReport, პარამეტრები + რჩეული (`setFeatured`; `update` `featured`-ს არ იღებს), API-ის `Translations` ↔ ბაზის `partialTextSchema`. route-ები — `route(app, spec, operationId, handler)`: guard (`security`, `x-permission`) ავტომატურად ედება; `updatedBy` — `request.auth.user._id`. Gate — frontend-ის ადმინის ტესტები HTTP adapter-ით.

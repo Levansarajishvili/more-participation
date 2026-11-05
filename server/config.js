@@ -22,7 +22,13 @@ import Ajv2020 from 'ajv/dist/2020.js';
  * @property {{ uri: string | null, dbName: string }} mongo  `uri: null` — მხოლოდ development / test
  * @property {{ messagesDays: number, versionsKeep: number }} retention  შენახვის ვადები (B0 #10, B2):
  *   კონტაქტის შეტყობინების TTL დღეებში; ვერსიების რაოდენობა თითო მასალაზე
+ * @property {{ idleMs: number, maxMs: number }} session  B3: უმოქმედობა / აბსოლუტური მაქსიმუმი
+ * @property {{ ttlMs: number }} invites                  B3: მოწვევის ვადა
+ * @property {{ auth: RateLimit, forms: RateLimit }} rateLimit
+ *   B3: `auth` — შესვლა / რეგისტრაცია (IP; შესვლაზე + ანგარიში), `forms` — საჯარო ფორმები (B6)
  */
+
+/** @typedef {{ max: number, windowMs: number }} RateLimit */
 
 export const NODE_ENVS = Object.freeze(['development', 'test', 'production']);
 export const LOG_LEVELS = Object.freeze([
@@ -50,6 +56,15 @@ export const ENV_SCHEMA = Object.freeze({
     // B0 #10 — ნაგულისხმევი, დასადასტურებელი (კონფიდენციალურობის პოლიტიკა); ცვლილება → server:migrate
     MESSAGES_TTL_DAYS: { type: 'integer', minimum: 1, maximum: 3650, default: 30 },
     VERSIONS_KEEP: { type: 'integer', minimum: 1, maximum: 1000, default: 30 },
+    // B3 — B0 #10-ის ნაგულისხმევი (დასადასტურებელი): სესია 30 წთ / 12 სთ, მოწვევა 7 დღე
+    SESSION_IDLE_MINUTES: { type: 'integer', minimum: 5, maximum: 720, default: 30 },
+    SESSION_MAX_HOURS: { type: 'integer', minimum: 1, maximum: 24, default: 12 },
+    INVITE_TTL_DAYS: { type: 'integer', minimum: 1, maximum: 30, default: 7 },
+    // B3 — rate limit: [N] მცდელობა / [ვადა] (ნაგულისხმევი — დასადასტურებელი)
+    RATE_LIMIT_AUTH_MAX: { type: 'integer', minimum: 1, maximum: 1000, default: 10 },
+    RATE_LIMIT_AUTH_WINDOW_SECONDS: { type: 'integer', minimum: 1, maximum: 86_400, default: 900 },
+    RATE_LIMIT_FORMS_MAX: { type: 'integer', minimum: 1, maximum: 1000, default: 10 },
+    RATE_LIMIT_FORMS_WINDOW_SECONDS: { type: 'integer', minimum: 1, maximum: 86_400, default: 600 },
   },
   // წარმოებაში in-memory ბაზა არ არსებობს — connection string სავალდებულოა
   if: { properties: { NODE_ENV: { const: 'production' } }, required: ['NODE_ENV'] },
@@ -100,6 +115,17 @@ export function loadConfig(env = process.env) {
     });
     throw new ConfigError([...new Set(problems)].filter((p) => !p.startsWith('env:')));
   }
+  const idleMinutes = /** @type {number} */ (input.SESSION_IDLE_MINUTES);
+  const maxHours = /** @type {number} */ (input.SESSION_MAX_HOURS);
+  if (idleMinutes > maxHours * 60) {
+    throw new ConfigError(['SESSION_IDLE_MINUTES: SESSION_MAX_HOURS-ზე მეტი ვერ იქნება']);
+  }
+  /** @param {string} max @param {string} window @returns {Readonly<RateLimit>} */
+  const limit = (max, window) =>
+    Object.freeze({
+      max: /** @type {number} */ (input[max]),
+      windowMs: /** @type {number} */ (input[window]) * 1000,
+    });
   const nodeEnv = /** @type {NodeEnv} */ (input.NODE_ENV);
   return Object.freeze({
     env: nodeEnv,
@@ -118,6 +144,12 @@ export function loadConfig(env = process.env) {
     retention: Object.freeze({
       messagesDays: /** @type {number} */ (input.MESSAGES_TTL_DAYS),
       versionsKeep: /** @type {number} */ (input.VERSIONS_KEEP),
+    }),
+    session: Object.freeze({ idleMs: idleMinutes * 60_000, maxMs: maxHours * 3_600_000 }),
+    invites: Object.freeze({ ttlMs: /** @type {number} */ (input.INVITE_TTL_DAYS) * 86_400_000 }),
+    rateLimit: Object.freeze({
+      auth: limit('RATE_LIMIT_AUTH_MAX', 'RATE_LIMIT_AUTH_WINDOW_SECONDS'),
+      forms: limit('RATE_LIMIT_FORMS_MAX', 'RATE_LIMIT_FORMS_WINDOW_SECONDS'),
     }),
   });
 }

@@ -38,9 +38,14 @@ info:
     სერვერი არ აბრუნებს — `normalizeError` მათ `unknown`-ად თარგმნიდა.
 
     **გაფართოებები:** `x-adapter` — frontend-ის ფუნქცია, რომელიც ოპერაციას იძახებს; `x-permission` —
-    `permissions.js`-ის უფლება (B3 მას route-ის guard-ად იყენებს); `x-step` — ნაბიჯი, რომელშიც
+    `permissions.js`-ის უფლება (route-ის guard, `server/lib/auth.js`); `x-rate-limit` — rate limit-ის
+    პოლიტიკა (`auth` | `forms`, `config.rateLimit`; ოპერაციას 429 აქვს); `x-step` — ნაბიჯი, რომელშიც
     endpoint ხორციელდება (B1 — health; B3 — auth, users; B4 — content, settings, reports; B5 — media;
     B6 — საჯარო API).
+
+    **უსაფრთხოება (B3):** სესია — `__Host-mc-session` (httpOnly), CSRF — `__Host-mc-csrf` +
+    `X-CSRF-Token` (`security`-ის `session` / `csrf`). `/api/*`-ზე POST / PUT / PATCH / DELETE,
+    რომლის `Sec-Fetch-Site` არის `cross-site` ან `same-site` → 403 `forbidden` (Fetch Metadata).
 servers:
   - url: /
     description: 'ერთი origin — API და საიტი ერთ სერვისზეა (B0 #3, #4)'
@@ -399,6 +404,7 @@ paths:
         CAPTCHA-ს გარეშე. B6: double opt-in — პასუხი `{ ok, status: 'pending' }` და
         `confirmSubscription(token)`; კონტრაქტი ორივე მხარეს B6-ში იცვლება.
       x-adapter: subscribe
+      x-rate-limit: forms
       x-step: B6
       requestBody:
         required: true
@@ -412,6 +418,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/SubscribeResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -427,6 +434,7 @@ paths:
         იგზავნება. დიაგნოზი არ გროვდება — `support` მხოლოდ კომუნიკაციის საჭიროებაა. Rate limit — IP +
         საკონტაქტო მისამართი (B6), CAPTCHA და დროის ლიმიტი არ არის.
       x-adapter: sendContact
+      x-rate-limit: forms
       x-step: B6
       requestBody:
         required: true
@@ -440,6 +448,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ContactResult' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -450,10 +459,13 @@ paths:
       tags: [auth]
       summary: შესვლა
       description: |
-        უცნობი ელფოსტა და არასწორი პაროლი — ერთი და იგივე 401 და ერთნაირი დრო (argon2id ყოველთვის
-        ითვლება). წარმატება — httpOnly სესიის cookie + `mc-csrf` (double-submit). Rate limit — IP-ით და
-        ელფოსტით (B3), CAPTCHA-ს გარეშე. ველები — `auth-forms.js`-ის `validateLogin` (422).
+        უცნობი ელფოსტა, არასწორი პაროლი და დეაქტივირებული ანგარიში — ერთი და იგივე 401 და ერთნაირი დრო
+        (argon2id ყოველთვის ითვლება). წარმატება — `__Host-mc-session` (httpOnly) + `__Host-mc-csrf`
+        (double-submit, სესიაზე მიბმული); ძველი სესია, თუ იყო, იშლება. `remember: true` — cookie-ს
+        `Max-Age` სესიის მაქსიმუმამდე (ბრაუზერის დახურვას გადაურჩება). Rate limit — IP-ით ყოველ
+        მცდელობაზე და ელფოსტით წარუმატებელზე, CAPTCHA-ს გარეშე. ველები — `validateLogin` (422).
       x-adapter: auth.login
+      x-rate-limit: auth
       x-step: B3
       requestBody:
         required: true
@@ -470,6 +482,7 @@ paths:
               schema: { $ref: '#/components/schemas/Session' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -480,9 +493,12 @@ paths:
       tags: [auth]
       summary: რეგისტრაცია მოწვევის კოდით
       description: |
-        მოწვევა ერთჯერადია და ვადიანი; არასწორი / გამოყენებული / ვადაგასული კოდი და დაკავებული
-        ელფოსტა — ერთი პასუხი (422, `fields.invite`), რომ ანგარიში არ გამჟღავნდეს. წარმატება — შესვლა.
+        მოწვევა ერთჯერადია და ვადიანი; არასწორი / გამოყენებული / ვადაგასული / სხვა ელფოსტის კოდი და
+        დაკავებული ელფოსტა — ერთი პასუხი (422, `fields.invite`), რომ ანგარიში არ გამჟღავნდეს. ველები —
+        `validateRegister` + ცნობილი პაროლების სია (`fields.password.code: passwordCommon`, მხოლოდ
+        სერვერზე). კოდი რეგისტრის გარეშე შედარდება. წარმატება — შესვლა (სესიის cookie-ები).
       x-adapter: auth.register
+      x-rate-limit: auth
       x-step: B3
       requestBody:
         required: true
@@ -498,6 +514,7 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/Session' }
         '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/Validation' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -1101,7 +1118,10 @@ paths:
       operationId: createInvite
       tags: [users]
       summary: 'მოწვევა — ერთჯერადი კოდი და ბმული (ვადა — B0 #10)'
-      description: კოდი ბაზაში მხოლოდ hash-ად ინახება; ღია სახით ერთხელ ბრუნდება (ეს პასუხი).
+      description: |
+        კოდი — `MC-` + 26 სიმბოლო (128 ბიტი, Crockford base32); ბაზაში მხოლოდ sha256 ინახება, ღია
+        სახით ერთხელ ბრუნდება (ეს პასუხი). ვადა — `INVITE_TTL_DAYS` (7). `email` — მოწვევა მხოლოდ ამ
+        ელფოსტაზე (არასწორი ფორმა → 422 `fields.email`). ბმული ელფოსტით — B6 / B7.
       x-adapter: users.invite
       x-permission: users.manage
       x-step: B3
@@ -1272,22 +1292,25 @@ components:
     session:
       type: apiKey
       in: cookie
-      name: mc-session
+      name: __Host-mc-session
       description: |
-        სესიის token — httpOnly, Secure, `SameSite=Lax`, host-only, `Path=/`. ბაზაში მხოლოდ hash-ი
-        ინახება; ვადა — უმოქმედობა 30 წთ, მაქსიმუმ 12 სთ (B0 #10). JS-ში და localStorage-ში არასოდეს.
-        B3: სახელი `__Host-` პრეფიქსით, ორივე მხარეს (`http.js`), ტესტით.
+        სესიის token (256 ბიტი, base64url) — httpOnly, Secure, `SameSite=Lax`, host-only, `Path=/`
+        (`__Host-`: ქვედომენი ვერ ჩაანაცვლებს). ბაზაში მხოლოდ sha256 ინახება; ვადა — `expiresAt` =
+        min(ბოლო გაგრძელება + 30 წთ, შექმნა + 12 სთ) (B0 #10, `SESSION_IDLE_MINUTES` /
+        `SESSION_MAX_HOURS`), გაგრძელება — `POST /auth/session`. ამოწურული / უცნობი → 401 და
+        cookie-ები სუფთავდება. JS-ში და localStorage-ში არასოდეს.
     csrf:
       type: apiKey
       in: header
       name: X-CSRF-Token
       description: |
-        double-submit: სერვერი `mc-csrf` cookie-ს (არა httpOnly, `SameSite=Lax`) აყენებს, ყოველი არა-GET
-        მოთხოვნა მას ამ header-ით აბრუნებს (`http.js`-ის `readCsrfToken`); შეუსაბამობა → 403.
+        double-submit: სერვერი `__Host-mc-csrf` cookie-ს (არა httpOnly, Secure, `SameSite=Lax`,
+        `Path=/`) აყენებს, ყოველი არა-GET მოთხოვნა მას ამ header-ით აბრუნებს (`http.js`-ის
+        `readCsrfToken`). header = cookie და sha256(header) = სესიის `csrfHash` — სხვა შემთხვევაში 403.
 
   headers:
     SessionCookies:
-      description: '`mc-session` (httpOnly) და `mc-csrf`; გასვლისას — ორივე `Max-Age=0`.'
+      description: '`__Host-mc-session` (httpOnly) და `__Host-mc-csrf`; გასვლისას და ამოწურულ სესიაზე — ორივე `Max-Age=0`.'
       schema: { type: string }
     RetryAfter:
       description: წამები შემდეგ მცდელობამდე
@@ -1450,7 +1473,8 @@ components:
       type: object
       description: |
         `code` — `fieldErrors.*` (`required`, `email`, `contact`, `consent`, `tooLong`, `option`,
-        `replyEmail`, `replyPhone`), ადმინისა (`invite`, `slugDuplicate`, `date`, `passwordShort`) ან
+        `replyEmail`, `replyPhone`), ადმინისა (`invite`, `slugDuplicate`, `date`, `passwordShort`,
+        `passwordCommon`) ან
         ჩეკლისტის `checks.*` კოდი (`altMissing`…).
       required: [code, message]
       properties:

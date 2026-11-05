@@ -4,7 +4,7 @@ import { ContentError } from '@/content/errors.js';
 import { createMockAdapter, createMockStore } from '@/content/mock/index.js';
 import { ADMIN_PATH, createRouterOptions } from '@/routes.jsx';
 
-import { CSRF_HEADER, createHttpAdminAdapter, readCsrfToken } from '../api/http.js';
+import { CSRF_COOKIE, CSRF_HEADER, createHttpAdminAdapter, readCsrfToken } from '../api/http.js';
 import { MOCK_INVITE, MOCK_PASSWORD, createMockAdminAdapter } from '../api/mock.js';
 import { ROLES, ROLE_PERMISSIONS, can } from '../api/permissions.js';
 import {
@@ -303,7 +303,7 @@ describe('ფორმის წესები', () => {
 
 describe('HTTP adapter-ი', () => {
   it('credentials: include, CSRF header არა-GET მოთხოვნაზე, 401 → unauthorized, 422 → validation', async () => {
-    document.cookie = 'mc-csrf=tok%2B1';
+    document.cookie = `${CSRF_COOKIE}=tok%2B1; Secure; Path=/`;
     expect(readCsrfToken()).toBe('tok+1');
     const calls = /** @type {{ url: string, init: RequestInit }[]} */ ([]);
     const responses = [
@@ -339,7 +339,7 @@ describe('HTTP adapter-ი', () => {
       'https://api.example.org/admin/items/a-001',
     ]);
     expect(JSON.stringify(window.localStorage)).not.toContain('tok');
-    document.cookie = 'mc-csrf=; max-age=0';
+    document.cookie = `${CSRF_COOKIE}=; Secure; Path=/; max-age=0`;
   });
 });
 

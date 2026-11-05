@@ -22,6 +22,12 @@ export const REDACT_KEYS = Object.freeze([
   'cookie',
   'authorization',
   'token',
+  // B3
+  'passwordHash',
+  'csrf',
+  'csrfToken',
+  'invite',
+  'session',
 ]);
 
 /**

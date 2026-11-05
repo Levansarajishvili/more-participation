@@ -54,6 +54,14 @@ describe('საერთო მოდულები სუფთა Node-შ�
     );
     expect(result.captions).toBe(true);
     expect(result.youtube).toBe('dQw4w9WgXcQ');
+    expect(result.admin).toEqual({
+      csrf: ['__Host-mc-csrf', 'X-CSRF-Token'],
+      passwordMin: 12,
+      registerFields: ['name', 'email', 'invite', 'password'],
+      roles: ['admin', 'editor'],
+      editorUsers: false,
+      email: 'nino@example.ge',
+    });
   });
 });
 
