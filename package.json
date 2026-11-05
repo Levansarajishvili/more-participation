@@ -6,6 +6,9 @@
   "engines": {
     "node": ">=22.22.0"
   },
+  "workspaces": [
+    "server"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -18,7 +21,11 @@
     "tokens:report": "node scripts/contrast-report.mjs",
     "i18n:stub": "node scripts/i18n-stub.mjs && prettier --write src/i18n/en.js",
     "placeholders": "node scripts/placeholders.mjs",
-    "audit": "python3 scripts/audit.py --out audit.json"
+    "audit": "python3 scripts/audit.py --out audit.json",
+    "server:dev": "node --env-file-if-exists=server/.env --watch server/index.js",
+    "server:start": "node server/index.js",
+    "server:test": "vitest run --config server/vitest.config.js",
+    "server:lint": "eslint server --max-warnings=0 && prettier --check server"
   },
   "dependencies": {
     "@fontsource-variable/noto-sans-georgian": "^5.3.0",

@@ -1276,3 +1276,164 @@ F7-ის native ველები (`NativeVideo`, `components/media/sources.js
 ### შემდეგი: B1 — API-ის სპეციფიკაცია + `server/`-ის ჩონჩხი
 
 OpenAPI 3.1 adapter-ებიდან (`Video.youtube`, `CaptionTrack.cues` / `end`, `GET /content/videos/youtube`), საერთო მოდულები — `youtube.js`, `vtt.js`, `validate.js`. B1-მდე — `fastdl.mongodb.org` network settings-ში.
+
+## B1 — API-ის სპეციფიკაცია + `server/`-ის ჩონჩხი ✅ (2026-11-05)
+
+**Gate:**
+- frontend — **უცვლელი:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓; `server/`-იც მოიცავს) · `npm test` ✓ (42 ფაილი, **722 / 722**) · `npm run build` ✓ + check-dist ✓ (44 JS chunk) · `dist/`-ის 73-ვე ფაილის **sha256 ემთხვევა B1-მდე build-ს** (`i18n/index.js`-ის გასწორების და typedef-ის შემდეგ).
+- server: `npm run server:lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm run server:test` ✓ (**9 ფაილი, 84 ტესტი**, ~23 წმ). zip-ის სუფთა ასლზე (`npm ci` → `server:test`) ერთხელ ჩავარდა boot-ტესტი: dev-ის გაფრთხილება listen-მდე იწერება და ტესტი მას ელოდა — ახლა `Server listening`-ს ელოდება; შემდეგ ზედიზედ 5 + 3 გაშვება მწვანეა.
+- OpenAPI ვალიდურია: `@seriousme/openapi-schema-validator` 2.11.0 — `valid: true`, ვერსია 3.1; ყოველი `$ref` არსებობს, ყოველი სქემა გამოიყენება; 138 სქემა + 46 ოპერაციის route-სქემა `Ajv2020`-ის strict რეჟიმში კომპილირდება; პასუხების მაგალითები სქემას აკმაყოფილებს.
+- **contract-ტესტი მწვანეა:** `createHttpAdminAdapter`-ის 31 ფუნქციის 52 გამოძახება (mock-ის რეალური მონაცემით) და საჯარო HTTP გეგმის 15 ფუნქციის 21 მოთხოვნა — მეთოდი, გზა, path / query, body (JSON და multipart), CSRF header ↔ spec; დაფარვა ორივე მიმართულებით; mock adapter-ების პასუხი (საჯარო ka / en, ადმინი) და შეცდომის კოდი ↔ ოპერაციის სქემა / სტატუსი; enum-ები და ზღვრები ↔ `taxonomy.js`, `model.js`, `forms.js`, `slug.js`, `youtube.js`, `query.js`, `permissions.js`, `content-types.js`; თვითტესტი — დარღვეული მოთხოვნა / პასუხი ვალიდატორს არ გადის.
+- **memory-server-ზე connect / ping ✓:** MongoDB 8.0.34, replica set (`hello.setName`), ტრანზაქცია (`withTransaction`) ✓; `node server/index.js` production-ის env-ით → `/api/health` 200 → SIGTERM → exit 0; development `MONGODB_URI`-ის გარეშე — in-memory ბაზა ✓.
+- ქსელი: `fastdl.mongodb.org` ხელმისაწვდომი იყო — დამატება არ დასჭირდა (binary ~105 MB, ქეში `~/.cache/mongodb-binaries`).
+
+### შექმნილი ფაილები
+
+`server/`: `package.json`, `openapi.yaml`, `.env.example`, `alias.js`, `index.js`, `main.js`, `config.js`, `app.js`, `vitest.config.js`, `lib/{openapi,errors,logger,security,db,dev-db}.js`, `routes/health.js`, `scripts/shared-smoke.js`, `test/{global-setup,helpers}.js`, `test/{config,app,db,openapi,shared-modules,boot}.test.js`, `test/contract/{spec-match,public-plan}.js`, `test/contract/{requests,responses,constants}.test.js`.
+
+**შეიცვალა:**
+- `package.json` — `workspaces: ["server"]` (server-ის dependencies — ცალკე `package.json`-ში, ერთი lockfile-ით), სკრიპტები `server:dev`, `server:start`, `server:test`, `server:lint`; `package-lock.json`.
+- `src/i18n/index.js` — `import.meta.env.DEV` → `import.meta.env?.DEV`: Node-ში `import.meta.env` არ არსებობს და დაკარგულ გასაღებზე `t()` TypeError-ით ვარდებოდა (გაშვებით დადასტურდა); build ბაიტ-ბაიტ იგივეა.
+- `src/admin/api/adminAdapter.js` — `A11yReport.items[]` typedef-ს დაემატა `titleEn` (mock მას F9.1-დან აბრუნებს; JSDoc მხოლოდ).
+- `eslint.config.js` — `server/**/*.js`: Node-ის გლობალები; `.gitignore` — `.env`, `.env.*`, `!.env.example`.
+- `CLAUDE.md` — „Backend-ის აგება — ჩატების რეჟიმი“ (Project-ის ინსტრუქციიდან), npm სკრიპტები, რუკაში `server/`, „კოდის კონვენციები (B1 — server)“.
+- `docs/project-context.md` — §9 #24 (`fastdl.mongodb.org` ✓), #26 (B1-ის ღია საკითხები), §10 „Backend — API-ის კონტრაქტი (B1)“, §12 (Framework, რეპო, ტესტი, B1 ✅).
+
+**დამოკიდებულებები** (ზუსტი ვერსიები, ყველა ≥ 14 დღის; 2026-10-22-მდე): `fastify` 5.12.7 (5.12.8 — 2026-11-02, ახალია), `@fastify/helmet` 13.2.0, `mongodb` 7.7.0 (7.8.0 — 2026-10-30), `ajv` 8.20.0, `ajv-formats` 3.0.1, `yaml` 2.9.1; dev: `mongodb-memory-server-core` 11.3.0, `@seriousme/openapi-schema-validator` 2.11.0, `vitest` ~5.0.4 (frontend-ის, 5.0.5). MongoDB-ის binary — 8.0.34 (2026-10-08; Atlas — 8.0).
+
+### API — endpoint → adapter-ის ფუნქცია → როლი
+
+46 ოპერაცია: health (B1) · 15 საჯარო `/api/v1/*` (B6) · 30 ადმინის `/api/admin/*` (auth / users — B3, content / settings / reports — B4, media — B5). საჯარო GET-ებს აქვს `lang` (`ka` | `en`). ადმინის GET — `session` cookie; ცვლილება — + `X-CSRF-Token`; `login` / `register` — სესიის გარეშე.
+
+| endpoint | adapter | როლი (`x-permission`) | ნაბიჯი |
+|---|---|---|---|
+| `GET /api/health` | — | საჯარო | B1 |
+| `GET /api/v1/articles` | `listArticles` | საჯარო | B6 |
+| `GET /api/v1/articles/{slug}` | `getArticle` | საჯარო | B6 |
+| `GET /api/v1/series` | `listSeries` | საჯარო | B6 |
+| `GET /api/v1/series/{slug}` | `getSeries` | საჯარო | B6 |
+| `GET /api/v1/videos` | `listVideos` | საჯარო | B6 |
+| `GET /api/v1/videos/{slug}` | `getVideo` | საჯარო | B6 |
+| `GET /api/v1/news` | `listNews` | საჯარო | B6 |
+| `GET /api/v1/news/{slug}` | `getNews` | საჯარო | B6 |
+| `GET /api/v1/events` | `listEvents` | საჯარო | B6 |
+| `GET /api/v1/team` | `getTeam` | საჯარო | B6 |
+| `GET /api/v1/partners` | `getPartners` | საჯარო | B6 |
+| `GET /api/v1/stages` | `getStages` | საჯარო | B6 |
+| `GET /api/v1/settings` | `getSettings` | საჯარო | B6 |
+| `POST /api/v1/subscribe` | `subscribe` | საჯარო | B6 |
+| `POST /api/v1/contact` | `sendContact` | საჯარო | B6 |
+| `POST /api/admin/auth/login` | `auth.login` | ყველა (სესიის გარეშე) | B3 |
+| `POST /api/admin/auth/register` | `auth.register` | ყველა (სესიის გარეშე) | B3 |
+| `POST /api/admin/auth/logout` | `auth.logout` | სესიით | B3 |
+| `GET /api/admin/auth/me` | `auth.me` | სესიით | B3 |
+| `POST /api/admin/auth/session` | `auth.extendSession` | სესიით | B3 |
+| `GET /api/admin/content/{type}` | `content.list` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `POST /api/admin/content/{type}` | `content.create` | ადმინისტრატორი, რედაქტორი (`content.write`) | B4 |
+| `GET /api/admin/content/{type}/slug` | `content.checkSlug` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `GET /api/admin/content/videos/youtube` | `content.checkYouTube` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `GET /api/admin/items/{id}` | `content.get` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `PATCH /api/admin/items/{id}` | `content.update` | ადმინისტრატორი, რედაქტორი (`content.write`) | B4 |
+| `DELETE /api/admin/items/{id}` | `content.remove` | ადმინისტრატორი, რედაქტორი (`content.write`) | B4 |
+| `POST /api/admin/items/{id}/publish` | `content.publish` | ადმინისტრატორი, რედაქტორი (`content.publish`) | B4 |
+| `POST /api/admin/items/{id}/schedule` | `content.schedule` | ადმინისტრატორი, რედაქტორი (`content.publish`) | B4 |
+| `GET /api/admin/items/{id}/versions` | `content.versions` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `POST /api/admin/items/{id}/versions/{version}/restore` | `content.restoreVersion` | ადმინისტრატორი, რედაქტორი (`content.write`) | B4 |
+| `GET /api/admin/search` | `content.search` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `GET /api/admin/media` | `media.list` | ადმინისტრატორი, რედაქტორი (`media.read`) | B5 |
+| `POST /api/admin/media` | `media.upload` | ადმინისტრატორი, რედაქტორი (`media.write`) | B5 |
+| `PATCH /api/admin/media/{id}` | `media.updateAlt`, `media.update` | ადმინისტრატორი, რედაქტორი (`media.write`) | B5 |
+| `DELETE /api/admin/media/{id}` | `media.remove` | ადმინისტრატორი, რედაქტორი (`media.write`) | B5 |
+| `GET /api/admin/media/{id}/usage` | `media.usage` | ადმინისტრატორი, რედაქტორი (`media.read`) | B5 |
+| `GET /api/admin/users` | `users.list` | ადმინისტრატორი (`users.manage`) | B3 |
+| `POST /api/admin/users/invites` | `users.invite` | ადმინისტრატორი (`users.manage`) | B3 |
+| `PATCH /api/admin/users/{id}` | `users.setRole` | ადმინისტრატორი (`users.manage`) | B3 |
+| `POST /api/admin/users/{id}/deactivate` | `users.deactivate` | ადმინისტრატორი (`users.manage`) | B3 |
+| `GET /api/admin/settings` | `settings.get` | ადმინისტრატორი (`settings.manage`) | B4 |
+| `PATCH /api/admin/settings` | `settings.update` | ადმინისტრატორი (`settings.manage`) | B4 |
+| `GET /api/admin/reports/stats` | `reports.stats` | ადმინისტრატორი, რედაქტორი (`content.read`) | B4 |
+| `GET /api/admin/reports/a11y` | `reports.a11yReport` | ადმინისტრატორი, რედაქტორი (`a11y.read`) | B4 |
+
+### შეცდომის კოდი → HTTP
+
+| `code` | HTTP | როდის |
+|---|---|---|
+| `bad-request` | 400 | არასწორი JSON / query / path, უცნობი ველი, ტიპი, ზომა (`BODY_LIMIT`), Content-Type (`text/plain`); Fastify-ის სხვა 4xx (405, 413, 415) |
+| `unauthorized` | 401 | სესია არ არის / ამოიწურა; შესვლის არასწორი მონაცემი (ერთი პასუხი) |
+| `forbidden` | 403 | როლს უფლება არ აქვს; CSRF token არ ემთხვევა |
+| `not-found` | 404 | მასალა / route არ არსებობს ან გამოუქვეყნებელია; არასწორი slug (არა 400) |
+| `conflict` | 409 | ვერსია შეიცვალა; გამოყენებული ფაილის წაშლა |
+| `validation` | 422 | `fields` — ველის გზა (`name`, `cover.alt`, `body[2].image.alt`, `translations.en.title`) → `{ code, message }`; სხეულის ajv-შეცდომა: სავალდებულო / `minLength ≤ 1` → `required`, `maxLength` → `tooLong`, `enum` / `const` → `option` |
+| `rate-limited` | 429 | + `Retry-After` (ნაგულისხმევი 60) |
+| `server` | 500 | ყველა სხვა; ტექსტი არ ჟონავს. `network` / `unknown` — მხოლოდ კლიენტის კოდები |
+| — | 503 | მხოლოდ `GET /api/health` — ბაზა მიუწვდომელია |
+
+### env → რისთვის → მაგალითი (`server/.env.example`)
+
+| ცვლადი | რისთვის | მაგალითი / ნაგულისხმევი |
+|---|---|---|
+| `NODE_ENV` | `development` \| `test` \| `production` | `development` |
+| `HOST` | მოსმენის მისამართი | ცარიელი → dev `127.0.0.1`, production `0.0.0.0` |
+| `PORT` | პორტი (Render — 10000) | `3000` |
+| `LOG_LEVEL` | pino-ს დონე | `info` (test — `silent`) |
+| `TRUST_PROXY` | proxy-ის რაოდენობა კლიენტამდე (IP-ისთვის rate limit-ში, B3) | `0` (Render — `1`, + Cloudflare — `2`) |
+| `BODY_LIMIT` | JSON-ის სხეულის ზღვარი, ბაიტი | `1048576` |
+| `MONGODB_URI` | Atlas-ის connection string; production-ში სავალდებულოა | `mongodb+srv://[მომხმარებელი]:[პაროლი]@[კლასტერი].mongodb.net/?retryWrites=true&w=majority`; ცარიელი dev-ში → in-memory |
+| `MONGODB_DB` | ბაზის სახელი | `meti-chartuloba` |
+| `MONGOMS_VERSION` | ტესტი / dev: memory-server-ის binary | `8.0.34` |
+
+შემდეგი ნაბიჯების ცვლადები (`CONTACT_INBOX`, `RESEND_API_KEY`, `R2_*`, `MEDIA_BASE_URL`) `.env.example`-ში კომენტარადაა — `config.js` მათ ჯერ არ კითხულობს.
+
+### საჯარო API (server)
+
+- `buildApp({ config, db?, spec?, logStream?, extend? }) → FastifyInstance` — დეკორატორები `app.config`, `app.db`, `app.spec`, `app.apiRoutes` (`{ method, url, operationId }[]`).
+- `main({ env?, signals? })`, `describeStartupError(error)`, `SHUTDOWN_TIMEOUT_MS` (10 წმ).
+- `config.js`: `loadConfig(env) → Readonly<Config>` (`{ env, host, port, logLevel, trustProxy, bodyLimit, mongo: { uri, dbName } }`), `ConfigError` (`problems: string[]`), `ENV_SCHEMA`, `ENV_KEYS`, `NODE_ENVS`, `LOG_LEVELS`.
+- `lib/openapi.js`: `SPEC_PATH`, `COMPONENTS_ID`, `loadSpec()` (გაყინული, ქეშით), `createAjv(spec, { coerceTypes })`, `schemaRef(name)`, `rewriteRefs`, `listOperations`, `findOperation`, `operationParameters`, `routeSchema(spec, operationId) → { params?, querystring, body? }`, `fastifyPath`, `route(app, spec, operationId, handler, options?)`.
+- `lib/errors.js`: `STATUS_BY_CODE`, `SERVER_ERROR_CODES`, `statusForCode`, `codeForStatus`, `fieldPath('/body/2/image/alt') → 'body[2].image.alt'`, `validationFields(ajvErrors)`, `toHttpError(error) → { status, error: ContentError, internal }`, `registerErrorHandlers(app)`.
+- `lib/logger.js`: `loggerOptions({ level, production, stream })`, `registerRequestLog(app)`, `serializeError(err, production)`, `REDACT_KEYS`.
+- `lib/security.js`: `registerSecurity(app)`, `API_CSP`, `HSTS_MAX_AGE`.
+- `lib/db.js`: `connectDb({ uri, dbName, serverSelectionTimeoutMS }) → { client, db, ping, close }`, `pingDb(db, timeoutMs)`, `replicaSetName(db)`, `PING_TIMEOUT_MS`, `SERVER_SELECTION_TIMEOUT_MS`; `lib/dev-db.js`: `startMemoryReplicaSet()`, `MONGO_BINARY_VERSION`.
+- `alias.js`: `resolveAlias(specifier)`, `ALIAS_PREFIX`, `SRC_URL` (+ hook-ის რეგისტრაცია, ერთხელ).
+- ტესტის დამხმარე: `test/helpers.js` — `testConfig`, `captureLogs`, `makeApp`; `test/contract/spec-match.js` — `createMatcher(spec) → { match, checkRequest, checkResponse, operationFor, operations }`, `withSampleYouTubeIds`; `public-plan.js` — `PUBLIC_PLAN`, `PUBLIC_BASE`.
+
+**Header-ები ყოველ პასუხზე:** `Content-Security-Policy: default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'`, `Referrer-Policy: strict-origin-when-cross-origin`, `Strict-Transport-Security: max-age=15552000`, `X-Content-Type-Options: nosniff`, `Cross-Origin-Resource-Policy: same-origin`, `Cross-Origin-Opener-Policy: same-origin`, `X-Request-Id`; `/api/*` — `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`. `Access-Control-*` — არასოდეს.
+
+**ლოგის ხაზი** (ერთი პასუხზე): `{ level, time, service: "mc-api", reqId, method, route: "/api/v1/articles/:slug", statusCode, ms, msg: "request" }`; 5xx — `{ err: { type, code?, statusCode?, stack[] } }` (development-ში + `detail`).
+
+### გადახვევები prompt-იდან და §12-იდან
+
+1. **`@/` — resolve hook, არა `package.json`-ის `imports`:** `imports` მხოლოდ `#`-ით დაწყებულ გასაღებს იღებს (`@/a.js` → `ERR_MODULE_NOT_FOUND`) და პაკეტს გარეთ ვერ გავა (`../src/*` → `ERR_INVALID_PACKAGE_TARGET`) — ორივე sandbox-ში შემოწმდა; საერთო მოდულები კი თავადაც `@/i18n/…`-ს შემოიტანენ. `module.registerHooks` (Node ≥ 22.15) — entry-ში სტატიკურად, აპი — დინამიკურად; Vitest — `resolve.alias`.
+2. **spec-first** (§12: `@fastify/swagger` route-ის სქემებიდან): B1-ში route-ები ჯერ არ არის, კონტრაქტი კი adapter-ებშია — YAML ერთადერთი წყაროა და სერვერი route-ს მისგან აწყობს (`route()`); `@fastify/swagger` არ დაყენებულა.
+3. **`Ajv2020`** Fastify-ის draft-07-ის ნაცვლად (OpenAPI 3.1 = JSON Schema 2020-12: `unevaluatedProperties`, `const`, `type: [x, 'null']`); პასუხის სქემა route-ზე არ ედება (fast-json-stringify უცნობ ველს ჩუმად წაშლიდა) — მას contract-ტესტი ამოწმებს.
+4. **workspace:** `server/` ცალკე package-ია (საკუთარი dependencies), მაგრამ ერთი `npm install` / lockfile-ით; `mongodb-memory-server-core` (არა `mongodb-memory-server`) — postinstall-ში binary-ს არ ტვირთავს, deploy (B7) მას არ ჩამოტვირთავს.
+5. **`text/plain` parser ამოღებულია** (prompt-ში არ იყო) — CSRF-ის „მარტივი მოთხოვნა“ preflight-ის გარეშე.
+6. **ორი frontend-ის ფაილი შეიცვალა** (prompt: „frontend-ის build და ტესტი არ უნდა შეიცვალოს“ — არ შეცვლილა): `i18n/index.js` (Node-ში ვარდნა) და `adminAdapter.js` (typedef). `dist/` ბაიტ-ბაიტ იგივეა, 722 / 722.
+7. **საჯარო HTTP adapter-ის „გეგმა“ ტესტის მხარესაა** (`test/contract/public-plan.js`) და არა `src/`-ში — adapter-ი B6-ია; B6-ში contract-ტესტი რეალურ `src/content/http.js`-ზე გადავა.
+8. **სტატუსები:** შექმნა (`createContent`, `register`, `uploadMedia`, `createInvite`) — 201; დანარჩენი — 200. Fastify-ის 405 / 413 / 415 → 400 `bad-request` (`normalizeError` მათ `unknown`-ად თარგმნიდა).
+9. **dev `MONGODB_URI`-ის გარეშე** — in-memory replica set (prompt-ში არ იყო): `server:dev` ბაზის გარეშეც მუშაობს.
+
+### კონტრაქტის შეუსაბამობები (ნაპოვნი და დოკუმენტირებული)
+
+1. `a11yReport().items[].titleEn` — mock აბრუნებს, typedef-ში არ იყო → typedef გასწორდა, spec-ში არის (`A11yItem`).
+2. რედაქტორი მასალას საიტიდან `content.update(…, { status: 'draft' })`-ით ხსნის → spec (`updateItem`): `status` — მხოლოდ `draft` ან უცვლელი, `published` / `scheduled` — მხოლოდ `/publish` / `/schedule` (B4-ის წესი; mock ამას ჯერ არ ამოწმებს).
+3. ახალი მასალა ცარიელი ველებით იქმნება (`slug: ''`, `youtube.id: ''`, schema `defaults`) → მონახაზის სქემა სტრუქტურულია (contract-ტესტი 5 ტიპის `defaults(now)`-ით მოწმდება).
+4. ადმინის ველის კოდები (`invite`, `slugDuplicate`, `date`, `passwordShort`) და ჩეკლისტის `checks.*` `FieldErrorCode`-ში არ არის → spec-ში `FieldError.code: string`.
+5. `http.js` შეცდომიდან `detail`-ს კითხულობს — სერვერი მას არ აგზავნის (შიდა ინფორმაცია), spec-ში არ არის; `undefined` უვნებელია.
+6. `logout`, `extendSession`, `deactivate`, `restoreVersion` სხეულის გარეშე POST-ია — spec-ში `requestBody` არ აქვს; Content-Type არ იგზავნება (http.js) ✓.
+
+### ღია საკითხები
+
+1. **`translations.en`-ის სქემა** ადმინში თავისუფალი ობიექტია (`maxProperties: 64`) — ტიპის მიხედვით მხოლოდ ტექსტური ველები — B4.
+2. **სერვერის ველის შეცდომის ენა:** ტექსტი გლობალური `t`-ით ქართულია; `/en` ადმინის ფორმა სერვერის ტექსტს პირდაპირ აჩვენებს — ენა მოთხოვნიდან (`lang` / `Accept-Language`, `createT(en)`) — B4 / B6.
+3. **`[YouTube-ის id]`** mock-ში spec-ს არ აკმაყოფილებს (contract-ტესტი ვალიდური სატესტო id-ით ცვლის) — seed-ის წესი B2-ში; წარმოებაში ჩანაცვლება არ უნდა გავიდეს.
+4. **მედიის id** (`img:a-001:body[2].image`, `up:001`) — B2 / B5 გადაწყვეტს (ჩადგმული ობიექტი თუ `media`-ს id); spec-ში გაუმჭვირვალე ASCII-სტრიქონია.
+5. **cookie-ს სახელები** spec-ში `mc-session` / `mc-csrf`-ია — B3: `__Host-` პრეფიქსი ორივე მხარეს, ტესტით.
+6. **საიტის HTML-ის CSP** (`YOUTUBE_CSP`, mc-boot-ის hash) — B7, სტატიკურ ფაილებთან ერთად; ახლა მხოლოდ API-ის CSP. HSTS-ის `includeSubDomains` — დომენის შემდეგ.
+7. **Fastify-ის `onRoute` + spec:** B3–B6-ში ყოველი ახალი route `route()`-ით უნდა დარეგისტრირდეს — `openapi.test.js` route-ების ნაკრებს `x-step`-ს ადარებს (მიმდინარე ნაბიჯი ტესტში იცვლება).
+8. **`module.registerHooks`** Node 22-ში „active development“ სტატუსისაა (გაფრთხილებას არ ბეჭდავს); თუ Render-ის Node-ის ვერსია < 22.15 — გაშვება ჩავარდება (engines ≥ 22.22) — B7-ში Node-ის ვერსია ჩასაკეტია.
+9. B0-ის ღია საკითხები (ბიუჯეტი, დომენი, ვადები, Atlas-ის access list, ლოგის ვადა) ძალაშია — project-context §9 #24.
+
+### შემდეგი: B2 — მონაცემთა ბაზა
+
+კოლექციები (`content`, `versions`, `users`, `sessions`, `invites`, `media`, `settings`, `messages`, `subscribers`), `$jsonSchema` validator-ები (`*Draft` / საჯარო სქემების ფორმით), ინდექსები (`{ type, slug }` უნიკალური, `{ type, status, publishedAt: -1 }`, `{ updatedAt: -1 }`, `searchText`, TTL-ები), seed mock-იდან (`validateContent` — 0 შენიშვნა; `[YouTube-ის id]`-ის წესი), მიგრაციის სკრიპტი. B1-იდან: `connectDb`, `inject('mongoUri')`, `spec-match.js` (seed-ის დოკუმენტი ↔ `*Draft` სქემა).

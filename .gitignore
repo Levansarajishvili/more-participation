@@ -7,3 +7,7 @@ coverage
 .vite
 .audit-fixtures
 audit.json
+# B1: საიდუმლო — მხოლოდ ლოკალურად / ჰოსტინგის env-ში
+.env
+.env.*
+!.env.example

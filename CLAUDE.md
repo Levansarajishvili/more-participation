@@ -67,6 +67,18 @@
 
 მიღებული გადაწყვეტილებები project-context.md-ის §10-შია — მათზე თავიდან აღარ მეკითხები.
 
+## Backend-ის აგება — ჩატების რეჟიმი
+
+- აგება ნაბიჯებად მიდის (project-context.md, §12: B0–B7; F10 — B0-ის შემდეგ, B1-მდე). ერთი ჩატი = ერთი ნაბიჯი; სხვა ნაბიჯის სამუშაოს არ იწყებ.
+- ამ ჩატებში ხარ backend-ინჟინერიც: Node.js 22 (ESM), JavaScript + JSDoc (TypeScript-ის გარეშე), MongoDB, Vitest + mongodb-memory-server. Framework და driver — B0-ის გადაწყვეტილებით (§12).
+- frontend-ის კონტრაქტს (`src/content/adapter.js`, `src/admin/api/adminAdapter.js`, `http.js`) ცალმხრივად არ ცვლი: თუ endpoint ან პასუხის ფორმა უნდა შეიცვალოს, ჯერ ამბობ რატომ და ცვლი ორივე მხარეს ერთ ნაბიჯში, ტესტით.
+- ერთი წესი ორივე მხარეს: ვალიდაცია, slug, ძიების ნორმალიზაცია, თარგმანი — `src/content/`-ის საერთო მოდულებიდან, ასლის გარეშე.
+- §12-ის „Backend-ის წესები“ არადათმობადია (cookie-სესია, CSRF, სქემით ვალიდაცია, გამოქვეყნების ბლოკერი სერვერზე, როლები, rate limit CAPTCHA-ს გარეშე, დიაგნოზი არ გროვდება, ლოგში პერსონალური მონაცემი არ არის).
+- საიდუმლო (პაროლი, connection string, API key) კოდში და zip-ში არასოდეს — მხოლოდ `.env.example` placeholder-ებით. სატესტო პაროლი არ იწერება კოდში — env-იდან ან ერთჯერადი სკრიპტით.
+- რეალური ბაზა და ღრუბლის ანგარიშები ჩატიდან მიუწვდომელია: ტესტი mongodb-memory-server-ზეა, deploy — ინსტრუქციით (`docs/deploy.md`), რომელსაც მომხმარებელი ასრულებს.
+- თუ sandbox-ში დომენი მიუწვდომელია (MongoDB-ის binary, npm-ის პაკეტი), ამბობ რომელი — მომხმარებელი network settings-ში დაამატებს.
+- ჩატის ბოლოს: (1) რეპოს zip (node_modules, dist, .git-ის, `.env`-ის გარეშე); (2) progress.md სრულად — შექმნილი ფაილები, API (endpoint-ები, ფუნქციები, env ცვლადები), გადახვევები, ღია საკითხები, gate-ის სტატუსი; (3) თუ გადაწყვეტილება შეიცვალა — project-context.md სრულად.
+
 ---
 
 ## სტეკი (F1-ით დაფიქსირებული)
@@ -83,7 +95,7 @@
 | ESLint | 9.39.5 + jsx-a11y (strict), react, react-hooks, react-refresh, prettier | 10-ზე jsx-a11y-ის peer ჯერ არ არის |
 | ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, user-event 14.6.7, vitest-axe | `expect.extend(axeMatchers)` setup-ში; კლავიატურა — `userEvent.setup()` |
 
-npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check), `format`, `test`, `test:watch`, `tokens:report`.
+npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`.
 
 ## ფოლდერების რუკა
 
@@ -216,6 +228,27 @@ src/
     setup.js              jest-dom, axe matcher, matchMedia / scrollTo stub, localStorage + <html> გასუფთავება
     media.js              installMatchMedia({ width, dark }) — მართვადი matchMedia + innerWidth
     contrast.js           WCAG კონტრასტი, tokens.css-ის პარსერი, სავალდებულო წყვილები
+server/                   B1: API — ცალკე package (npm workspace), Node 22 ESM, Fastify 5, MongoDB
+  package.json            server-ის dependencies (ვერსიები ზუსტად, ≥ 14 დღის)
+  openapi.yaml            OpenAPI 3.1 — API-ის ერთადერთი წყარო (spec-first): /api/health, /api/v1/*, /api/admin/*
+  .env.example            env ცვლადები placeholder-ებით (`.env` git-სა და zip-ში არ ხვდება)
+  alias.js                `@/` → src/ (module.registerHooks) — frontend-ის საერთო მოდულები ასლის გარეშე
+  index.js                entry: alias → main (`node server/index.js`)
+  main.js                 config → ბაზა (ან dev-ში in-memory) → buildApp → listen; SIGTERM / SIGINT
+  config.js               env → Config (ajv-ის სქემა, ENV_SCHEMA); შეცდომა მნიშვნელობას არ იმეორებს
+  app.js                  buildApp({ config, db, spec, logStream, extend }) — ვალიდაცია, header-ები, ლოგი, route-ები
+  lib/
+    openapi.js            loadSpec, createAjv (Ajv2020), routeSchema, route(app, spec, operationId, handler)
+    errors.js             შეცდომის ერთი handler: ContentError / ajv → { code, message, fields? } + HTTP
+    logger.js             pino-ს ოფციები PII-ის გარეშე, ერთი ხაზი პასუხზე
+    security.js           helmet (CSP, Referrer-Policy, HSTS…), CORS-ის გარეშე, text/plain-ის გარეშე, /api/* — no-store
+    db.js                 connectDb / pingDb / replicaSetName (`mongodb` driver)
+    dev-db.js             startMemoryReplicaSet (MongoDB 8.0.34) — dev და ტესტი
+  routes/health.js        GET /api/health — 200 / 503
+  scripts/shared-smoke.js საერთო მოდულები სუფთა Node-ში (Vite-ის გარეშე)
+  vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server)
+  test/                   config, app, db, openapi, shared-modules, boot (`node server/index.js`);
+    contract/             spec-match.js, public-plan.js (B6-ის გეგმა), requests / responses / constants
 ```
 
 ## კოდის კონვენციები (F1)
@@ -428,3 +461,14 @@ src/
 - ჟესტური ენის ვერსია არ კეთდება (B0): YouTube-ის ფლეიერში ჩიპი არ არის, ჩეკლისტში წესი არ არის.
 - Chromium: `npm run audit -- --only youtube` — YouTube-ის ქსელი `page.route`-ით ყალბდება; axe
   `iframes: false` (iframe-ის შიგთავსი გარეა, `frame-tested` incomplete მოსალოდნელია).
+
+## კოდის კონვენციები (B1 — server)
+
+- **spec-first:** ახალი endpoint ჯერ `server/openapi.yaml`-ში იწერება (`operationId`, `x-adapter`, `x-permission`, `x-step`, სქემა `components.schemas`-იდან), შემდეგ — `route(app, spec, operationId, handler)`. გზა, მეთოდი და შემავალი სქემა სერვერზე ხელით არ იწერება. `test/openapi.test.js` ამოწმებს, რომ რეგისტრირებული route-ები = spec-ის ოპერაციები მიმდინარე ნაბიჯამდე.
+- **სქემის ფენები:** `*Props` (სტრუქტურა: ტიპი, enum, ზედა ზღვარი) → საჯარო (`Article`…, allOf + სავალდებულო ველები, slug, თარიღი, `lang`, `unevaluatedProperties: false`) და `*Draft` (ადმინი, ცარიელი ველი დასაშვებია, + `translations`). სიის ელემენტი (`*Summary`) აკრძალულ ველს `false`-ით გამორიცხავს (`body: false`). ყოველ allOf-ის ფენას `type: object` აქვს (ajv strict).
+- **ajv:** `createAjv(spec)` — `Ajv2020`, `strict`, `allErrors`, `removeAdditional: false`; query / path — `coerceTypes: true`. YAML-ში აღწერა, რომელიც `: `, ` #` ან მძიმეს შეიცავს flow-mapping-ში, ბრჭყალებშია (strict-მა ორი ასეთი ხარვეზი დაიჭირა).
+- **შეცდომა:** მხოლოდ `ContentError` (`@/content/errors.js`) — `throw new ContentError('conflict')`; handler მას `STATUS_BY_CODE`-ით თარგმნის. საკუთარი `{ error: … }` ფორმა არ არსებობს.
+- **საერთო მოდულები:** სერვერი `@/content/*`-ს პირდაპირ იმპორტებს (Vitest — `resolve.alias`, Node — `alias.js`). საერთო მოდულში Vite-ის API (`import.meta.env.X`) მხოლოდ `?.`-ით (`import.meta.env?.DEV`), ბრაუზერის API — `typeof` შემოწმებით. ახალი საერთო მოდული `scripts/shared-smoke.js`-ში ემატება.
+- **ლოგი:** `request.log.*` — მხოლოდ კოდი, route-ის შაბლონი, რაოდენობა; ელფოსტა, სახელი, IP, ტექსტი, token, query-ს მნიშვნელობა — არასოდეს. `REDACT_KEYS` — დამცავი ბადე.
+- **contract-ტესტი:** frontend-ის adapter-ის ახალი / შეცვლილი ფუნქცია `test/contract/requests.test.js`-ში (მოთხოვნა ↔ spec) და `responses.test.js`-ში (mock-ის პასუხი ↔ სქემა) ემატება — დაფარვა ორივე მიმართულებით მოწმდება. B6-ში `public-plan.js` რეალური HTTP adapter-ით იცვლება.
+- **ტესტის ბაზა:** `inject('mongoUri')` (global setup — ერთი replica set); თითო ფაილს — საკუთარი ბაზის სახელი (`mc_test_*`).

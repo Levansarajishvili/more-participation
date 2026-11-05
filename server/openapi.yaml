@@ -1,0 +1,2926 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+info:
+  title: „მეტი ჩართულობა“ — API
+  version: 0.1.0
+  summary: საჯარო საიტის (`/api/v1`) და ადმინ პანელის (`/api/admin`) REST API.
+  description: |
+    კონტრაქტის წყარო — frontend-ის adapter-ები: `src/content/adapter.js` (`ContentAdapter`),
+    `src/admin/api/adminAdapter.js` + `http.js` (`AdminAdapter`), შეცდომები — `src/content/errors.js`.
+    ეს ფაილი ერთადერთი წყაროა: სერვერი route-ის სქემას აქედან იღებს (`server/lib/openapi.js`,
+    `routeSchema(operationId)`), contract-ტესტი კი adapter-ის მოთხოვნებს და mock-ის პასუხებს ამოწმებს.
+
+    **კონვენციები**
+    - ერთი origin: API `/api/*`, CORS header-ები არ იგზავნება. ყოველ `/api/*` პასუხს აქვს
+      `Cache-Control: no-store` (საჯარო GET-ის ქეში — B6) და `X-Robots-Tag: noindex, nofollow`.
+    - მოთხოვნის სხეული — მხოლოდ `application/json` (მედიის ატვირთვა — `multipart/form-data`);
+      `text/plain` არ მიიღება (CSRF-ის „მარტივი მოთხოვნა“). უცნობი ველი უარყოფილია (`additionalProperties`
+      / `unevaluatedProperties: false`), ajv — `removeAdditional: false`.
+    - თარიღი — ISO 8601 ოფსეტით (`2026-11-03T10:00:00+04:00`); ხანგრძლივობა — წამებში.
+    - `lang` (`ka` | `en`) — საჯარო პასუხის ენა: თარგმანი (`translations.en`) ზემოდან ედება, პასუხში
+      ემატება `lang`, `translations` არ ხვდება (`src/content/localize.js`).
+    - ფაილის `src: null` — ფაილი ჯერ არ არის; URL `null` — ბმული ჯერ უცნობია (`model.js`).
+
+    **შეცდომა** — ყოველთვის `{ code, message, fields? }` (`Error`), `message` ქართულად:
+
+    | HTTP | `code` | როდის |
+    |---|---|---|
+    | 400 | `bad-request` | არასწორი JSON / query / path, უცნობი ველი, ტიპი, ზომა, Content-Type |
+    | 401 | `unauthorized` | სესია არ არის ან ამოიწურა; შესვლის არასწორი მონაცემი (ერთი პასუხი) |
+    | 403 | `forbidden` | როლს უფლება არ აქვს (`x-permission`, `permissions.js`) |
+    | 404 | `not-found` | მასალა / route არ არსებობს ან არ არის გამოქვეყნებული |
+    | 409 | `conflict` | ვერსია შეიცვალა (`version`); გამოყენებული ფაილის წაშლა |
+    | 422 | `validation` | ველის შეცდომა — `fields`: ველის გზა → `{ code, message }` |
+    | 429 | `rate-limited` | ძალიან ბევრი მცდელობა (`Retry-After`) |
+    | 500 | `server` | სერვერის შეცდომა (დეტალი მხოლოდ ლოგშია, პერსონალური მონაცემის გარეშე) |
+
+    `network` და `unknown` მხოლოდ კლიენტის კოდებია (HTTP პასუხი არ არის). სხვა სტატუსი (413, 415…)
+    სერვერი არ აბრუნებს — `normalizeError` მათ `unknown`-ად თარგმნიდა.
+
+    **გაფართოებები:** `x-adapter` — frontend-ის ფუნქცია, რომელიც ოპერაციას იძახებს; `x-permission` —
+    `permissions.js`-ის უფლება (B3 მას route-ის guard-ად იყენებს); `x-step` — ნაბიჯი, რომელშიც
+    endpoint ხორციელდება (B1 — health; B3 — auth, users; B4 — content, settings, reports; B5 — media;
+    B6 — საჯარო API).
+servers:
+  - url: /
+    description: 'ერთი origin — API და საიტი ერთ სერვისზეა (B0 #3, #4)'
+security: []
+tags:
+  - name: system
+    description: მომსახურება (health-check)
+  - name: public
+    description: საჯარო საიტი — `ContentAdapter` (B6)
+  - name: auth
+    description: ადმინის სესია (B3)
+  - name: content
+    description: კონტენტის მართვა (B4)
+  - name: media
+    description: ფოტოები, დოკუმენტები, სუბტიტრები (B5)
+  - name: users
+    description: მომხმარებლები და მოწვევები (B3)
+  - name: settings
+    description: საიტის პარამეტრები და რჩეული მასალა (B4)
+  - name: reports
+    description: დაფის სტატისტიკა და ხელმისაწვდომობის ანგარიში (B4)
+
+paths:
+  /api/health:
+    get:
+      operationId: getHealth
+      tags: [system]
+      summary: სერვისისა და ბაზის მდგომარეობა
+      description: |
+        ჰოსტინგის health-check (Render). ბაზასთან `ping` (≤ 2 წმ). ბაზის გარეშე — 503, რომ
+        პლატფორმამ ინსტანცია ტრაფიკიდან ამოიღოს.
+      x-step: B1
+      responses:
+        '200':
+          description: სერვისი და ბაზა მუშაობს
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { status: ok, db: up }
+        '503':
+          description: ბაზა მიუწვდომელია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Health' }
+              example: { status: degraded, db: down }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/articles:
+    get:
+      operationId: listArticles
+      tags: [public]
+      summary: სტატიების სია — ფილტრი, ძიება, cursor
+      description: |
+        მხოლოდ საჯარო მასალა (`published`, ან `scheduled`, რომლის `publishedAt` დადგა). ძიება ქართულ
+        ფორმებს ითვალისწინებს (`text.js`-ის `normalizeSearch` / `matchesQuery`). დალაგება: `newest` —
+        `publishedAt` კლებადობით, `shortest` — `readingMinutes` ზრდადობით.
+      x-adapter: listArticles
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - name: category
+          in: query
+          schema: { $ref: '#/components/schemas/ArticleCategory' }
+        - $ref: '#/components/parameters/SearchQuery'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PageLimit'
+        - name: sort
+          in: query
+          schema: { $ref: '#/components/schemas/ArticleSort' }
+        - $ref: '#/components/parameters/Featured'
+      responses:
+        '200':
+          description: გვერდი
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ArticlePage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/articles/{slug}:
+    get:
+      operationId: getArticle
+      tags: [public]
+      summary: სტატია სრული ტექსტით
+      x-adapter: getArticle
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - $ref: '#/components/parameters/SlugPath'
+      responses:
+        '200':
+          description: სტატია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Article' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/series:
+    get:
+      operationId: listSeries
+      tags: [public]
+      summary: სერიები — რჩეული ჯერ, შემდეგ თემების რიგით
+      x-adapter: listSeries
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - name: topic
+          in: query
+          schema: { $ref: '#/components/schemas/SeriesTopic' }
+        - $ref: '#/components/parameters/Featured'
+      responses:
+        '200':
+          description: სერიები (სლაიდების გარეშე)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SeriesSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/series/{slug}:
+    get:
+      operationId: getSeries
+      tags: [public]
+      summary: სერია სლაიდებით
+      x-adapter: getSeries
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - $ref: '#/components/parameters/SlugPath'
+      responses:
+        '200':
+          description: სერია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Series' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/videos:
+    get:
+      operationId: listVideos
+      tags: [public]
+      summary: ვიდეოები — ახალი ჯერ
+      x-adapter: listVideos
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - name: category
+          in: query
+          schema: { $ref: '#/components/schemas/VideoCategory' }
+        - $ref: '#/components/parameters/Featured'
+      responses:
+        '200':
+          description: ვიდეოები (სუბტიტრის და ტრანსკრიპტის გარეშე)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/VideoSummary' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/videos/{slug}:
+    get:
+      operationId: getVideo
+      tags: [public]
+      summary: ვიდეო — YouTube-ის id, სუბტიტრი (VTT), ტრანსკრიპტი
+      x-adapter: getVideo
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - $ref: '#/components/parameters/SlugPath'
+      responses:
+        '200':
+          description: ვიდეო
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Video' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/news:
+    get:
+      operationId: listNews
+      tags: [public]
+      summary: სიახლეები — ტიპი, წელი, cursor
+      description: '`years` — წლები, რომლებშიც არჩეული ტიპის სიახლე არსებობს (წლის ფილტრი), კლებადობით.'
+      x-adapter: listNews
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - name: type
+          in: query
+          schema: { $ref: '#/components/schemas/NewsType' }
+        - name: year
+          in: query
+          schema: { type: integer, minimum: 1900, maximum: 2999 }
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/PageLimit'
+        - $ref: '#/components/parameters/Featured'
+      responses:
+        '200':
+          description: გვერდი
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsPage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/news/{slug}:
+    get:
+      operationId: getNews
+      tags: [public]
+      summary: სიახლე სრული ტექსტით
+      x-adapter: getNews
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - $ref: '#/components/parameters/SlugPath'
+      responses:
+        '200':
+          description: სიახლე
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NewsItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/events:
+    get:
+      operationId: listEvents
+      tags: [public]
+      summary: ღონისძიებები
+      description: |
+        `upcoming=true` — დასრულებამდე, `start` ზრდადობით; `false` — გასული, კლებადობით; პარამეტრის
+        გარეშე — ყველა, `start` ზრდადობით.
+      x-adapter: listEvents
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+        - name: upcoming
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: ღონისძიებები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Event' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/team:
+    get:
+      operationId: getTeam
+      tags: [public]
+      summary: გუნდი — `order`-ის რიგით
+      x-adapter: getTeam
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+      responses:
+        '200':
+          description: გუნდის წევრები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/TeamMember' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/partners:
+    get:
+      operationId: getPartners
+      tags: [public]
+      summary: პარტნიორები
+      x-adapter: getPartners
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+      responses:
+        '200':
+          description: პარტნიორები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Partner' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/stages:
+    get:
+      operationId: getStages
+      tags: [public]
+      summary: „ჩვენი გზა“ — ეტაპები
+      x-adapter: getStages
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+      responses:
+        '200':
+          description: ეტაპები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Stage' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/settings:
+    get:
+      operationId: getSettings
+      tags: [public]
+      summary: საიტის პარამეტრები — კონტაქტი, საათები, ოფისი, FAQ, ბმულები
+      x-adapter: getSettings
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+      responses:
+        '200':
+          description: პარამეტრები
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SiteSettings' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/subscribe:
+    post:
+      operationId: subscribe
+      tags: [public]
+      summary: newsletter-ის გამოწერა
+      description: |
+        ელფოსტა მოწმდება `forms.js`-ის `validateSubscribe`-ით (422 + `fields.email`). Rate limit — IP-ით,
+        CAPTCHA-ს გარეშე. B6: double opt-in — პასუხი `{ ok, status: 'pending' }` და
+        `confirmSubscription(token)`; კონტრაქტი ორივე მხარეს B6-ში იცვლება.
+      x-adapter: subscribe
+      x-step: B6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SubscribeRequest' }
+      responses:
+        '200':
+          description: მიღებულია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SubscribeResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/contact:
+    post:
+      operationId: sendContact
+      tags: [public]
+      summary: კონტაქტის ფორმა
+      description: |
+        შემოწმება — `forms.js`-ის `validateContact` (422 + `fields`, `CONTACT_FIELDS`-ის რიგით).
+        honeypot (`website`) შევსებულია → ჩვეულებრივი `{ ok: true, id }`, შეტყობინება არ ინახება და არ
+        იგზავნება. დიაგნოზი არ გროვდება — `support` მხოლოდ კომუნიკაციის საჭიროებაა. Rate limit — IP +
+        საკონტაქტო მისამართი (B6), CAPTCHA და დროის ლიმიტი არ არის.
+      x-adapter: sendContact
+      x-step: B6
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ContactPayload' }
+      responses:
+        '200':
+          description: მიღებულია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContactResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: შესვლა
+      description: |
+        უცნობი ელფოსტა და არასწორი პაროლი — ერთი და იგივე 401 და ერთნაირი დრო (argon2id ყოველთვის
+        ითვლება). წარმატება — httpOnly სესიის cookie + `mc-csrf` (double-submit). Rate limit — IP-ით და
+        ელფოსტით (B3), CAPTCHA-ს გარეშე. ველები — `auth-forms.js`-ის `validateLogin` (422).
+      x-adapter: auth.login
+      x-step: B3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: სესია დაიწყო
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookies' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: რეგისტრაცია მოწვევის კოდით
+      description: |
+        მოწვევა ერთჯერადია და ვადიანი; არასწორი / გამოყენებული / ვადაგასული კოდი და დაკავებული
+        ელფოსტა — ერთი პასუხი (422, `fields.invite`), რომ ანგარიში არ გამჟღავნდეს. წარმატება — შესვლა.
+      x-adapter: auth.register
+      x-step: B3
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: ანგარიში შეიქმნა, სესია დაიწყო
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookies' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/auth/logout:
+    post:
+      operationId: logout
+      tags: [auth]
+      summary: გასვლა — სესია ბაზიდან იშლება, cookie-ები სუფთავდება
+      x-adapter: auth.logout
+      x-step: B3
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: გასულია
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookies' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/auth/me:
+    get:
+      operationId: me
+      tags: [auth]
+      summary: მიმდინარე სესია
+      x-adapter: auth.me
+      x-step: B3
+      security:
+        - session: []
+      responses:
+        '200':
+          description: სესია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/auth/session:
+    post:
+      operationId: extendSession
+      tags: [auth]
+      summary: 'სესიის გაგრძელება (უმოქმედობის ვადა თავიდან; მაქსიმუმი — B0 #10)'
+      x-adapter: auth.extendSession
+      x-step: B3
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: სესია გაგრძელდა
+          headers:
+            Set-Cookie: { $ref: '#/components/headers/SessionCookies' }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Session' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/content/{type}:
+    get:
+      operationId: listContent
+      tags: [content]
+      summary: მასალის სია — ტიპი (`all` — ყველა), სტატუსი, ძიება, შემოწმების კოდი, გვერდი
+      description: დალაგება — `updatedAt` კლებადობით; `page` დიაპაზონს გარეთ → ბოლო გვერდი.
+      x-adapter: content.list
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/ContentTypeOrAll' }
+        - name: status
+          in: query
+          schema: { $ref: '#/components/schemas/Status' }
+        - $ref: '#/components/parameters/SearchQuery'
+        - name: page
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 10000, default: 1 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 10 }
+        - name: check
+          in: query
+          description: მხოლოდ ამ შემოწმების კოდით (`altMissing`, `captionsMissing`…)
+          schema: { $ref: '#/components/schemas/CheckCode' }
+      responses:
+        '200':
+          description: სიის გვერდი
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentList' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      operationId: createContent
+      tags: [content]
+      summary: ახალი მასალა (მონახაზი)
+      description: |
+        `data` — რედაქტორის მონახაზი (ცარიელი ველები დასაშვებია). `status` ყოველთვის `draft`-ია;
+        დაკავებული slug → 422 (`fields.slug`, `slugDuplicate`). გვერდები (`pages`) არ იქმნება.
+      x-adapter: content.create
+      x-permission: content.write
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/CreatableType' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ItemDraft' }
+      responses:
+        '201':
+          description: შეიქმნა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/content/{type}/slug:
+    get:
+      operationId: checkSlug
+      tags: [content]
+      summary: slug თავისუფალია? (`id` — მიმდინარე მასალა, გამორიცხულია)
+      x-adapter: content.checkSlug
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      parameters:
+        - name: type
+          in: path
+          required: true
+          schema: { $ref: '#/components/schemas/ContentType' }
+        - name: slug
+          in: query
+          required: true
+          schema: { type: string, minLength: 1, maxLength: 200 }
+        - name: id
+          in: query
+          schema: { $ref: '#/components/schemas/ItemId' }
+      responses:
+        '200':
+          description: შედეგი
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SlugAvailability' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/content/videos/youtube:
+    get:
+      operationId: checkYouTube
+      tags: [content]
+      summary: YouTube-ის id სხვა ვიდეოში (მთავარი ან აუდიოაღწერის ვერსია) უკვე არის?
+      description: |
+        F10: დუბლიკატი ჩეკლისტის გაფრთხილებაა (`youtubeDuplicate`) და არა ბლოკერი. მოწმდება
+        გამოქვეყნებული ვერსიაც და სამუშაო ასლიც; `id` — მიმდინარე მასალა (გამორიცხულია).
+      x-adapter: content.checkYouTube
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      parameters:
+        - name: youtubeId
+          in: query
+          required: true
+          schema: { $ref: '#/components/schemas/YouTubeId' }
+        - name: id
+          in: query
+          schema: { $ref: '#/components/schemas/ItemId' }
+      responses:
+        '200':
+          description: შედეგი
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/YouTubeAvailability' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/items/{id}:
+    parameters:
+      - $ref: '#/components/parameters/ItemIdPath'
+    get:
+      operationId: getItem
+      tags: [content]
+      summary: მასალა რედაქტორისთვის — მონახაზი, მეტა, შემოწმება, სამუშაო ასლი
+      x-adapter: content.get
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      responses:
+        '200':
+          description: ჩანაწერი
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      operationId: updateItem
+      tags: [content]
+      summary: შენახვა / ავტოშენახვა
+      description: |
+        `version` — ბოლოს წაკითხული ვერსია; შეუსაბამობა → 409 (`updateOne({ _id, version })`).
+        `autosave: true` გამოქვეყნებულზე / დაგეგმილზე — სამუშაო ასლი (`working`), საიტი არ იცვლება;
+        მონახაზი პირდაპირ ინახება. `data.status`: მხოლოდ `draft` (მასალის საიტიდან მოხსნა, რედაქტორის
+        „მონახაზად შენახვა“) ან იგივე სტატუსი — `published` / `scheduled` მხოლოდ `/publish` და
+        `/schedule`-ით (ბლოკერის შემოწმება), სხვა შემთხვევაში 422 (`fields.status`).
+      x-adapter: content.update
+      x-permission: content.write
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateRequest' }
+      responses:
+        '200':
+          description: შენახულია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      operationId: deleteItem
+      tags: [content]
+      summary: სამუდამო წაშლა — ჩანაწერი, ვერსიები, სამუშაო ასლი (F8.1)
+      description: 7 საჯარო გვერდი (`pages`) არ იშლება → 400.
+      x-adapter: content.remove
+      x-permission: content.write
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: წაიშალა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/items/{id}/publish:
+    parameters:
+      - $ref: '#/components/parameters/ItemIdPath'
+    post:
+      operationId: publishItem
+      tags: [content]
+      summary: გამოქვეყნება ახლავე
+      description: |
+        `data` (თუ არის) → სამუშაო ასლი (თუ არის) → შენახული მასალა. ბლოკერი (`validate.js`, ქართული და
+        ინგლისური ვერსია) → 422 + `fields` (ველის გზა). ერთ ტრანზაქციაში: მასალა + ვერსია.
+      x-adapter: content.publish
+      x-permission: content.publish
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PublishRequest' }
+      responses:
+        '200':
+          description: გამოქვეყნდა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/items/{id}/schedule:
+    parameters:
+      - $ref: '#/components/parameters/ItemIdPath'
+    post:
+      operationId: scheduleItem
+      tags: [content]
+      summary: დაგეგმილი გამოქვეყნება
+      description: |
+        `at` მომავალში უნდა იყოს (422, `fields.publishedAt`); ბლოკერი — როგორც გამოქვეყნებაზე. cron არ
+        არის: საჯარო ხილვადობა წაკითხვისას ითვლება (`status` + `publishedAt <= now`).
+      x-adapter: content.schedule
+      x-permission: content.publish
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ScheduleRequest' }
+      responses:
+        '200':
+          description: დაიგეგმა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/items/{id}/versions:
+    parameters:
+      - $ref: '#/components/parameters/ItemIdPath'
+    get:
+      operationId: listVersions
+      tags: [content]
+      summary: ვერსიები — მიმდინარე ჯერ, შემდეგ ახალიდან ძველისკენ (ბოლო 30)
+      x-adapter: content.versions
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      responses:
+        '200':
+          description: ვერსიები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/VersionInfo' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/items/{id}/versions/{version}/restore:
+    parameters:
+      - $ref: '#/components/parameters/ItemIdPath'
+      - name: version
+        in: path
+        required: true
+        schema: { type: integer, minimum: 1 }
+    post:
+      operationId: restoreVersion
+      tags: [content]
+      summary: ძველი ვერსიის აღდგენა (ახალ ვერსიად ინახება)
+      x-adapter: content.restoreVersion
+      x-permission: content.write
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: აღდგა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentRecord' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/search:
+    get:
+      operationId: searchContent
+      tags: [content]
+      summary: ძიება პანელში — სათაური და slug, ყველა ტიპი (≤ 50)
+      x-adapter: content.search
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      parameters:
+        - $ref: '#/components/parameters/SearchQuery'
+      responses:
+        '200':
+          description: შედეგი (ცარიელი `q` → `[]`)
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 50
+                items: { $ref: '#/components/schemas/ContentRow' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/media:
+    get:
+      operationId: listMedia
+      tags: [media]
+      summary: ბიბლიოთეკა — ფოტოები და დოკუმენტები (`missingAlt` — alt-ის გარეშე)
+      x-adapter: media.list
+      x-permission: media.read
+      x-step: B5
+      security:
+        - session: []
+      parameters:
+        - name: kind
+          in: query
+          schema: { $ref: '#/components/schemas/MediaKind' }
+        - name: missingAlt
+          in: query
+          schema: { type: boolean }
+      responses:
+        '200':
+          description: ფაილები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MediaItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    post:
+      operationId: uploadMedia
+      tags: [media]
+      summary: ატვირთვა — ფოტო, PDF, სუბტიტრი (VTT)
+      description: |
+        ტიპი მოწმდება შიგთავსით (magic bytes) და არა სახელით; VTT — `WEBVTT` თავსართი და `vtt.js`-ის
+        `parseCaptions` (დაზიანებული ფაილი არ ინახება). ზომის / ტიპის დარღვევა → 422 (`fields.file`).
+        VTT ბიბლიოთეკაში არ ჩანს — პასუხში მხოლოდ მისამართია (`src`). ზღვრები — B5.
+      x-adapter: media.upload
+      x-permission: media.write
+      x-step: B5
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/MediaUpload' }
+      responses:
+        '201':
+          description: ატვირთულია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/media/{id}:
+    parameters:
+      - $ref: '#/components/parameters/MediaIdPath'
+    patch:
+      operationId: updateMedia
+      tags: [media]
+      summary: alt (ფოტო — ყველა გამოყენებაში აისახება) / სათაური, ენა, tagged (დოკუმენტი)
+      x-adapter: [media.updateAlt, media.update]
+      x-permission: media.write
+      x-step: B5
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/MediaPatch' }
+      responses:
+        '200':
+          description: შეიცვალა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MediaItem' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      operationId: deleteMedia
+      tags: [media]
+      summary: წაშლა — გამოყენებული ფაილი იბლოკება (409)
+      x-adapter: media.remove
+      x-permission: media.write
+      x-step: B5
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: წაიშალა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Ok' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/media/{id}/usage:
+    parameters:
+      - $ref: '#/components/parameters/MediaIdPath'
+    get:
+      operationId: getMediaUsage
+      tags: [media]
+      summary: სად გამოიყენება ფაილი
+      x-adapter: media.usage
+      x-permission: media.read
+      x-step: B5
+      security:
+        - session: []
+      responses:
+        '200':
+          description: გამოყენებები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MediaUsage' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: მომხმარებლები
+      x-adapter: users.list
+      x-permission: users.manage
+      x-step: B3
+      security:
+        - session: []
+      responses:
+        '200':
+          description: მომხმარებლები
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminUser' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/users/invites:
+    post:
+      operationId: createInvite
+      tags: [users]
+      summary: 'მოწვევა — ერთჯერადი კოდი და ბმული (ვადა — B0 #10)'
+      description: კოდი ბაზაში მხოლოდ hash-ად ინახება; ღია სახით ერთხელ ბრუნდება (ეს პასუხი).
+      x-adapter: users.invite
+      x-permission: users.manage
+      x-step: B3
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/InviteRequest' }
+      responses:
+        '201':
+          description: მოწვევა შეიქმნა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Invite' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/users/{id}:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPath'
+    patch:
+      operationId: setUserRole
+      tags: [users]
+      summary: როლის შეცვლა (საკუთარი თავის ჩამოქვეითება → 400)
+      x-adapter: users.setRole
+      x-permission: users.manage
+      x-step: B3
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoleRequest' }
+      responses:
+        '200':
+          description: შეიცვალა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/users/{id}/deactivate:
+    parameters:
+      - $ref: '#/components/parameters/UserIdPath'
+    post:
+      operationId: deactivateUser
+      tags: [users]
+      summary: დეაქტივაცია — მომხმარებლის სესიები იშლება (საკუთარ თავზე → 400)
+      x-adapter: users.deactivate
+      x-permission: users.manage
+      x-step: B3
+      security:
+        - session: []
+          csrf: []
+      responses:
+        '200':
+          description: დეაქტივირებულია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AdminUser' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/settings:
+    get:
+      operationId: getAdminSettings
+      tags: [settings]
+      summary: საიტის პარამეტრები (თარგმანით) + რჩეული მასალის id-ები
+      x-adapter: settings.get
+      x-permission: settings.manage
+      x-step: B4
+      security:
+        - session: []
+      responses:
+        '200':
+          description: პარამეტრები
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettingsBundle' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    patch:
+      operationId: updateAdminSettings
+      tags: [settings]
+      summary: პარამეტრების შენახვა; ახალი რჩეული წინას ხსნის (ერთ ტრანზაქციაში)
+      x-adapter: settings.update
+      x-permission: settings.manage
+      x-step: B4
+      security:
+        - session: []
+          csrf: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SettingsPatch' }
+      responses:
+        '200':
+          description: შენახულია
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SettingsBundle' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/Validation' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/reports/stats:
+    get:
+      operationId: getStats
+      tags: [reports]
+      summary: დაფის მრიცხველები
+      x-adapter: reports.stats
+      x-permission: content.read
+      x-step: B4
+      security:
+        - session: []
+      responses:
+        '200':
+          description: სტატისტიკა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Stats' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/admin/reports/a11y:
+    get:
+      operationId: getA11yReport
+      tags: [reports]
+      summary: ხელმისაწვდომობის ანგარიში — ჯგუფები კოდით და მასალა ხარვეზებით
+      x-adapter: reports.a11yReport
+      x-permission: a11y.read
+      x-step: B4
+      security:
+        - session: []
+      responses:
+        '200':
+          description: ანგარიში
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/A11yReport' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    session:
+      type: apiKey
+      in: cookie
+      name: mc-session
+      description: |
+        სესიის token — httpOnly, Secure, `SameSite=Lax`, host-only, `Path=/`. ბაზაში მხოლოდ hash-ი
+        ინახება; ვადა — უმოქმედობა 30 წთ, მაქსიმუმ 12 სთ (B0 #10). JS-ში და localStorage-ში არასოდეს.
+        B3: სახელი `__Host-` პრეფიქსით, ორივე მხარეს (`http.js`), ტესტით.
+    csrf:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: |
+        double-submit: სერვერი `mc-csrf` cookie-ს (არა httpOnly, `SameSite=Lax`) აყენებს, ყოველი არა-GET
+        მოთხოვნა მას ამ header-ით აბრუნებს (`http.js`-ის `readCsrfToken`); შეუსაბამობა → 403.
+
+  headers:
+    SessionCookies:
+      description: '`mc-session` (httpOnly) და `mc-csrf`; გასვლისას — ორივე `Max-Age=0`.'
+      schema: { type: string }
+    RetryAfter:
+      description: წამები შემდეგ მცდელობამდე
+      schema: { type: integer, minimum: 1 }
+
+  parameters:
+    Lang:
+      name: lang
+      in: query
+      description: 'პასუხის ენა; თარგმანის გარეშე მასალა ქართულად ბრუნდება (`lang: ka`)'
+      schema: { $ref: '#/components/schemas/Lang' }
+    SlugPath:
+      name: slug
+      in: path
+      required: true
+      description: არასწორი ფორმის slug → 404 (არა 400), როგორც `query.js`-ის `find*`
+      schema: { type: string, minLength: 1, maxLength: 200 }
+    SearchQuery:
+      name: q
+      in: query
+      description: ძიება (`QUERY_MAX` = 100; ზედმეტი იჭრება კლიენტზე)
+      schema: { type: string, maxLength: 100 }
+    Cursor:
+      name: cursor
+      in: query
+      description: გაუმჭვირვალე; წინა პასუხის `nextCursor`
+      schema: { type: string, minLength: 1, maxLength: 200 }
+    PageLimit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 50, default: 6 }
+    Featured:
+      name: featured
+      in: query
+      description: true — მხოლოდ რჩეული, false — რჩეულის გარეშე
+      schema: { type: boolean }
+    ItemIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/ItemId' }
+    MediaIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/MediaId' }
+    UserIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { $ref: '#/components/schemas/UserId' }
+
+  responses:
+    BadRequest:
+      description: არასწორი მოთხოვნა
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: bad-request
+            message: 'მოთხოვნა არასწორია: ფილტრის ან გვერდის მნიშვნელობა ვერ ამოვიცანით.'
+    Unauthorized:
+      description: სესია არ არის / ამოიწურა, ან შესვლის მონაცემი არასწორია
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: unauthorized
+            message: სესია ამოიწურა ან შესვლა საჭიროა. შედი ანგარიშში თავიდან.
+    Forbidden:
+      description: როლს უფლება არ აქვს, ან CSRF token არ ემთხვევა
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: forbidden
+            message: ამ მოქმედებისთვის შენს როლს უფლება არ აქვს.
+    NotFound:
+      description: არ მოიძებნა
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: not-found
+            message: მასალა ვერ მოიძებნა. შესაძლოა, ბმული შეიცვალა ან მასალა წაიშალა.
+    Conflict:
+      description: ვერსია შეიცვალა ან ფაილი გამოიყენება
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: conflict
+            message: მასალა სხვამ შეცვალა, სანამ შენ არედაქტირებდი.
+    Validation:
+      description: ველის შეცდომა — `fields`
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/Error'
+              - type: object
+                required: [fields]
+          example:
+            code: validation
+            message: ფორმა ვერ გაიგზავნა — შეამოწმე მონიშნული ველები.
+            fields:
+              name: { code: required, message: ეს ველი სავალდებულოა. }
+              cover.alt: { code: altMissing, message: '[შეტყობინება checks.*-იდან]' }
+    RateLimited:
+      description: ძალიან ბევრი მოთხოვნა
+      headers:
+        Retry-After: { $ref: '#/components/headers/RetryAfter' }
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: rate-limited
+            message: ძალიან ბევრი მცდელობა. სცადე ცოტა ხანში.
+    ServerError:
+      description: სერვერის შეცდომა
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example:
+            code: server
+            message: სერვერმა მოთხოვნა ვერ შეასრულა. სცადე ცოტა ხანში.
+
+  schemas:
+    # ─── შეცდომა და მომსახურება ──────────────────────────────────────────
+    Error:
+      type: object
+      description: '`src/content/errors.js` — `ContentError.toJSON()`'
+      required: [code, message]
+      properties:
+        code: { $ref: '#/components/schemas/ErrorCode' }
+        message: { type: string, minLength: 1 }
+        fields:
+          type: object
+          description: |
+            ველის გზა → შეცდომა. გზა — წერტილით და ინდექსით: `name`, `cover.alt`,
+            `body[2].image.alt`, `translations.en.title`.
+          propertyNames: { maxLength: 200 }
+          additionalProperties: { $ref: '#/components/schemas/FieldError' }
+      additionalProperties: false
+    ErrorCode:
+      type: string
+      description: სერვერის კოდები; `network` და `unknown` — მხოლოდ კლიენტის (`ERROR_CODES`)
+      enum:
+        [
+          bad-request,
+          unauthorized,
+          forbidden,
+          not-found,
+          conflict,
+          validation,
+          rate-limited,
+          server,
+        ]
+    FieldError:
+      type: object
+      description: |
+        `code` — `fieldErrors.*` (`required`, `email`, `contact`, `consent`, `tooLong`, `option`,
+        `replyEmail`, `replyPhone`), ადმინისა (`invite`, `slugDuplicate`, `date`, `passwordShort`) ან
+        ჩეკლისტის `checks.*` კოდი (`altMissing`…).
+      required: [code, message]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 64 }
+        message: { type: string, minLength: 1 }
+      additionalProperties: false
+    Ok:
+      type: object
+      required: [ok]
+      properties:
+        ok: { const: true }
+      additionalProperties: false
+    Health:
+      type: object
+      required: [status, db]
+      properties:
+        status: { type: string, enum: [ok, degraded] }
+        db: { type: string, enum: [up, down] }
+      additionalProperties: false
+
+    # ─── პრიმიტივები ─────────────────────────────────────────────────────
+    Slug:
+      type: string
+      description: '`slug.js` — `SLUG_PATTERN`, `SLUG_MAX`'
+      pattern: '^[a-z0-9]+(?:-[a-z0-9]+)*$'
+      maxLength: 80
+    DateTime:
+      type: string
+      format: date-time
+    Lang:
+      type: string
+      enum: [ka, en]
+    Status:
+      type: string
+      description: '`model.js` — `STATUSES`'
+      enum: [draft, scheduled, published]
+    Ratio:
+      type: string
+      description: '`model.js` — `RATIOS`'
+      enum: ['16:9', '3:2', '4:3', '1:1', '4:5']
+    Href:
+      type: string
+      description: შიდა გზა (`/articles/…`) ან სრული URL
+      minLength: 1
+      maxLength: 2048
+    NullableUrl:
+      type: [string, 'null']
+      description: '`null` — ბმული ჯერ უცნობია'
+      maxLength: 2048
+    YouTubeId:
+      type: string
+      description: '`youtube.js` — `YOUTUBE_ID` (11 სიმბოლო)'
+      pattern: '^[A-Za-z0-9_-]{11}$'
+    ItemId:
+      type: string
+      description: ტიპის პრეფიქსით — `a-` სტატია, `s-` სერია, `v-` ვიდეო, `n-` სიახლე, `e-` ღონისძიება, `p-` გვერდი
+      pattern: '^[asvnep]-[0-9A-Za-z_]{1,64}$'
+    MediaId:
+      type: string
+      description: გაუმჭვირვალე (ჩადგმული ფოტოს / ფაილის მისამართი B2 / B5-ში ზუსტდება)
+      pattern: '^[\x21-\x7e]{1,200}$'
+    UserId:
+      type: string
+      pattern: '^u-[0-9A-Za-z_]{1,64}$'
+    CheckCode:
+      type: string
+      description: '`validate.js`-ის კოდი (`checks.*`)'
+      pattern: '^[A-Za-z][A-Za-z0-9]{0,63}$'
+
+    # ─── ტაქსონომია (`taxonomy.js`) ──────────────────────────────────────
+    ArticleCategory:
+      type: string
+      enum: [growth, career, rights, accessibility, stories]
+    ArticleSort:
+      type: string
+      enum: [newest, shortest]
+    SeriesTopic:
+      type: string
+      enum: [habit, worldview, character, win-win, flow, time-priorities, self-reflection]
+    SeriesTone:
+      type: string
+      enum: [navy, navy-deep, petrol, orange, alt]
+    VideoCategory:
+      type: string
+      enum: [achievements, career, sport, art, everyday]
+    NewsType:
+      type: string
+      enum: [announcement, event, program, media]
+    EventFormat:
+      type: string
+      enum: [in-person, online, hybrid]
+    AccessLevel:
+      type: string
+      enum: [yes, no, on-request, not-applicable]
+    ContactTopic:
+      type: string
+      enum: [general, programs, volunteering, partnership, media, barrier, story]
+    ReplyChannel:
+      type: string
+      enum: [email, call, message, sign-video]
+    OfficeFeature:
+      type: string
+      enum: [entrance, elevator, restroom, parking, transit, guide-dog]
+    PartnerKind:
+      type: string
+      enum: [company, donor, organization]
+    SocialNetwork:
+      type: string
+      enum: [facebook, instagram, youtube, linkedin, tiktok]
+    ContentType:
+      type: string
+      description: '`admin/content-types.js` — `CONTENT_TYPES`'
+      enum: [articles, series, videos, news, events, pages]
+    ContentTypeOrAll:
+      type: string
+      enum: [articles, series, videos, news, events, pages, all]
+    CreatableType:
+      type: string
+      description: '`TYPE_CONFIG[type].creatable` — გვერდები არ იქმნება'
+      enum: [articles, series, videos, news, events]
+    Role:
+      type: string
+      description: '`admin/api/permissions.js` — `ROLES`'
+      enum: [admin, editor]
+    MediaKind:
+      type: string
+      enum: [image, document]
+
+    # ─── მედია (`model.js`) ──────────────────────────────────────────────
+    Image:
+      type: object
+      description: alt სავალდებულოა ყოველთვის (ცარიელი alt — გამოქვეყნების ბლოკერი, `altMissing`)
+      required: [src, alt, ratio]
+      properties:
+        src: { type: [string, 'null'], maxLength: 2048 }
+        alt: { type: string, maxLength: 1000 }
+        ratio: { $ref: '#/components/schemas/Ratio' }
+        width: { type: integer, minimum: 1 }
+        height: { type: integer, minimum: 1 }
+        credit: { type: string, maxLength: 200 }
+      additionalProperties: false
+    AudioTrack:
+      type: object
+      required: [src, srclang, label]
+      properties:
+        src: { type: [string, 'null'], maxLength: 2048 }
+        srclang: { $ref: '#/components/schemas/Lang' }
+        label: { type: string, maxLength: 200 }
+        duration: { type: number, minimum: 0 }
+      additionalProperties: false
+    DocumentFile:
+      type: object
+      required: [src, label]
+      properties:
+        src: { type: [string, 'null'], maxLength: 2048 }
+        label: { type: string, maxLength: 300 }
+        size: { type: integer, minimum: 0 }
+        lang: { $ref: '#/components/schemas/Lang' }
+        tagged:
+          { type: boolean, description: 'PDF/UA დადასტურებულია (არა → გაფრთხილება `pdfUntagged`)' }
+      additionalProperties: false
+    Translations:
+      type: object
+      description: |
+        F9: ენის ვერსიები — `en`: ნაწილობრივი ასლი იმავე ფორმით, მხოლოდ ტექსტი (`localize.js`).
+        მხოლოდ ადმინის მონაცემში; საჯარო პასუხში არ ხვდება. ტიპის მიხედვით დაზუსტება — B4.
+      properties:
+        en: { type: object, maxProperties: 64 }
+      additionalProperties: false
+
+    # ─── ტექსტის ბლოკები ─────────────────────────────────────────────────
+    TextRun:
+      type: object
+      required: [type, text]
+      properties:
+        type: { const: text }
+        text: { type: string, maxLength: 20000 }
+        strong: { type: boolean, description: მუქი; კურსივი არ არსებობს }
+        lang: { $ref: '#/components/schemas/Lang' }
+      additionalProperties: false
+    LinkRun:
+      type: object
+      required: [type, text, href]
+      properties:
+        type: { const: link }
+        text: { type: string, maxLength: 500, description: 'აღწერითი („აქ“, „ვრცლად“ — ბლოკერი)' }
+        href: { $ref: '#/components/schemas/Href' }
+        lang: { $ref: '#/components/schemas/Lang' }
+      additionalProperties: false
+    Inline:
+      oneOf:
+        - $ref: '#/components/schemas/TextRun'
+        - $ref: '#/components/schemas/LinkRun'
+    Inlines:
+      type: array
+      maxItems: 500
+      items: { $ref: '#/components/schemas/Inline' }
+    ParagraphBlock:
+      type: object
+      required: [type, content]
+      properties:
+        type: { const: p }
+        content: { $ref: '#/components/schemas/Inlines' }
+      additionalProperties: false
+    HeadingBlock:
+      type: object
+      description: H1 სტატიის სათაურია — ტექსტში მხოლოდ H2 / H3 (H3 მხოლოდ H2-ის შემდეგ — ბლოკერი)
+      required: [type, text]
+      properties:
+        type: { type: string, enum: [h2, h3] }
+        text: { type: string, maxLength: 500 }
+      additionalProperties: false
+    ListBlock:
+      type: object
+      required: [type, ordered, items]
+      properties:
+        type: { const: list }
+        ordered: { type: boolean }
+        items:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/Inlines' }
+      additionalProperties: false
+    QuoteBlock:
+      type: object
+      required: [type, text]
+      properties:
+        type: { const: quote }
+        text: { type: string, maxLength: 5000 }
+        cite: { type: string, maxLength: 300 }
+      additionalProperties: false
+    ImageBlock:
+      type: object
+      required: [type, image]
+      properties:
+        type: { const: image }
+        image: { $ref: '#/components/schemas/Image' }
+        caption: { type: string, maxLength: 1000 }
+      additionalProperties: false
+    LinkBlock:
+      type: object
+      required: [type, text, href]
+      properties:
+        type: { const: link }
+        text: { type: string, maxLength: 500 }
+        href: { $ref: '#/components/schemas/Href' }
+        description: { type: string, maxLength: 1000 }
+      additionalProperties: false
+    Block:
+      oneOf:
+        - $ref: '#/components/schemas/ParagraphBlock'
+        - $ref: '#/components/schemas/HeadingBlock'
+        - $ref: '#/components/schemas/ListBlock'
+        - $ref: '#/components/schemas/QuoteBlock'
+        - $ref: '#/components/schemas/ImageBlock'
+        - $ref: '#/components/schemas/LinkBlock'
+    Blocks:
+      type: array
+      maxItems: 1000
+      items: { $ref: '#/components/schemas/Block' }
+
+    # ─── სტატია ───────────────────────────────────────────────────────────
+    # *Props — სტრუქტურა (ტიპი, enum, ზედა ზღვარი, ცარიელი დასაშვებია): რედაქტორის მონახაზი (`*Draft`).
+    # საჯარო სქემა (`Article`…) მას allOf-ით ამკაცრებს: სავალდებულო ველები, slug, თარიღი, `lang`.
+    # სისრულე და ხელმისაწვდომობა გამოქვეყნებისას — `validate.js` (სერვერზეც, B4).
+    ArticleProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        excerpt: { type: string, maxLength: 1000 }
+        category: { $ref: '#/components/schemas/ArticleCategory' }
+        cover: { $ref: '#/components/schemas/Image' }
+        author: { type: string, maxLength: 200 }
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string, maxLength: 64 }
+        updatedAt: { type: string, maxLength: 64 }
+        featured: { type: boolean }
+        body: { $ref: '#/components/schemas/Blocks' }
+        audio:
+          oneOf:
+            - $ref: '#/components/schemas/AudioTrack'
+            - type: 'null'
+        readingMinutes:
+          type: integer
+          minimum: 0
+          description: გამოთვლადი (`text.js` — 150 სიტყვა/წთ); სერვერი თავად ითვლის
+    Article:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ArticleProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - excerpt
+            - category
+            - cover
+            - author
+            - status
+            - publishedAt
+            - featured
+            - body
+            - audio
+            - readingMinutes
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            excerpt: { type: string, maxLength: 160 }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            updatedAt: { $ref: '#/components/schemas/DateTime' }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    ArticleSummary:
+      type: object
+      description: სიის ელემენტი — ტექსტისა და აუდიოს გარეშე
+      allOf:
+        - $ref: '#/components/schemas/ArticleProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - excerpt
+            - category
+            - cover
+            - author
+            - status
+            - publishedAt
+            - featured
+            - readingMinutes
+            - hasAudio
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            excerpt: { type: string, maxLength: 160 }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            updatedAt: { $ref: '#/components/schemas/DateTime' }
+            hasAudio: { type: boolean }
+            lang: { $ref: '#/components/schemas/Lang' }
+            body: false
+            audio: false
+      unevaluatedProperties: false
+    ArticleDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/ArticleProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+    ArticlePage:
+      type: object
+      required: [items, nextCursor, total]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ArticleSummary' }
+        nextCursor: { type: [string, 'null'], maxLength: 200 }
+        total: { type: integer, minimum: 0 }
+      additionalProperties: false
+
+    # ─── პიროვნული განვითარება ───────────────────────────────────────────
+    Slide:
+      type: object
+      description: ცოცხალი ტექსტი, არა სურათი; `plain` — მარტივი ენის ვერსია (ბლოკერი, თუ ცარიელია)
+      required: [id, kind, number, title, body, plain]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        kind: { type: string, enum: [cover, step, summary] }
+        number: { type: [integer, 'null'], minimum: 0 }
+        title: { type: string, maxLength: 300 }
+        body: { type: string, maxLength: 5000 }
+        plain: { type: string, maxLength: 5000 }
+        image:
+          oneOf:
+            - $ref: '#/components/schemas/Image'
+            - type: 'null'
+      additionalProperties: false
+    SeriesProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        topic: { $ref: '#/components/schemas/SeriesTopic' }
+        excerpt: { type: string, maxLength: 1000 }
+        tone: { $ref: '#/components/schemas/SeriesTone' }
+        cover:
+          oneOf:
+            - $ref: '#/components/schemas/Image'
+            - type: 'null'
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string, maxLength: 64 }
+        featured: { type: boolean }
+        slides:
+          type: array
+          maxItems: 100
+          items: { $ref: '#/components/schemas/Slide' }
+        pdf:
+          oneOf:
+            - $ref: '#/components/schemas/DocumentFile'
+            - type: 'null'
+        readingMinutes: { type: integer, minimum: 0 }
+    Series:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/SeriesProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - topic
+            - excerpt
+            - tone
+            - cover
+            - status
+            - publishedAt
+            - featured
+            - slides
+            - pdf
+            - readingMinutes
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            slides: { type: array, minItems: 1 }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    SeriesSummary:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/SeriesProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - topic
+            - excerpt
+            - tone
+            - cover
+            - status
+            - publishedAt
+            - featured
+            - pdf
+            - readingMinutes
+            - slideCount
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            slideCount: { type: integer, minimum: 1 }
+            lang: { $ref: '#/components/schemas/Lang' }
+            slides: false
+      unevaluatedProperties: false
+    SeriesDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/SeriesProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+
+    # ─── ვიდეო (F10: მხოლოდ YouTube) ─────────────────────────────────────
+    VideoPerson:
+      type: object
+      required: [name, role]
+      properties:
+        name: { type: string, maxLength: 200 }
+        role: { type: string, maxLength: 200 }
+      additionalProperties: false
+    VideoYouTubeFields:
+      type: object
+      description: მონახაზში ცარიელი სტრიქონი დასაშვებია; ინახება id და არა URL (`parseYouTube`)
+      required: [id]
+      properties:
+        id: { type: string, maxLength: 64 }
+        adId: { type: string, maxLength: 64 }
+      additionalProperties: false
+    VideoYouTube:
+      type: object
+      description: '`adId` — აუდიოაღწერის ვერსია (სრული მიქსი, მთავარის სიგრძის); ≠ `id`'
+      required: [id]
+      properties:
+        id: { $ref: '#/components/schemas/YouTubeId' }
+        adId: { $ref: '#/components/schemas/YouTubeId' }
+      additionalProperties: false
+    CaptionTrack:
+      type: object
+      description: |
+        ჩვენი WebVTT (B0.1): ქართული (`captions`, `default: true`) სავალდებულოა გამოქვეყნებისთვის,
+        ინგლისური — `subtitles`. `cues` / `end` ატვირთვისას ითვლება (`vtt.js`-ის `summarizeCues`).
+      required: [kind, srclang, label, src, default]
+      properties:
+        kind: { type: string, enum: [captions, subtitles] }
+        srclang: { $ref: '#/components/schemas/Lang' }
+        label: { type: string, maxLength: 100 }
+        src: { type: [string, 'null'], maxLength: 2048 }
+        default: { type: boolean }
+        cues: { type: integer, minimum: 0 }
+        end: { type: number, minimum: 0 }
+      additionalProperties: false
+    TranscriptLine:
+      type: object
+      required: [start, kind, text]
+      properties:
+        start: { type: number, minimum: 0, description: წამებში }
+        kind: { type: string, enum: [speech, description] }
+        text: { type: string, maxLength: 5000 }
+        speaker: { type: string, maxLength: 200 }
+      additionalProperties: false
+    VideoProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        excerpt: { type: string, maxLength: 1000 }
+        category: { $ref: '#/components/schemas/VideoCategory' }
+        person: { $ref: '#/components/schemas/VideoPerson' }
+        duration: { type: number, minimum: 0, description: 'წამებში, ხელით' }
+        language: { $ref: '#/components/schemas/Lang' }
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string, maxLength: 64 }
+        featured: { type: boolean, description: „კვირის ვიდეო“ }
+        youtube: { $ref: '#/components/schemas/VideoYouTubeFields' }
+        captions:
+          type: array
+          maxItems: 10
+          items: { $ref: '#/components/schemas/CaptionTrack' }
+        transcript:
+          type: array
+          maxItems: 5000
+          items: { $ref: '#/components/schemas/TranscriptLine' }
+        visualInAudio:
+          type: boolean
+          description: „ვიზუალური ინფორმაცია აუდიოშიცაა“ — აუდიოაღწერის ვერსია არ სჭირდება
+    Video:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/VideoProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - excerpt
+            - category
+            - person
+            - duration
+            - language
+            - status
+            - publishedAt
+            - featured
+            - youtube
+            - captions
+            - transcript
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            excerpt: { type: string, maxLength: 160 }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            youtube: { $ref: '#/components/schemas/VideoYouTube' }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    VideoSummary:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/VideoProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - excerpt
+            - category
+            - person
+            - duration
+            - language
+            - status
+            - publishedAt
+            - featured
+            - youtubeId
+            - hasCaptions
+            - hasAudioDescription
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            excerpt: { type: string, maxLength: 160 }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            youtubeId:
+              oneOf:
+                - $ref: '#/components/schemas/YouTubeId'
+                - type: 'null'
+            hasCaptions: { type: boolean, description: ქართული ბილიკი არის }
+            hasAudioDescription: { type: boolean, description: '`youtube.adId` არის' }
+            lang: { $ref: '#/components/schemas/Lang' }
+            youtube: false
+            captions: false
+            transcript: false
+      unevaluatedProperties: false
+    VideoDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/VideoProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+
+    # ─── სიახლე და ღონისძიება ────────────────────────────────────────────
+    NewsAction:
+      type: object
+      required: [text, href]
+      properties:
+        text: { type: string, maxLength: 100 }
+        href: { $ref: '#/components/schemas/NullableUrl' }
+      additionalProperties: false
+    NewsProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        excerpt: { type: string, maxLength: 1000 }
+        type: { $ref: '#/components/schemas/NewsType' }
+        cover: { $ref: '#/components/schemas/Image' }
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string, maxLength: 64 }
+        featured: { type: boolean }
+        body: { $ref: '#/components/schemas/Blocks' }
+        action:
+          oneOf:
+            - $ref: '#/components/schemas/NewsAction'
+            - type: 'null'
+    NewsItem:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/NewsProps'
+        - type: object
+          required:
+            [slug, title, excerpt, type, cover, status, publishedAt, featured, body, action, lang]
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            excerpt: { type: string, maxLength: 160 }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    NewsSummary:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/NewsProps'
+        - type: object
+          required: [slug, title, excerpt, type, cover, status, publishedAt, featured, action, lang]
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            excerpt: { type: string, maxLength: 160 }
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            lang: { $ref: '#/components/schemas/Lang' }
+            body: false
+      unevaluatedProperties: false
+    NewsDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/NewsProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+    NewsPage:
+      type: object
+      required: [items, nextCursor, total, years]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/NewsSummary' }
+        nextCursor: { type: [string, 'null'], maxLength: 200 }
+        total: { type: integer, minimum: 0 }
+        years:
+          type: array
+          items: { type: integer, minimum: 1900, maximum: 2999 }
+      additionalProperties: false
+    EventAccessibility:
+      type: object
+      description: ყველა ველი სავალდებულოა — „უცნობი“ არასოდეს ჩანს „კი“-დ
+      required: [wheelchair, signInterpreter, captions, format, notes]
+      properties:
+        wheelchair: { $ref: '#/components/schemas/AccessLevel' }
+        signInterpreter: { $ref: '#/components/schemas/AccessLevel' }
+        captions: { $ref: '#/components/schemas/AccessLevel' }
+        format: { $ref: '#/components/schemas/EventFormat' }
+        notes: { type: [string, 'null'], maxLength: 2000 }
+      additionalProperties: false
+    EventProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        title: { type: string, maxLength: 300 }
+        excerpt: { type: string, maxLength: 1000 }
+        start: { type: string, maxLength: 64 }
+        end: { type: string, maxLength: 64 }
+        location: { type: string, maxLength: 500 }
+        accessibility: { $ref: '#/components/schemas/EventAccessibility' }
+        registrationUrl: { $ref: '#/components/schemas/NullableUrl' }
+        newsSlug: { type: [string, 'null'], maxLength: 200 }
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string, maxLength: 64 }
+    Event:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/EventProps'
+        - type: object
+          required:
+            - slug
+            - title
+            - excerpt
+            - start
+            - end
+            - location
+            - accessibility
+            - registrationUrl
+            - newsSlug
+            - status
+            - publishedAt
+            - lang
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            start: { $ref: '#/components/schemas/DateTime' }
+            end: { $ref: '#/components/schemas/DateTime' }
+            newsSlug:
+              oneOf:
+                - $ref: '#/components/schemas/Slug'
+                - type: 'null'
+            publishedAt: { $ref: '#/components/schemas/DateTime' }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    EventDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/EventProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+
+    # ─── ორგანიზაცია ──────────────────────────────────────────────────────
+    TeamMemberProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        name: { type: string, maxLength: 200 }
+        role: { type: string, maxLength: 200 }
+        bio: { type: string, maxLength: 1000 }
+        photo: { $ref: '#/components/schemas/Image' }
+        order: { type: integer, minimum: 0 }
+    TeamMember:
+      type: object
+      description: შეზღუდვის ან ჯანმრთელობის ინფორმაცია პირად ბარათზე არ ინახება
+      allOf:
+        - $ref: '#/components/schemas/TeamMemberProps'
+        - type: object
+          required: [slug, name, role, bio, photo, order, lang]
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    TeamMemberDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/TeamMemberProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+    PartnerProps:
+      type: object
+      properties:
+        slug: { type: string, maxLength: 200 }
+        name: { type: string, maxLength: 200 }
+        kind: { $ref: '#/components/schemas/PartnerKind' }
+        logo: { $ref: '#/components/schemas/Image' }
+        url: { $ref: '#/components/schemas/NullableUrl' }
+    Partner:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/PartnerProps'
+        - type: object
+          required: [slug, name, kind, logo, url, lang]
+          properties:
+            slug: { $ref: '#/components/schemas/Slug' }
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    PartnerDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/PartnerProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+    Stage:
+      type: object
+      required: [id, year, text]
+      properties:
+        id: { type: string, minLength: 1, maxLength: 64 }
+        year: { type: string, maxLength: 20, description: ტექსტად — „2019“ ან „2019–2020“ }
+        text: { type: string, maxLength: 1000 }
+      additionalProperties: false
+
+    # ─── საიტის პარამეტრები ──────────────────────────────────────────────
+    SiteContacts:
+      type: object
+      required: [phone, email, messenger, signVideo, address]
+      properties:
+        phone: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 200 }
+        messenger:
+          type: object
+          required: [label, value, url]
+          properties:
+            label: { type: string, maxLength: 100 }
+            value: { type: string, maxLength: 200 }
+            url: { $ref: '#/components/schemas/NullableUrl' }
+          additionalProperties: false
+        signVideo:
+          type: object
+          required: [schedule, bookingUrl]
+          properties:
+            schedule: { type: string, maxLength: 300 }
+            bookingUrl: { $ref: '#/components/schemas/NullableUrl' }
+          additionalProperties: false
+        address:
+          type: object
+          description: iframe-ის რუკა მხოლოდ `embedUrl`-ითაც და `directions`-ითაც (ტექსტური ალტერნატივა)
+          required: [text, mapUrl, embedUrl, directions]
+          properties:
+            text: { type: string, maxLength: 300 }
+            mapUrl: { $ref: '#/components/schemas/NullableUrl' }
+            embedUrl: { $ref: '#/components/schemas/NullableUrl' }
+            directions: { type: string, maxLength: 2000 }
+          additionalProperties: false
+      additionalProperties: false
+    SiteLinks:
+      type: object
+      required: [privacy, vacancies, becomePartner, shareStory, accessibilityStatement]
+      properties:
+        privacy: { $ref: '#/components/schemas/NullableUrl' }
+        vacancies: { $ref: '#/components/schemas/NullableUrl' }
+        becomePartner: { $ref: '#/components/schemas/NullableUrl' }
+        shareStory: { $ref: '#/components/schemas/NullableUrl' }
+        accessibilityStatement: { $ref: '#/components/schemas/NullableUrl' }
+      additionalProperties: false
+    SiteSettingsProps:
+      type: object
+      properties:
+        contacts: { $ref: '#/components/schemas/SiteContacts' }
+        hours:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [label, value]
+            properties:
+              label: { type: string, maxLength: 200 }
+              value: { type: string, maxLength: 200 }
+            additionalProperties: false
+        responseTime: { type: string, maxLength: 200 }
+        officeAccessibility:
+          type: array
+          maxItems: 20
+          items:
+            type: object
+            required: [feature, value]
+            properties:
+              feature: { $ref: '#/components/schemas/OfficeFeature' }
+              value: { type: string, maxLength: 300 }
+            additionalProperties: false
+        faq:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [id, question, answer]
+            properties:
+              id: { type: string, minLength: 1, maxLength: 64 }
+              question: { type: string, maxLength: 500 }
+              answer: { type: string, maxLength: 5000 }
+            additionalProperties: false
+        social:
+          type: array
+          maxItems: 10
+          items:
+            type: object
+            required: [network, url]
+            properties:
+              network: { $ref: '#/components/schemas/SocialNetwork' }
+              url: { $ref: '#/components/schemas/NullableUrl' }
+            additionalProperties: false
+        socialHandle: { type: string, maxLength: 100 }
+        team:
+          type: object
+          description: მხოლოდ ჯამური რიცხვი — პირად ბარათზე ეს ინფორმაცია არ ინახება
+          required: [livedExperienceCount]
+          properties:
+            livedExperienceCount: { type: string, maxLength: 20 }
+          additionalProperties: false
+        links: { $ref: '#/components/schemas/SiteLinks' }
+    SiteSettings:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/SiteSettingsProps'
+        - type: object
+          required:
+            - contacts
+            - hours
+            - responseTime
+            - officeAccessibility
+            - faq
+            - social
+            - socialHandle
+            - team
+            - links
+            - lang
+          properties:
+            lang: { $ref: '#/components/schemas/Lang' }
+      unevaluatedProperties: false
+    SiteSettingsDraft:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/SiteSettingsProps'
+        - type: object
+          properties:
+            translations: { $ref: '#/components/schemas/Translations' }
+      unevaluatedProperties: false
+
+    # ─── გვერდები (ადმინი) ───────────────────────────────────────────────
+    PageDraft:
+      type: object
+      description: |
+        7 საჯარო გვერდი — სტრუქტურირებული ველები; „ჩვენ შესახებ“ — + გუნდი და პარტნიორები (შენახვისას
+        საჯარო `getTeam` / `getPartners`-შიც აისახება).
+      properties:
+        slug:
+          type: string
+          enum: [home, about, articles, development, videos, news, contact]
+        title: { type: string, maxLength: 300 }
+        path: { type: string, maxLength: 200 }
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string, maxLength: 64 }
+        fields:
+          type: object
+          properties:
+            heading: { type: string, maxLength: 300 }
+            lead: { type: string, maxLength: 2000 }
+            description: { type: string, maxLength: 1000 }
+          additionalProperties: false
+        team:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/TeamMemberDraft' }
+        partners:
+          type: array
+          maxItems: 200
+          items: { $ref: '#/components/schemas/PartnerDraft' }
+        translations: { $ref: '#/components/schemas/Translations' }
+      additionalProperties: false
+
+    # ─── ფორმები (საჯარო) ────────────────────────────────────────────────
+    ContactPayload:
+      type: object
+      description: |
+        სტრუქტურა აქ, შინაარსი — `forms.js`-ის `validateContact` (ერთი წესი ორივე მხარეს): ცარიელი
+        სავალდებულო ველი, ტელეფონი / ელფოსტა, არხის შესაბამისობა, თანხმობა. ზღვრები = `NAME_MAX`,
+        `CONTACT_MAX`, `MESSAGE_MAX`, `SUPPORT_MAX`. `support` — კომუნიკაციის მხარდაჭერა, არა დიაგნოზი.
+      required: [name, contact, topic, message, replyVia, consent]
+      properties:
+        name: { type: string, maxLength: 100 }
+        contact: { type: string, maxLength: 120, description: ტელეფონი ან ელფოსტა }
+        topic: { $ref: '#/components/schemas/ContactTopic' }
+        message: { type: string, maxLength: 4000 }
+        support: { type: string, maxLength: 1000 }
+        replyVia: { $ref: '#/components/schemas/ReplyChannel' }
+        consent: { type: boolean }
+        website: { type: string, maxLength: 500, description: honeypot — ცარიელი უნდა იყოს }
+      additionalProperties: false
+    ContactResult:
+      type: object
+      required: [ok, id]
+      properties:
+        ok: { const: true }
+        id: { type: string, minLength: 1, maxLength: 100 }
+      additionalProperties: false
+    SubscribeRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, maxLength: 120 }
+      additionalProperties: false
+    SubscribeResult:
+      type: object
+      required: [ok]
+      properties:
+        ok: { const: true }
+      additionalProperties: false
+
+    # ─── ადმინი: სესია და მომხმარებლები ─────────────────────────────────
+    LoginRequest:
+      type: object
+      description: ველები — `auth-forms.js`-ის `validateLogin`
+      required: [email, password]
+      properties:
+        email: { type: string, maxLength: 120 }
+        password: { type: string, maxLength: 1024 }
+        remember: { type: boolean }
+      additionalProperties: false
+    RegisterRequest:
+      type: object
+      description: ველები — `validateRegister` (`PASSWORD_MIN` = 12, `NAME_MAX` = 100)
+      required: [name, email, invite, password]
+      properties:
+        name: { type: string, maxLength: 100 }
+        email: { type: string, maxLength: 120 }
+        invite: { type: string, maxLength: 64 }
+        password: { type: string, maxLength: 1024 }
+      additionalProperties: false
+    AdminUser:
+      type: object
+      required: [id, name, email, role, status]
+      properties:
+        id: { $ref: '#/components/schemas/UserId' }
+        name: { type: string, maxLength: 200 }
+        email: { type: string, maxLength: 200 }
+        role: { $ref: '#/components/schemas/Role' }
+        status: { type: string, enum: [active, invited, deactivated] }
+      additionalProperties: false
+    Session:
+      type: object
+      required: [user, expiresAt]
+      properties:
+        user: { $ref: '#/components/schemas/AdminUser' }
+        expiresAt: { $ref: '#/components/schemas/DateTime' }
+      additionalProperties: false
+    Editor:
+      description: ვინ შეცვალა; `null` — უცნობი / წაშლილი მომხმარებელი
+      oneOf:
+        - type: object
+          required: [id, name]
+          properties:
+            id: { $ref: '#/components/schemas/UserId' }
+            name: { type: string, maxLength: 200 }
+          additionalProperties: false
+        - type: 'null'
+    InviteRequest:
+      type: object
+      required: [role]
+      properties:
+        email:
+          {
+            type: string,
+            maxLength: 120,
+            description: არასავალდებულო — მოწვევა ამ ელფოსტაზე იზღუდება,
+          }
+        role: { $ref: '#/components/schemas/Role' }
+      additionalProperties: false
+    Invite:
+      type: object
+      required: [code, link, expiresAt, role]
+      properties:
+        code: { type: string, minLength: 1, maxLength: 64 }
+        link: { type: string, maxLength: 300, description: '`/admin/login?tab=register&invite=…`' }
+        expiresAt: { $ref: '#/components/schemas/DateTime' }
+        role: { $ref: '#/components/schemas/Role' }
+      additionalProperties: false
+    RoleRequest:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: '#/components/schemas/Role' }
+      additionalProperties: false
+
+    # ─── ადმინი: კონტენტი ────────────────────────────────────────────────
+    IssueEntity:
+      type: string
+      enum: [article, series, video, news, event, team, partner, stage, settings]
+    Issue:
+      type: object
+      description: '`validate.js` — `Issue`; `error` — გამოქვეყნების ბლოკერი, `warning` — გაფრთხილება'
+      required: [severity, entity, id, field, code, message]
+      properties:
+        severity: { type: string, enum: [error, warning] }
+        entity: { $ref: '#/components/schemas/IssueEntity' }
+        id: { type: string, maxLength: 200 }
+        field: { type: string, maxLength: 200 }
+        code: { $ref: '#/components/schemas/CheckCode' }
+        message: { type: string }
+      additionalProperties: false
+    IssueCounts:
+      type: object
+      required: [errors, warnings, codes]
+      properties:
+        errors: { type: integer, minimum: 0 }
+        warnings: { type: integer, minimum: 0 }
+        codes:
+          type: array
+          uniqueItems: true
+          items: { $ref: '#/components/schemas/CheckCode' }
+      additionalProperties: false
+    ContentRow:
+      type: object
+      required:
+        - id
+        - type
+        - title
+        - titleEn
+        - slug
+        - status
+        - publishedAt
+        - category
+        - version
+        - updatedAt
+        - updatedBy
+        - issues
+      properties:
+        id: { $ref: '#/components/schemas/ItemId' }
+        type: { $ref: '#/components/schemas/ContentType' }
+        title: { type: string }
+        titleEn: { type: [string, 'null'], description: 'F9: `translations.en.title`, თუ არის' }
+        slug: { type: string }
+        status: { $ref: '#/components/schemas/Status' }
+        publishedAt: { type: string }
+        category: { type: [string, 'null'], description: ტაქსონომიის id; გვერდზე — გზა }
+        version: { type: integer, minimum: 1 }
+        updatedAt: { $ref: '#/components/schemas/DateTime' }
+        updatedBy: { $ref: '#/components/schemas/Editor' }
+        issues: { $ref: '#/components/schemas/IssueCounts' }
+      additionalProperties: false
+    ContentList:
+      type: object
+      required: [items, total, page, pages, limit]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ContentRow' }
+        total: { type: integer, minimum: 0 }
+        page: { type: integer, minimum: 1 }
+        pages: { type: integer, minimum: 1 }
+        limit: { type: integer, minimum: 1, maximum: 50 }
+      additionalProperties: false
+    ItemDraft:
+      description: |
+        რედაქტორის მონახაზი — ცარიელი ველები დასაშვებია. სერვერი (B4) მას შენახული მასალის ტიპის
+        სქემით ამოწმებს; გამოთვლადი ველები (`readingMinutes`) ხელახლა ითვლება.
+      anyOf:
+        - $ref: '#/components/schemas/ArticleDraft'
+        - $ref: '#/components/schemas/SeriesDraft'
+        - $ref: '#/components/schemas/VideoDraft'
+        - $ref: '#/components/schemas/NewsDraft'
+        - $ref: '#/components/schemas/EventDraft'
+        - $ref: '#/components/schemas/PageDraft'
+    WorkingCopy:
+      type: object
+      description: გამოქვეყნებულის ავტოშენახული სამუშაო ასლი — საიტზე „გამოქვეყნებამდე“ არ ჩანს
+      required: [item, at, by]
+      properties:
+        item: { $ref: '#/components/schemas/ItemDraft' }
+        at: { $ref: '#/components/schemas/DateTime' }
+        by: { $ref: '#/components/schemas/Editor' }
+      additionalProperties: false
+    RecordBase:
+      type: object
+      required: [id, type, item, version, createdAt, updatedAt, updatedBy, issues, working]
+      properties:
+        id: { $ref: '#/components/schemas/ItemId' }
+        version: { type: integer, minimum: 1 }
+        createdAt: { $ref: '#/components/schemas/DateTime' }
+        updatedAt: { $ref: '#/components/schemas/DateTime' }
+        updatedBy: { $ref: '#/components/schemas/Editor' }
+        issues:
+          type: array
+          items: { $ref: '#/components/schemas/Issue' }
+        working:
+          oneOf:
+            - $ref: '#/components/schemas/WorkingCopy'
+            - type: 'null'
+    ArticleRecord:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RecordBase'
+        - type: object
+          properties:
+            type: { const: articles }
+            item: { $ref: '#/components/schemas/ArticleDraft' }
+      unevaluatedProperties: false
+    SeriesRecord:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RecordBase'
+        - type: object
+          properties:
+            type: { const: series }
+            item: { $ref: '#/components/schemas/SeriesDraft' }
+      unevaluatedProperties: false
+    VideoRecord:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RecordBase'
+        - type: object
+          properties:
+            type: { const: videos }
+            item: { $ref: '#/components/schemas/VideoDraft' }
+      unevaluatedProperties: false
+    NewsRecord:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RecordBase'
+        - type: object
+          properties:
+            type: { const: news }
+            item: { $ref: '#/components/schemas/NewsDraft' }
+      unevaluatedProperties: false
+    EventRecord:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RecordBase'
+        - type: object
+          properties:
+            type: { const: events }
+            item: { $ref: '#/components/schemas/EventDraft' }
+      unevaluatedProperties: false
+    PageRecord:
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/RecordBase'
+        - type: object
+          properties:
+            type: { const: pages }
+            item: { $ref: '#/components/schemas/PageDraft' }
+      unevaluatedProperties: false
+    ContentRecord:
+      description: '`type` განსაზღვრავს `item`-ის სქემას'
+      oneOf:
+        - $ref: '#/components/schemas/ArticleRecord'
+        - $ref: '#/components/schemas/SeriesRecord'
+        - $ref: '#/components/schemas/VideoRecord'
+        - $ref: '#/components/schemas/NewsRecord'
+        - $ref: '#/components/schemas/EventRecord'
+        - $ref: '#/components/schemas/PageRecord'
+    UpdateRequest:
+      type: object
+      required: [data, version]
+      properties:
+        data: { $ref: '#/components/schemas/ItemDraft' }
+        version: { type: integer, minimum: 1 }
+        autosave: { type: boolean, default: false }
+      additionalProperties: false
+    PublishRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, minimum: 1 }
+        data: { $ref: '#/components/schemas/ItemDraft' }
+      additionalProperties: false
+    ScheduleRequest:
+      type: object
+      required: [at, version]
+      properties:
+        at: { $ref: '#/components/schemas/DateTime' }
+        version: { type: integer, minimum: 1 }
+        data: { $ref: '#/components/schemas/ItemDraft' }
+      additionalProperties: false
+    VersionInfo:
+      type: object
+      required: [version, at, by, title, current]
+      properties:
+        version: { type: integer, minimum: 1 }
+        at: { $ref: '#/components/schemas/DateTime' }
+        by: { $ref: '#/components/schemas/Editor' }
+        title: { type: string }
+        current: { type: boolean }
+      additionalProperties: false
+    SlugAvailability:
+      type: object
+      required: [available]
+      properties:
+        available: { type: boolean }
+      additionalProperties: false
+    YouTubeAvailability:
+      type: object
+      required: [available, usedBy]
+      properties:
+        available: { type: boolean }
+        usedBy:
+          oneOf:
+            - type: object
+              required: [id, title]
+              properties:
+                id: { $ref: '#/components/schemas/ItemId' }
+                title: { type: string }
+              additionalProperties: false
+            - type: 'null'
+      additionalProperties: false
+
+    # ─── ადმინი: მედია ───────────────────────────────────────────────────
+    MediaUsage:
+      type: object
+      required: [type, id, title, field]
+      properties:
+        type: { $ref: '#/components/schemas/ContentType' }
+        id: { $ref: '#/components/schemas/ItemId' }
+        title: { type: string }
+        field:
+          {
+            type: string,
+            maxLength: 200,
+            description: 'ველის გზა: `cover`, `body[2].image`, `pdf`',
+          }
+      additionalProperties: false
+    MediaItem:
+      type: object
+      required: [id, kind, src, alt, title, ratio, size, lang, tagged, usage]
+      properties:
+        id: { $ref: '#/components/schemas/MediaId' }
+        kind: { $ref: '#/components/schemas/MediaKind' }
+        src: { type: [string, 'null'], maxLength: 2048 }
+        alt: { type: string, maxLength: 1000, description: "ფოტო — alt; დოკუმენტი — ''" }
+        title: { type: string, maxLength: 300 }
+        ratio:
+          oneOf:
+            - $ref: '#/components/schemas/Ratio'
+            - type: 'null'
+        size: { type: [integer, 'null'], minimum: 0, description: ბაიტებში }
+        lang:
+          oneOf:
+            - $ref: '#/components/schemas/Lang'
+            - type: 'null'
+        tagged: { type: [boolean, 'null'], description: PDF/UA დადასტურებულია }
+        usage:
+          type: array
+          items: { $ref: '#/components/schemas/MediaUsage' }
+      additionalProperties: false
+    MediaUpload:
+      type: object
+      description: '`multipart/form-data`; მეტა-ველები სტრიქონებია (`http.js` — `String(value)`)'
+      required: [file]
+      properties:
+        file: { type: string, contentMediaType: application/octet-stream }
+        alt: { type: string, maxLength: 1000 }
+        title: { type: string, maxLength: 300 }
+        ratio: { $ref: '#/components/schemas/Ratio' }
+        lang: { $ref: '#/components/schemas/Lang' }
+        tagged: { type: string, enum: ['true', 'false'] }
+      additionalProperties: false
+    MediaPatch:
+      type: object
+      description: ფოტო — `alt`; დოკუმენტი — `title`, `lang`, `tagged`
+      minProperties: 1
+      properties:
+        alt: { type: string, maxLength: 1000 }
+        title: { type: string, maxLength: 300 }
+        lang: { $ref: '#/components/schemas/Lang' }
+        tagged: { type: boolean }
+      additionalProperties: false
+
+    # ─── ადმინი: პარამეტრები და ანგარიშები ──────────────────────────────
+    Featured:
+      type: object
+      description: რჩეული მასალის id-ები — თითო ტიპზე ერთი
+      required: [weeklyVideo, featuredArticle, featuredSeries, featuredNews]
+      properties:
+        weeklyVideo: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+        featuredArticle: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+        featuredSeries: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+        featuredNews: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+      additionalProperties: false
+    FeaturedPatch:
+      type: object
+      minProperties: 1
+      properties:
+        weeklyVideo: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+        featuredArticle: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+        featuredSeries: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+        featuredNews: { oneOf: [{ $ref: '#/components/schemas/ItemId' }, { type: 'null' }] }
+      additionalProperties: false
+    SettingsBundle:
+      type: object
+      required: [site, featured]
+      properties:
+        site: { $ref: '#/components/schemas/SiteSettingsDraft' }
+        featured: { $ref: '#/components/schemas/Featured' }
+      additionalProperties: false
+    SettingsPatch:
+      type: object
+      minProperties: 1
+      properties:
+        site: { $ref: '#/components/schemas/SiteSettingsDraft' }
+        featured: { $ref: '#/components/schemas/FeaturedPatch' }
+      additionalProperties: false
+    Stats:
+      type: object
+      required: [published, draft, scheduled, nextScheduledAt, a11yIssues, counts, library]
+      properties:
+        published: { type: integer, minimum: 0 }
+        draft: { type: integer, minimum: 0 }
+        scheduled: { type: integer, minimum: 0 }
+        nextScheduledAt:
+          oneOf:
+            - $ref: '#/components/schemas/DateTime'
+            - type: 'null'
+        a11yIssues: { type: integer, minimum: 0, description: მასალა ≥ 1 ბლოკერით }
+        counts:
+          type: object
+          required: [articles, series, videos, news, events, pages]
+          properties:
+            articles: { type: integer, minimum: 0 }
+            series: { type: integer, minimum: 0 }
+            videos: { type: integer, minimum: 0 }
+            news: { type: integer, minimum: 0 }
+            events: { type: integer, minimum: 0 }
+            pages: { type: integer, minimum: 0 }
+          additionalProperties: false
+        library:
+          type: object
+          required: [images, documents]
+          properties:
+            images: { type: integer, minimum: 0 }
+            documents: { type: integer, minimum: 0 }
+          additionalProperties: false
+      additionalProperties: false
+    A11yGroup:
+      type: object
+      required: [code, severity, count, types]
+      properties:
+        code: { $ref: '#/components/schemas/CheckCode' }
+        severity: { type: string, enum: [error, warning] }
+        count: { type: integer, minimum: 1 }
+        types:
+          type: array
+          items:
+            type: object
+            required: [type, count]
+            properties:
+              type: { $ref: '#/components/schemas/ContentType' }
+              count: { type: integer, minimum: 1 }
+            additionalProperties: false
+      additionalProperties: false
+    A11yItem:
+      type: object
+      required: [id, type, title, titleEn, status, issues]
+      properties:
+        id: { $ref: '#/components/schemas/ItemId' }
+        type: { $ref: '#/components/schemas/ContentType' }
+        title: { type: string }
+        titleEn: { type: [string, 'null'] }
+        status: { $ref: '#/components/schemas/Status' }
+        issues:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/Issue' }
+      additionalProperties: false
+    A11yReport:
+      type: object
+      required: [totals, groups, items]
+      properties:
+        totals:
+          type: object
+          required: [errors, warnings, items]
+          properties:
+            errors: { type: integer, minimum: 0 }
+            warnings: { type: integer, minimum: 0 }
+            items: { type: integer, minimum: 0 }
+          additionalProperties: false
+        groups:
+          type: array
+          items: { $ref: '#/components/schemas/A11yGroup' }
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/A11yItem' }
+      additionalProperties: false

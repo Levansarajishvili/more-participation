@@ -118,7 +118,8 @@ import { normalizeError } from '@/content/errors.js';
  * @typedef {object} A11yReport
  * @property {{ errors: number, warnings: number, items: number }} totals
  * @property {A11yGroup[]} groups
- * @property {{ id: string, type: ContentType, title: string, status: Status, issues: Issue[] }[]} items
+ * @property {{ id: string, type: ContentType, title: string, titleEn: string | null, status: Status, issues: Issue[] }[]} items
+ *   F9.1: `titleEn` — ინგლისური სათაური (B1: typedef mock-ს და OpenAPI-ს გაუსწორდა)
  */
 
 /**

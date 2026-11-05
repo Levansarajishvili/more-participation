@@ -238,9 +238,11 @@
 
 23. ✓ დახურულია (B0, მომხმარებლის გადაწყვეტილება; სუბტიტრი და აუდიოაღწერა — B0.1; აწყობილია F10-ში, 2026-11-04): ჟესტური ენის ვერსია არ კეთდება; სუბტიტრი — ჩვენი VTT (ka სავალდებულო) ზოლში კადრის ქვეშ, IFrame API-ის დროით; აუდიოაღწერა — ცალკე YouTube-ვერსია (`youtube.adId`, სრული მიქსი, მთავარის სიგრძის) ან `visualInAudio`; პოსტერი — YouTube-ის კადრი; მართვა ჩვენია (`controls=0` + IFrame API); ხანგრძლივობა — ხელით (ბარათი) + `getDuration()` (ფლეიერი); YouTube-ზე ვიდეო საჯაროა ან ბმულით (unlisted), შეცდომაზე — „ვიდეო მიუწვდომელია“ + ტრანსკრიპტი (§10 „ვიდეო YouTube-დან“).
 
-24. B0-ის ღია საკითხები (B1-ს არცერთი არ ბლოკავს): ბიუჯეტი — Render Starter თუ Fly.io `fra`, Atlas Flex თუ Free (B7); დომენი და რეგისტრატორი (B7; გამგზავნის DNS — SPF, DKIM, DMARC); შენახვის ვადები — §12 B0 #10-ის ნაგულისხმევი, დასადასტურებელი B3 / B4 / B6-ში კონფიდენციალურობის პოლიტიკასთან; Atlas Free / Flex Frankfurt-ში — კლასტერის შექმნისას; Atlas-ის IP access list (PaaS-ის გამავალი IP) და Render-ის ლოგის ვადა — B7; newsletter-ის გაგზავნის ხელსაწყო (გამომწერთა export) — B6 / B7; Gmail-ზე (`CONTACT_INBOX`) 2FA, საიტზე საჯაროდ ჩვენება და როლური მისამართი `info@[დომენი]`; sandbox-ის ქსელში `fastdl.mongodb.org` (mongodb-memory-server-ის binary) — B1-მდე.
+24. B0-ის ღია საკითხები (B1-ს არცერთი არ ბლოკავს): ბიუჯეტი — Render Starter თუ Fly.io `fra`, Atlas Flex თუ Free (B7); დომენი და რეგისტრატორი (B7; გამგზავნის DNS — SPF, DKIM, DMARC); შენახვის ვადები — §12 B0 #10-ის ნაგულისხმევი, დასადასტურებელი B3 / B4 / B6-ში კონფიდენციალურობის პოლიტიკასთან; Atlas Free / Flex Frankfurt-ში — კლასტერის შექმნისას; Atlas-ის IP access list (PaaS-ის გამავალი IP) და Render-ის ლოგის ვადა — B7; newsletter-ის გაგზავნის ხელსაწყო (გამომწერთა export) — B6 / B7; Gmail-ზე (`CONTACT_INBOX`) 2FA, საიტზე საჯაროდ ჩვენება და როლური მისამართი `info@[დომენი]`. ✓ `fastdl.mongodb.org` — B1-ში ხელმისაწვდომი იყო (MongoDB 8.0.34-ის binary ჩამოიტვირთა).
 
 25. ვიდეოს ხელმისაწვდომობა (B0.1): ქართული სუბტიტრი (1.2.2, A), აუდიოაღწერის ვერსია ან `visualInAudio` (1.2.3 A, 1.2.5 AA) და ტრანსკრიპტი გამოქვეყნების ბლოკერია — ვიდეო AA-ს აკმაყოფილებს; ჟესტური ენა (1.2.6) AAA-ა და არ კეთდება — ხელმისაწვდომობის განცხადებაში AAA-ს პრეტენზია ვიდეოზე არ იწერება. F10-ში ბლოკერები კოდშია (`validate.js`: `youtubeMissing`, `captionsMissing` / `captionsDefault` / `captionsEmpty` / `captionsLength`, `audioDescriptionMissing` / `audioDescriptionSame`, `transcriptMissing`). კონფიდენციალურობის პოლიტიკაში: YouTube-ის კადრი (`i.ytimg.com`, დაჭერამდე), `youtube-nocookie.com` (დაჭერის შემდეგ), Resend, Atlas-ის backup. Project-ის ინსტრუქციის ვიდეოს სტრიქონი B0.1-ის მიხედვით ასწორებს მომხმარებელი, რეპოს `CLAUDE.md` — F10.
+
+26. B1-ის ღია საკითხები (B2–B6): ადმინის `translations.en` სქემა ჯერ თავისუფალი ობიექტია — ტიპის მიხედვით ტექსტური ველები B4-ში; მონახაზის (`*Draft`) სქემა სტრუქტურულია — სისრულე მხოლოდ გამოქვეყნებისას (`validate.js`); `content.update`-ით `status`: მხოლოდ `draft` ან უცვლელი — `published` / `scheduled` მხოლოდ `/publish` / `/schedule`-ით (B4); სერვერის ველის შეცდომის ტექსტი ახლა მხოლოდ ქართულია (გლობალური `t`) — `/en` ადმინისთვის ენა მოთხოვნიდან (B4 / B6); `[YouTube-ის id]` ჩანაცვლება spec-ს არ აკმაყოფილებს (ნამდვილი id-ის pattern) — seed-ის წესი B2-ში; მედიის id-ის ფორმა (ჩადგმული ფოტო თუ `media`-ს id) — B2 / B5; `x-step`-ის მიხედვით B3–B6 route-ებს spec-იდან `route(app, spec, operationId, handler)` არეგისტრირებს.
 
 **ყველა კვადრატული ფრჩხილი დიზაინსა და კოდში — `[00]`, `[სახელი]`, `[თარიღი]`, `[ფოტო: …]` — ჩასანაცვლებელი ადგილია. რეალური მონაცემი არსად არ არის გამოგონილი.**
 
@@ -349,6 +351,16 @@
   - ელფოსტა: შეტყობინებების მიმღები — `CONTACT_INBOX` = levan.sarajishvili123@gmail.com (მხოლოდ env, კოდსა და zip-ში არა; mock-ში `[ელფოსტა]`); გამგზავნი — Resend, `no-reply@[დომენი]` (დომენის შემდეგ); B3–B6 — dev transport (ლოგი / ფაილი), ტესტი — fake transport. კონტაქტის წერილი: სრული ტექსტი + მხარდაჭერის საჭიროება, `Reply-To` (თუ `replyVia=email`), სათაურში პერსონალური მონაცემი არ არის.
   - გამოწერა — double opt-in: წერილი ბმულით → `/subscribe/confirm` (ka / en) გვერდზე ღილაკი „დადასტურება“ (POST; GET თავისით არ ადასტურებს — ფოსტის სკანერები ბმულს თვითონ ხსნიან); token-ის hash, ვადა 7 დღე; გვერდზე `aria-live` სტატუსი „შეამოწმე ელფოსტა“; პასუხი ერთნაირია უკვე გამოწერილ მისამართზეც. კონტრაქტი: `subscribe(email) → { ok, status: 'pending' }` + `confirmSubscription(token)` — B6-ში, ორივე მხარეს ერთად, ტესტით.
   - დამოკიდებულებების ვერსია ≥ 14 დღის ძველზე ჩაიკეტება (F1-ის წესი).
+- **Backend — API-ის კონტრაქტი (B1, 2026-11-05; დეტალი — §12, progress.md):**
+  - `server/openapi.yaml` (OpenAPI 3.1) — **ერთადერთი წყარო (spec-first)**: route-ის მეთოდი, გზა და სქემა სერვერზე spec-იდან იქმნება (`route(app, spec, operationId, handler)`), contract-ტესტი კი frontend-ის adapter-ის მოთხოვნებს და mock-ის პასუხებს ამოწმებს. ეს ცვლის B0-ის „`@fastify/swagger` route-ის სქემებიდან“ (code-first): B1-ში route-ები ჯერ არ არის, adapter-ი კი უკვე კონტრაქტია.
+  - მისამართები: საჯარო `/api/v1/*` (`lang` — `ka` | `en`), ადმინი `/api/admin/*` (`VITE_ADMIN_API=/api/admin`), `GET /api/health`. გაფართოებები: `x-adapter` (frontend-ის ფუნქცია), `x-permission` (`permissions.js` — B3-ის guard), `x-step`.
+  - ვალიდაცია: `Ajv2020` (OpenAPI 3.1 = JSON Schema 2020-12; Fastify-ის draft-07-ის ნაცვლად), `removeAdditional: false`, `unevaluatedProperties` / `additionalProperties: false`; query და path ყოველთვის მოწმდება (უცნობი query → 400); პასუხის სქემა route-ზე არ ედება (fast-json-stringify უცნობ ველს ჩუმად წაშლიდა) — პასუხს contract-ტესტი ამოწმებს.
+  - შეცდომა: `{ code, message, fields? }` (`ContentError.toJSON()`, საერთო `errors.js`); სტატუსები მხოლოდ 400 / 401 / 403 / 404 / 409 / 422 / 429 / 500 (+ health-ის 503). სხეულის ველის შეცდომა (სავალდებულო / სიგრძე / ვარიანტი) → 422 + `fields` (`fieldErrors.*`), უცნობი ველი / ტიპი / query / JSON / ზომა / Content-Type → 400.
+  - მონაცემის სქემა სამ ფენად: `*Props` (სტრუქტურა) → საჯარო (`Article` … — სავალდებულო ველები, slug, თარიღი, `lang`) და `*Draft` (ადმინი — ცარიელი ველი დასაშვებია, + `translations`).
+  - CORS არ არის; `text/plain` parser ამოღებულია (CSRF-ის „მარტივი მოთხოვნა“); `/api/*` — `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`, `X-Request-Id`; API-ის CSP `default-src 'none'`; HSTS 180 დღე, `includeSubDomains`-ის გარეშე (დომენამდე).
+  - ლოგი: pino JSON, მხოლოდ მეთოდი / route-ის შაბლონი / სტატუსი / ms / `reqId`; IP, URL, query, სხეული, cookie არ იწერება; წარმოებაში შეცდომის ტექსტიც (MongoDB-ის `E11000` ელფოსტას შეიცავს).
+  - `@/` Node-ში — resolve hook (`server/alias.js`, `module.registerHooks`): `package.json`-ის `imports` მხოლოდ `#`-ით დაწყებულ გასაღებს იღებს და პაკეტს გარეთ ვერ გავა. საერთო მოდული Vite-ის გარეშეც უნდა მუშაობდეს — `import.meta.env?.DEV` (ტესტი სუფთა Node-ში).
+  - development `MONGODB_URI`-ის გარეშე — დროებითი in-memory replica set; production-ში `MONGODB_URI` სავალდებულოა.
 
 ## 11. Frontend-ის აგება — ნაბიჯები
 
@@ -377,13 +389,13 @@
 |---|---|
 | Runtime | Node.js 22 LTS, ESM — frontend-ის იგივე ვერსია |
 | ბაზა | **MongoDB Atlas**, AWS `eu-central-1` (Frankfurt; replica set — ტრანზაქციებისთვის). B1–B6 — Free (backup ჩართული), წარმოება — Flex (ბიუჯეტი $0 → Free + კვირეული export) |
-| Framework | **Fastify 5** — JSON Schema ვალიდაცია (`removeAdditional: false`) და OpenAPI 3.1 (`@fastify/swagger`) ერთი წყაროდან; `@fastify/cookie`, `@fastify/helmet`, `@fastify/rate-limit`, `@fastify/static`, `@fastify/multipart` |
+| Framework | **Fastify 5** (5.12.7) — ვალიდაცია `server/openapi.yaml`-იდან (spec-first, B1; `Ajv2020`, `removeAdditional: false`); `@fastify/helmet` (B1); `@fastify/cookie`, `@fastify/rate-limit`, `@fastify/static`, `@fastify/multipart` — შემდეგ ნაბიჯებში |
 | ბაზასთან წვდომა | ოფიციალური **`mongodb` driver** + `$jsonSchema` validator-ები; სქემა `server/schemas/`-შია (route + validator) |
 | ჰოსტინგი | **Render** Web Service, Frankfurt — ერთი სერვისი: API (`/api/*`) + `dist/` (ერთი origin); წარმოება — Starter (ბიუჯეტი $0 → Fly.io `fra`); Cloudflare proxy — B7, არასავალდებულო |
 | ფაილები | **Cloudflare R2** (S3 API, `@aws-sdk/client-s3`); მიწოდება `/media/*`-ით |
 | ელფოსტა | **Resend** (`no-reply@[დომენი]`); მიმღები `CONTACT_INBOX` (env); dev / test — fake transport |
-| რეპო | იგივე რეპო, საქაღალდე `server/`; საერთო მოდულები `src/content/`-იდან — `validate.js`, `taxonomy.js`, `slug.js`, `localize.js`, `forms.js`, `text.js` (ერთი წესი ორივე მხარეს); `@/` alias Node-ში — `package.json` `imports`-ით, B1 |
-| ტესტი | Vitest (frontend-ის იგივე) + `mongodb-memory-server` (replica set რეჟიმი) — რეალური ბაზის გარეშე; binary — `fastdl.mongodb.org` (sandbox-ის ქსელში დასამატებელი) |
+| რეპო | იგივე რეპო, საქაღალდე `server/`; საერთო მოდულები `src/content/`-იდან — `validate.js`, `taxonomy.js`, `slug.js`, `localize.js`, `forms.js`, `text.js` (ერთი წესი ორივე მხარეს); `@/` alias Node-ში — resolve hook (`server/alias.js`, `module.registerHooks`; `imports` `@/`-ს ვერ ასახავს — B1); workspace `server` (ცალკე `package.json`, ერთი lockfile) |
+| ტესტი | Vitest (frontend-ის იგივე, `server/vitest.config.js`) + `mongodb-memory-server-core` (replica set; postinstall-ის გარეშე — deploy binary-ს არ ტვირთავს); MongoDB 8.0.34 (`fastdl.mongodb.org`, ✓ B1) |
 
 ### მონაცემთა მოდელი — პირველადი ხედვა (B2-ში დასამტკიცებელი)
 
@@ -412,7 +424,7 @@
 | # | ნაბიჯი | შედეგი | Gate |
 |---|---|---|---|
 | B0 ✅ | გადაწყვეტილებები (2026-11-04) | ქვემოთ — 11 პუნქტი; §9, §10, §11, §12 განახლებულია | ღია საკითხი B1-ს არ ბლოკავს ✓ |
-| B1 | API-ის სპეციფიკაცია + `server/`-ის ჩონჩხი | OpenAPI 3.1 (საჯარო + ადმინი — adapter-ებიდან), config (`.env`), health-check, საერთო მოდულების import, lint / test | frontend-ის HTTP adapter-ის contract-ტესტი spec-თან მწვანეა |
+| B1 ✅ | API-ის სპეციფიკაცია + `server/`-ის ჩონჩხი (2026-11-05) | OpenAPI 3.1 (46 ოპერაცია, 138 სქემა), config (`.env`), health-check, საერთო მოდულების import, lint / test | frontend-ის HTTP adapter-ის contract-ტესტი spec-თან მწვანეა ✓ |
 | B2 | მონაცემთა ბაზა | კოლექციები, `$jsonSchema` validator-ები, ინდექსები, seed (mock-იდან), მიგრაციის სკრიპტი | seed-ზე `validateContent` — 0 შენიშვნა; ინდექსები ტესტით |
 | B3 | ავტორიზაცია და უსაფრთხოება | argon2id, cookie-სესია (TTL), CSRF, rate limit, როლები / 403, მოწვევა, სესიის გაგრძელება, CORS, უსაფრთხოების header-ები | შესვლის ზოგადი შეცდომა (ტექსტი და დრო); ASVS L1-ის ჩეკლისტი; ტესტები |
 | B4 | კონტენტი (ადმინი) | CRUD, ავტოშენახვის სამუშაო ასლი, გამოქვეყნება / დაგეგმვა (სერვერზე `validate.js`), ვერსიები / აღდგენა, 409, წაშლა, ძიება, stats, a11yReport, პარამეტრები + რჩეული | frontend-ის ადმინის ტესტები HTTP adapter-ით მწვანეა |

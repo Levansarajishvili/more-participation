@@ -64,5 +64,10 @@ export default [
     files: ['scripts/**/*.mjs'],
     languageOptions: { sourceType: 'module', globals: globals.node },
   },
+  {
+    // B1: server/ — Node 22 (ESM); frontend-ის იგივე წესები, ბრაუზერის გლობალების გარეშე
+    files: ['server/**/*.js'],
+    languageOptions: { sourceType: 'module', globals: globals.node },
+  },
   prettier,
 ];

@@ -64,7 +64,7 @@ const reported = new Set();
  * @param {string} message
  */
 function devWarn(message) {
-  if (!import.meta.env.DEV || reported.has(message)) return;
+  if (!import.meta.env?.DEV || reported.has(message)) return;
   reported.add(message);
   console.warn(`[i18n] ${message}`);
 }
