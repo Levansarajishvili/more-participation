@@ -2386,7 +2386,8 @@ components:
       type: object
       description: |
         7 საჯარო გვერდი — სტრუქტურირებული ველები; „ჩვენ შესახებ“ — + გუნდი და პარტნიორები (შენახვისას
-        საჯარო `getTeam` / `getPartners`-შიც აისახება).
+        საჯარო `getTeam` / `getPartners`-შიც აისახება) და „ჩვენი გზა“ (`stages`, B2: ბაზაში მისი
+        ერთადერთი ადგილი; ადმინში ჯერ არ რედაქტირდება).
       properties:
         slug:
           type: string
@@ -2410,6 +2411,10 @@ components:
           type: array
           maxItems: 200
           items: { $ref: '#/components/schemas/PartnerDraft' }
+        stages:
+          type: array
+          maxItems: 50
+          items: { $ref: '#/components/schemas/Stage' }
         translations: { $ref: '#/components/schemas/Translations' }
       additionalProperties: false
 

@@ -15,6 +15,7 @@ describe('loadConfig', () => {
       trustProxy: false,
       bodyLimit: 1_048_576,
       mongo: { uri: null, dbName: 'meti-chartuloba' },
+      retention: { messagesDays: 30, versionsKeep: 30 },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.mongo)).toBe(true);
@@ -80,6 +81,15 @@ describe('loadConfig', () => {
     }
   });
 
+  it('შენახვის ვადები (B2): env → retention; ზღვარს გარეთ — შეცდომა', () => {
+    expect(loadConfig({ MESSAGES_TTL_DAYS: '7', VERSIONS_KEEP: '10' }).retention).toEqual({
+      messagesDays: 7,
+      versionsKeep: 10,
+    });
+    expect(() => loadConfig({ MESSAGES_TTL_DAYS: '0' })).toThrow(/MESSAGES_TTL_DAYS/);
+    expect(() => loadConfig({ VERSIONS_KEEP: 'all' })).toThrow(/VERSIONS_KEEP/);
+  });
+
   it('სხვა env ცვლადებს არ კითხულობს', () => {
     expect(ENV_KEYS).toEqual([
       'NODE_ENV',
@@ -90,6 +100,8 @@ describe('loadConfig', () => {
       'BODY_LIMIT',
       'MONGODB_URI',
       'MONGODB_DB',
+      'MESSAGES_TTL_DAYS',
+      'VERSIONS_KEEP',
     ]);
     expect(() => loadConfig({ SOMETHING_ELSE: 'x', PATH: '/bin' })).not.toThrow();
   });

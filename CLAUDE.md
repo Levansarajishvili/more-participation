@@ -95,7 +95,7 @@
 | ESLint | 9.39.5 + jsx-a11y (strict), react, react-hooks, react-refresh, prettier | 10-ზე jsx-a11y-ის peer ჯერ არ არის |
 | ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, user-event 14.6.7, vitest-axe | `expect.extend(axeMatchers)` setup-ში; კლავიატურა — `userEvent.setup()` |
 
-npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`.
+npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება).
 
 ## ფოლდერების რუკა
 
@@ -234,7 +234,7 @@ server/                   B1: API — ცალკე package (npm workspace), N
   .env.example            env ცვლადები placeholder-ებით (`.env` git-სა და zip-ში არ ხვდება)
   alias.js                `@/` → src/ (module.registerHooks) — frontend-ის საერთო მოდულები ასლის გარეშე
   index.js                entry: alias → main (`node server/index.js`)
-  main.js                 config → ბაზა (ან dev-ში in-memory) → buildApp → listen; SIGTERM / SIGINT
+  main.js                 config → ბაზა (ან dev-ში in-memory + migrate + seed) → buildApp → listen; SIGTERM / SIGINT
   config.js               env → Config (ajv-ის სქემა, ENV_SCHEMA); შეცდომა მნიშვნელობას არ იმეორებს
   app.js                  buildApp({ config, db, spec, logStream, extend }) — ვალიდაცია, header-ები, ლოგი, route-ები
   lib/
@@ -245,10 +245,25 @@ server/                   B1: API — ცალკე package (npm workspace), N
     db.js                 connectDb / pingDb / replicaSetName (`mongodb` driver)
     dev-db.js             startMemoryReplicaSet (MongoDB 8.0.34) — dev და ტესტი
   routes/health.js        GET /api/health — 200 / 503
+  db/                     B2: ბაზის ფენა
+    schema.js             OpenAPI `*Draft` → `$jsonSchema` (toBsonSchema, partialTextSchema — translations.en)
+    collections.js        9 კოლექცია: validator + ინდექსები (TTL), DEFAULT_RETENTION, DRAFT_SCHEMA
+    derive.js             item → slug / status / publishedAt (Date) / searchText / mediaKeys; searchFilter
+    errors.js             11000 / 121 → ContentError (slugDuplicate, conflict, validation + ველის გზა)
+    content.js            content + versions repository (mock store-ის / ადმინის mock-ის სემანტიკა)
+    settings.js           settings repository (`_id: 'site'`)
+    index.js              createRepositories → { content, settings, snapshot }
+    seed.js               seedSource / seedDatabase (createMockData + adminState-ის გვერდები)
+  migrations/             B2: ensure.js (იდემპოტენტური DDL), 001-init.js, index.js (migrate, countChanges)
   scripts/shared-smoke.js საერთო მოდულები სუფთა Node-ში (Vite-ის გარეშე)
+  scripts/migrate.js      B2: `npm run server:migrate`
+  scripts/seed.js         B2: `npm run server:seed [-- --reset]`
+  scripts/db-cli.js       CLI-ების საერთო: config, კავშირი, შეცდომის ტექსტი საიდუმლოს გარეშე
   vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server)
   test/                   config, app, db, openapi, shared-modules, boot (`node server/index.js`);
     contract/             spec-match.js, public-plan.js (B6-ის გეგმა), requests / responses / constants
+    db/                   B2: schema, collections (მიგრაცია, validator-ები, TTL), content, seed (+ CLI),
+                          differential (ajv ↔ MongoDB), parity (↔ mock), translations (↔ რედაქტორი)
 ```
 
 ## კოდის კონვენციები (F1)
@@ -472,3 +487,15 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **ლოგი:** `request.log.*` — მხოლოდ კოდი, route-ის შაბლონი, რაოდენობა; ელფოსტა, სახელი, IP, ტექსტი, token, query-ს მნიშვნელობა — არასოდეს. `REDACT_KEYS` — დამცავი ბადე.
 - **contract-ტესტი:** frontend-ის adapter-ის ახალი / შეცვლილი ფუნქცია `test/contract/requests.test.js`-ში (მოთხოვნა ↔ spec) და `responses.test.js`-ში (mock-ის პასუხი ↔ სქემა) ემატება — დაფარვა ორივე მიმართულებით მოწმდება. B6-ში `public-plan.js` რეალური HTTP adapter-ით იცვლება.
 - **ტესტის ბაზა:** `inject('mongoUri')` (global setup — ერთი replica set); თითო ფაილს — საკუთარი ბაზის სახელი (`mc_test_*`).
+
+## კოდის კონვენციები (B2 — ბაზა)
+
+- **ბაზის ფენა — მხოლოდ repository:** route (B3–B6) კოლექციას პირდაპირ არ წერს; `createRepositories(database)` → `content`, `settings`, `snapshot`. ახალი კოლექციის ჩამწერი — `server/db/<name>.js` (users / sessions — B3, media — B5, messages / subscribers — B6).
+- **validator-ის წყარო — `openapi.yaml`:** კონტენტის / პარამეტრების / შეტყობინების სქემა `*Draft`-იდან (`ContactPayload`-იდან) `toBsonSchema`-ით იქმნება. მოდელის ველი იცვლება spec-ში → `npm run server:migrate`. ბაზის მეტა (ვერსია, დრო, ინდექსის ველები) — `collections.js`-ში. `differential.test.js` ამოწმებს, რომ ajv და MongoDB ერთნაირად აფასებს.
+- **`content`-ის დოკუმენტი:** `item` — მოდელი უცვლელად; ზედა დონე — `_id` (`a-001` / `a-<ObjectId>`), `type`, `slug` (მხოლოდ შევსებული), `status`, `publishedAt` (Date), `version`, `createdAt`, `updatedAt`, `updatedBy`, `working`, `searchText`, `mediaKeys`. ზედა დონის ველს მხოლოდ `derive.js` ითვლის — ხელით არ იწერება.
+- **მიგრაცია:** `server/migrations/NNN-name.js` (`id`, `up(db, { spec, retention })`), `MIGRATIONS`-ში ემატება; ყოველი მიგრაცია იდემპოტენტურია (მეორე გაშვება — 0 ცვლილება, ტესტით). ინდექსი სახელით იმართება; ხელით დამატებულს მიგრაცია არ შლის.
+- **409 და ტრანზაქცია:** ჩაწერა ვერსიით — `updateOne({ _id, version }, …)` → `matchedCount: 0` → `conflict`; ისტორიის / რჩეულის ცვლილება — `inTransaction(client, …)`. ერთი რჩეული ტიპზე ბაზის უნიკალური ინდექსითაა დაცული (`type_featured_unique`) — `featured` მხოლოდ `setFeatured`-ით იცვლება.
+- **დრო:** ბაზაში Date; repository ISO UTC-ს (`Z`) აბრუნებს; მოდელის თარიღი (`item.publishedAt`) — სტრიქონი ოფსეტით, უცვლელად.
+- **ფოტო:** ჩადგმული ობიექტი (`{ src, alt, ratio }`, project-context §12); ფაილის გამოყენება — `mediaKeys` (`src` → `/media/<key>`).
+- **seed:** მხოლოდ dev / staging; მომხმარებელს არ ქმნის; `validateContent` → 0 (ტესტი და CLI). mock-ის მონაცემის ცვლილება → seed-ის ტესტი ამოწმებს.
+- **ტესტის ბაზა:** `test/db/helpers.js` — `freshDatabase(label)` (მიგრაციით), `clock()`; failpoint (`failCommand`) — მხოლოდ ტესტის replica set-ზე (`enableTestCommands`).

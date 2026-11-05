@@ -9,12 +9,14 @@
 export const MONGO_BINARY_VERSION = process.env.MONGOMS_VERSION || '8.0.34';
 
 /**
+ * @param {{ args?: string[] }} [options]  `args` — mongod-ის დამატებითი არგუმენტები (ტესტი:
+ *   `enableTestCommands` — `failCommand` failpoint ტრანზაქციის ატომურობის შესამოწმებლად)
  * @returns {Promise<{ uri: string, stop: () => Promise<void> }>}
  */
-export async function startMemoryReplicaSet() {
+export async function startMemoryReplicaSet({ args = [] } = {}) {
   const { MongoMemoryReplSet } = await import('mongodb-memory-server-core');
   const replSet = await MongoMemoryReplSet.create({
-    replSet: { count: 1, storageEngine: 'wiredTiger' },
+    replSet: { count: 1, storageEngine: 'wiredTiger', args },
     binary: { version: MONGO_BINARY_VERSION },
   });
   return {

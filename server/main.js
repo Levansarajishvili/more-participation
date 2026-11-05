@@ -40,6 +40,15 @@ export async function main({ env = process.env, signals = true } = {}) {
   }
 
   const database = await connectDb({ uri, dbName: config.mongo.dbName });
+  // B2: in-memory ბაზა ცარიელია — მიგრაცია + mock-ის seed, რომ dev-ის API მონაცემით გაეშვას
+  let seeded = 0;
+  if (memory) {
+    const { migrate } = await import('./migrations/index.js');
+    const { seedDatabase } = await import('./db/seed.js');
+    await migrate(database.db, { retention: config.retention });
+    const { counts } = await seedDatabase(database);
+    seeded = Object.values(counts).reduce((sum, n) => sum + n, 0);
+  }
   const app = await buildApp({ config, db: database.db });
   app.addHook('onClose', async () => {
     await database.close();
@@ -50,6 +59,7 @@ export async function main({ env = process.env, signals = true } = {}) {
     app.log.warn(
       'MONGODB_URI არ არის — დროებითი in-memory ბაზა (მონაცემი გადატვირთვისას იკარგება)',
     );
+    app.log.info({ seeded }, 'in-memory ბაზა: მიგრაცია + seed (mock-ის მონაცემი)');
   }
   const setName = await replicaSetName(database.db);
   if (!setName) app.log.warn('ბაზა replica set არ არის — ტრანზაქციები (B4) ვერ იმუშავებს');

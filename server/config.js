@@ -20,6 +20,8 @@ import Ajv2020 from 'ajv/dist/2020.js';
  * @property {number | false} trustProxy  proxy-ის რაოდენობა (Render — 1; + Cloudflare — 2)
  * @property {number} bodyLimit           JSON-ის სხეული, ბაიტი
  * @property {{ uri: string | null, dbName: string }} mongo  `uri: null` — მხოლოდ development / test
+ * @property {{ messagesDays: number, versionsKeep: number }} retention  შენახვის ვადები (B0 #10, B2):
+ *   კონტაქტის შეტყობინების TTL დღეებში; ვერსიების რაოდენობა თითო მასალაზე
  */
 
 export const NODE_ENVS = Object.freeze(['development', 'test', 'production']);
@@ -45,6 +47,9 @@ export const ENV_SCHEMA = Object.freeze({
     BODY_LIMIT: { type: 'integer', minimum: 1024, maximum: 10_485_760, default: 1_048_576 },
     MONGODB_URI: { type: 'string', maxLength: 2048, pattern: '^mongodb(\\+srv)?://\\S+$' },
     MONGODB_DB: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,38}$', default: 'meti-chartuloba' },
+    // B0 #10 — ნაგულისხმევი, დასადასტურებელი (კონფიდენციალურობის პოლიტიკა); ცვლილება → server:migrate
+    MESSAGES_TTL_DAYS: { type: 'integer', minimum: 1, maximum: 3650, default: 30 },
+    VERSIONS_KEEP: { type: 'integer', minimum: 1, maximum: 1000, default: 30 },
   },
   // წარმოებაში in-memory ბაზა არ არსებობს — connection string სავალდებულოა
   if: { properties: { NODE_ENV: { const: 'production' } }, required: ['NODE_ENV'] },
@@ -109,6 +114,10 @@ export function loadConfig(env = process.env) {
     mongo: Object.freeze({
       uri: /** @type {string | undefined} */ (input.MONGODB_URI) ?? null,
       dbName: /** @type {string} */ (input.MONGODB_DB),
+    }),
+    retention: Object.freeze({
+      messagesDays: /** @type {number} */ (input.MESSAGES_TTL_DAYS),
+      versionsKeep: /** @type {number} */ (input.VERSIONS_KEEP),
     }),
   });
 }

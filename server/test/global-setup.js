@@ -6,7 +6,8 @@ import { startMemoryReplicaSet } from '../lib/dev-db.js';
  * @param {import('vitest/node').TestProject} project
  */
 export default async function setup(project) {
-  const mongo = await startMemoryReplicaSet();
+  // B2: failCommand failpoint (ტრანზაქციის ატომურობის ტესტი) — მხოლოდ ტესტის ბაზაზე
+  const mongo = await startMemoryReplicaSet({ args: ['--setParameter', 'enableTestCommands=1'] });
   project.provide('mongoUri', mongo.uri);
   return async () => {
     await mongo.stop();

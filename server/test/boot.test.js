@@ -83,6 +83,8 @@ describe('node server/index.js', () => {
     // გაფრთხილება listen-მდე იწერება — მოთხოვნა მხოლოდ „Server listening“-ის შემდეგ
     await server.waitFor(/Server listening/, 120_000);
     expect(server.output().stdout).toMatch(/in-memory/);
+    // B2: in-memory ბაზაზე მიგრაცია + mock-ის seed ავტომატურად
+    expect(server.output().stdout).toMatch(/"seeded":58/);
     const res = await fetch(`http://127.0.0.1:${port}/api/health`);
     expect(res.status).toBe(200);
     server.child.kill('SIGINT');

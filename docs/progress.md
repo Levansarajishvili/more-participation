@@ -1437,3 +1437,119 @@ OpenAPI 3.1 adapter-ებიდან (`Video.youtube`, `CaptionTrack.cues` / `
 ### შემდეგი: B2 — მონაცემთა ბაზა
 
 კოლექციები (`content`, `versions`, `users`, `sessions`, `invites`, `media`, `settings`, `messages`, `subscribers`), `$jsonSchema` validator-ები (`*Draft` / საჯარო სქემების ფორმით), ინდექსები (`{ type, slug }` უნიკალური, `{ type, status, publishedAt: -1 }`, `{ updatedAt: -1 }`, `searchText`, TTL-ები), seed mock-იდან (`validateContent` — 0 შენიშვნა; `[YouTube-ის id]`-ის წესი), მიგრაციის სკრიპტი. B1-იდან: `connectDb`, `inject('mongoUri')`, `spec-match.js` (seed-ის დოკუმენტი ↔ `*Draft` სქემა).
+
+## B2 — მონაცემთა ბაზა ✅ (2026-11-05)
+
+**Gate:**
+- frontend — **უცვლელი:** `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (42 ფაილი, **722 / 722**) · `npm run build` ✓ + check-dist ✓ (44 JS chunk) · `dist/`-ის 73-ვე ფაილის **sha256 ემთხვევა B2-მდე build-ს**.
+- server: `npm run server:lint` ✓ · `npm run server:test` ✓ (**16 ფაილი, 178 ტესტი**; B1 — 84) — ზედიზედ სამი გაშვება მწვანეა; zip-ის სუფთა ასლზე `npm ci` → `server:test` ✓ (178 / 178).
+- frontend-ის ტესტი დოკუმენტების (`docs/project-context.md` — `tokens.test.js`, `components.test.jsx` მას კითხულობს) ბოლო ცვლილების შემდეგ ხელახლა გაეშვა: 722 / 722 ✓.
+- **მიგრაცია ორჯერ:** ტესტში (`collections.test.js`) და CLI-ით (`seed.test.js` — `node server/scripts/migrate.js` memory-server-ზე): პირველი — 27 ცვლილება (9 კოლექცია + 18 ინდექსი), მეორე — „ცვლილება: 0“, შეცდომის გარეშე; დრეიფი (validator, TTL-ის ვადა, ინდექსის ფორმა) ხელახლა სწორდება, ხელით დამატებული ინდექსი რჩება (`extra`).
+- **seed → `validateContent` — 0 შენიშვნა:** ბაზიდან წაკითხულ ნაკრებზე (ტესტი + CLI-ის გამოსავალი); ნაკრები = `createMockData()` (JSON-ით); ყოველი item OpenAPI-ის `*Draft`-ს აკმაყოფილებს (ajv).
+- **parity-ტესტი მწვანეა** (10): `list` / `find` / `findBySlug` / `snapshot` / საჯარო სია / ძიება / `insert` / `replace` / 409 / `remove` ↔ mock-ის საცავი; `update` (ვერსია + ისტორია), stale → 409, autosave → სამუშაო ასლი, `versions`, `restoreVersion`, რჩეული (`settings.update`), წაშლა ↔ ადმინის mock (`createMockAdminAdapter`, იმავე საათით).
+- **TTL რეალურად შემოწმდა:** `ttlMonitorSleepSecs: 1` — ვადაგასული სესია, მოწვევა, 31 დღის შეტყობინება და `pending`-გამოწერა იშლება; მოქმედი და `confirmed` რჩება.
+- **ajv ↔ MongoDB:** seed-ის 58 ჩანაწერი × 22 სახის მუტაცია (400+ შემთხვევა) — ორივე ერთნაირად აფასებს (`differential.test.js`).
+- **ტრანზაქციის ატომურობა:** `failCommand` failpoint-ით მეორე `update` ვარდება → `setFeatured`-ის პირველი ჩაწერაც უქმდება (რჩეული, ვერსია, ისტორია — უცვლელი); 8 პარალელური `setFeatured` — ბოლოს ზუსტად ერთი რჩეული, ისტორია უწყვეტი.
+- ქსელი: ახალი დომენი არ დასჭირდა; npm-ის ახალი დამოკიდებულება არ დამატებულა.
+
+### შექმნილი ფაილები
+
+`server/db/`: `schema.js`, `collections.js`, `derive.js`, `errors.js`, `content.js`, `settings.js`, `index.js`, `seed.js`; `server/migrations/`: `ensure.js`, `001-init.js`, `index.js`; `server/scripts/`: `db-cli.js`, `migrate.js`, `seed.js`; `server/test/db/`: `helpers.js`, `schema.test.js` (11), `collections.test.js` (35), `content.test.js` (16), `seed.test.js` (6), `differential.test.js` (2), `parity.test.js` (10), `translations.test.js` (13).
+
+**შეიცვალა:**
+- `server/openapi.yaml` — `PageDraft.stages` (არასავალდებულო, `Stage[]`, ≤ 50; დამატება — არსებულ მოთხოვნას / პასუხს არ არღვევს).
+- `server/config.js` — `MESSAGES_TTL_DAYS` (1–3650, 30), `VERSIONS_KEEP` (1–1000, 30) → `config.retention`; `server/.env.example`; `test/config.test.js` (+1 ტესტი).
+- `server/main.js` — dev-ის in-memory ბაზაზე migrate + seed (ლოგი `{ seeded: 58 }`); `test/boot.test.js` ამას ამოწმებს.
+- `server/lib/dev-db.js` — `startMemoryReplicaSet({ args })`; `test/global-setup.js` — `enableTestCommands=1` (მხოლოდ ტესტი, failpoint-ისთვის).
+- `package.json` — `server:migrate`, `server:seed`.
+- `CLAUDE.md` — npm სკრიპტები, რუკა (`server/db`, `server/migrations`), „კოდის კონვენციები (B2 — ბაზა)“.
+- `docs/project-context.md` — §9 #27, §12 (სტეკი, დამტკიცებული მოდელი, ფოტოს გადაწყვეტილება, B2 ✅, შენახვის ვადები).
+- frontend-ის კოდი (`src/`) — **არ შეცვლილა**.
+
+### კოლექცია → ველები → ინდექსი → TTL
+
+| კოლექცია | ველები | ინდექსი | TTL |
+|---|---|---|---|
+| `content` | `_id`, `type`, `item` (`*Draft` ტიპით), `slug`?, `status`, `publishedAt` (Date), `version`, `createdAt`, `updatedAt`, `updatedBy`, `working`, `searchText`, `mediaKeys` | `type_slug_unique` (partial `slug` $exists) · `type_status_publishedAt` · `updatedAt_desc` · `searchText` · `type_createdAt` · `type_featured_unique` (partial `item.featured: true`) · `mediaKeys` | — |
+| `versions` | `contentId`, `type`, `version`, `item`, `at`, `by` | `contentId_version` (unique) | — (`VERSIONS_KEEP`) |
+| `users` | `_id` `u-…`, `name`, `email`, `passwordHash` (argon2id), `role`, `status`, `createdAt`, `updatedAt`, `lastLoginAt`? | `email_unique` | — |
+| `sessions` | `_id` sha256, `userId`, `csrfHash`, `createdAt`, `lastSeenAt`, `expiresAt`, `maxExpiresAt` | `expiresAt_ttl`, `userId` | `expiresAt`, 0 |
+| `invites` | `_id` sha256, `role`, `email`, `createdAt`, `createdBy`, `expiresAt`, `usedAt`, `usedBy` | `expiresAt_ttl` | `expiresAt`, 0 |
+| `media` | `_id` `m-…`, `kind`, `key`, `mime`, `size`, `title`, `alt`, `ratio`, `width`, `height`, `lang`, `tagged`, `createdAt`, `createdBy` | `key_unique`, `kind_createdAt` | — |
+| `settings` | `_id: 'site'`, `item` (`SiteSettingsDraft`), `version`, `updatedAt`, `updatedBy` | — | — |
+| `messages` | `ContactPayload` − `website`, `consent: true`, `lang`, `createdAt`, `sentAt` | `createdAt_ttl` | `createdAt`, `MESSAGES_TTL_DAYS` × 86 400 |
+| `subscribers` | `email`, `status`, `tokenHash`, `expiresAt`, `confirmedAt`, `source`, `lang`, `createdAt` (`pending` / `confirmed` — `oneOf`) | `email_unique`, `tokenHash_unique` (partial), `expiresAt_ttl_pending` | `expiresAt`, 0, partial `status: 'pending'` |
+
+### repository-ის ფუნქცია → mock-ის ანალოგი → შეცდომის კოდი
+
+| `server/db/content.js` | mock | შეცდომა |
+|---|---|---|
+| `list(type, { visibleAt? })` | `store.records(name)`; `visibleAt` — `isPublic` + `byNewest` | `bad-request` (უცნობი ტიპი) |
+| `find(id)` | `store.find` | — (null) |
+| `findBySlug(type, slug)` | `store.findBySlug` | — (null; ცარიელი slug → null) |
+| `insert(type, item, { by, id? })` | `store.insert` | `validation` (`fields.slug: slugDuplicate`), `conflict` (რჩეული), `validation` (121 → ველის გზა), `bad-request` (id ≠ ტიპი) |
+| `importRecords(records, { session })` | `createMockStore` (seed) | იგივე |
+| `replace(id, item, { by, version? })` | ადმინის `save` (`store.replace` + ისტორია + `working.delete`) | `not-found`, `conflict` (ვერსია / რჩეული), `validation` |
+| `saveWorking(id, item, { by, version? })` | `update({ autosave })` → `state.working` | `not-found`, `conflict` |
+| `remove(id)` | `store.remove` + `state.versions` / `working` | `not-found` |
+| `versions(id)` | `state.versions` (უახლესი პირველი, მიმდინარის გარეშე) | `not-found` |
+| `restore(id, version, { by })` | `restoreVersion` | `not-found` (მასალა / ვერსია) |
+| `setFeatured(type, id \| null, { by })` | ადმინის `setFeatured` (`settings.update`) | `not-found`, `bad-request` (ტიპს რჩეული არ აქვს) |
+| `createRepositories(db).snapshot()` | `store.snapshot()` | — |
+| `settings.get()` / `settings.put(item, { by, version? })` | `snapshot().settings` / `setSettings` | `conflict` (ვერსია) |
+
+### საჯარო API (server)
+
+- `db/schema.js`: `toBsonSchema(schema, spec, path?)`, `partialTextSchema(schema, key?)`, `translationsSchema(parent)`, `componentSchema(spec, name)`, `resolveRef`, `canonicalJson`, `TRANSLATION_REPLACE` (`body`), `TRANSLATION_NON_TEXT`.
+- `db/collections.js`: `defineCollections({ spec, retention }) → CollectionSpec[]`, `itemSchemas(spec)`, `COLLECTION`, `DRAFT_SCHEMA`, `DEFAULT_RETENTION` (`{ messagesDays: 30, versionsKeep: 30 }`), `SETTINGS_ID` (`site`), `MEDIA_ID`, `MEDIA_KINDS`, `SUBSCRIBER_STATUSES`, `LANGS`, `DAY_SECONDS`.
+- `db/derive.js`: `plain`, `parseDate`, `searchTextOf(item)`, `mediaKeysOf(...items)`, `derivedFields(item, working?)`, `searchFilter(q)`, `MEDIA_PATH` (`/media/`).
+- `db/errors.js`: `mapWriteError(error)`, `schemaErrorPaths(errInfo)`, `SCHEMA_FIELD_CODE` (`schema`).
+- `db/content.js`: `createContentRepository({ client, db }, { now, keepVersions })`, `toContentDoc`, `toContentRecord`, `publicFilter(type, at)`, `inTransaction(client, work)`, `newContentId(type)`, `typeOfId(id)`, `FEATURED_TYPES`; ტიპები `ContentRecord`, `ContentMeta`, `WorkingCopy`, `VersionEntry`.
+- `db/settings.js`: `createSettingsRepository`, `toSettingsDoc`; `db/index.js`: `createRepositories(database, options) → { content, settings, snapshot }`, `SNAPSHOT_TYPES`, `ABOUT_SLUG`.
+- `db/seed.js`: `seedSource({ now })`, `seedDatabase(database, { now, reset })` → `{ counts, issues }`, `SeedError`.
+- `migrations/index.js`: `MIGRATIONS`, `migrate(db, { spec, retention })` → `{ id, reports }[]`, `countChanges(results)`; `migrations/ensure.js`: `ensureCollection(db, spec)`, `VALIDATION_LEVEL`, `VALIDATION_ACTION`.
+- `scripts/db-cli.js`: `runCli(name, work, { env, production })`, `CliError`, `describeCliError`.
+- `lib/dev-db.js`: `startMemoryReplicaSet({ args })`; `config.retention`.
+- ტესტის დამხმარე: `test/db/helpers.js` — `freshDatabase(label, { migrate, retention })`, `clock()`, `iso`, `json`, `caught`, `T0`, `DAY`, `MINUTE`.
+
+**env (+):** `MESSAGES_TTL_DAYS` (30) — შეტყობინების TTL, ცვლილების შემდეგ `server:migrate`; `VERSIONS_KEEP` (30) — ვერსიები მასალაზე.
+
+**npm:** `npm run server:migrate`; `npm run server:seed` (`-- --reset` — კონტენტი, ვერსიები, პარამეტრები თავიდან; მომხმარებლები / მედია / შეტყობინებები / გამომწერები უცვლელი). ორივე `MONGODB_URI`-ს ითხოვს (`server/.env`); seed `NODE_ENV=production`-ზე არ ეშვება.
+
+### ფოტო — გადაწყვეტილება
+
+**ჩადგმული ობიექტი** (`{ src, alt, ratio }`, როგორც ახლა). alt კონტექსტზეა დამოკიდებული და თითო გამოყენებაზე ინახება (ინგლისური — `translations.en.*.alt`, ვერსია alt-საც ინახავს); `validate.js` / `localize.js` / საჯარო პასუხი ცვლილებას არ საჭიროებს; `media` — ფაილების რეესტრი, გამოყენება და წაშლის ბლოკი — `mediaKeys` (ინდექსით). `media`-ს id კონტრაქტს ორივე მხარეს შეცვლიდა და `$lookup`-ს ყოველ პასუხზე. შედარების ცხრილი — project-context §12.
+
+### გადახვევები prompt-იდან და §12-იდან
+
+1. **მოდელი `item`-შია, არა ზედა დონეზე** (§12: „მოდელის ველები + მეტა“): სიახლის `type` კოლექციის `type`-ს და სტატიის `updatedAt` მეტას ემთხვევა. ზედა დონის `slug` / `status` / `publishedAt` — `item`-იდან გამოთვლილი; `publishedAt` — Date (ოფსეტიანი ISO სტრიქონი სწორად არ ლაგდება).
+2. **`type_slug_unique` partial (`slug` $exists):** ახალი მასალა ცარიელი slug-ით იქმნება — ზედა დონის `slug` ასეთ დროს არ იწერება. `$type: 'string'`-ის ფილტრით planner ინდექსს `{ type, slug: 'x' }`-ზე არ იყენებდა (sandbox-ში შემოწმდა) — `$exists`-ით იყენებს (explain-ტესტი).
+3. **რჩეული — + უნიკალური partial ინდექსი** (prompt: „ტრანზაქციით“): ტრანზაქცია მარტო write skew-ს ვერ აკავებს (რჩეული რომ არ არის, ორი პარალელური `setFeatured` სხვადასხვა დოკუმენტს წერს). `setFeatured` მხოლოდ `articles | series | videos | news`-ზე; უცნობ id-ზე → `not-found` (mock ყველას ხსნიდა).
+4. **`restore` მიმდინარე `featured`-ს ინახავს** (mock ძველისას აღადგენს): რჩეული პარამეტრებიდან იმართება და უნიკალური ინდექსი სხვაგვარად 409-ს დააბრუნებდა. parity-ტესტში დოკუმენტირებულია.
+5. **ვერსიების ჭრა (`VERSIONS_KEEP`) — B2-ში** (B0 #10: B4): ჭრა `replace`-ის ტრანზაქციის ნაწილია, repository კი B2-ისაა; B4 მხოლოდ იყენებს.
+6. **`translations.en` ბაზაში უფრო მკაცრია, ვიდრე API-ში** (B1: თავისუფალი ობიექტი): ნაწილობრივი ტექსტური ასლი; რედაქტორის ყოველი თარგმნადი ველი გადის (ტესტი ადმინის სქემებით). B4-მდე სხვაობა → 121 → `validation` ველის გზით, არა 500.
+7. **„ჩვენი გზა“ (`stages`) — „ჩვენ შესახებ“ გვერდზე:** ცალკე კოლექცია §12-ში არ არის, `settings` კი `SiteSettings`-ია; `PageDraft`-ს დაემატა `stages` (არასავალდებულო). გუნდი და პარტნიორებიც იქვეა (ადმინის mock-ის `setOrg`-ის იგივე წყარო).
+8. **`sessions.csrfHash`** (§12: `csrf`) — token-ის მსგავსად hash-ით; + `lastSeenAt`, `maxExpiresAt` (B0 #10: 30 წთ / 12 სთ). `invites._id` — კოდის sha256.
+9. **`media.kind`: + `track`** (სუბტიტრის VTT, ბიბლიოთეკაში არ ჩანს — F10) — გამოყენებისა და წაშლის ბლოკისთვის.
+10. **ინდექსები prompt-ის სიაზე მეტი:** `type_createdAt` (B0 #2 — ყოველ დალაგებას ინდექსი: `list`), `type_featured_unique`, `mediaKeys`, `sessions.userId` (დეაქტივაცია — B3), `media.key_unique` / `kind_createdAt`, `subscribers.tokenHash_unique`.
+11. **`searchText`** — slug + სათაური / სახელი + აღწერა (ქართ. + ინგლ.), prompt-ის მიხედვით; ძიების ფილტრი `matchesQuery`-ის სემანტიკისაა (parity). mock-ის საჯარო ძიება სტატიებში ავტორსა და ტექსტსაც მოიცავს — B6.
+12. **მიგრაციის ჟურნალი არ არის:** ყოველი მიგრაცია იდემპოტენტურია და runner ყველას უშვებს (კონვენცია — CLAUDE.md).
+13. **dev-ის in-memory ბაზაზე migrate + seed ავტომატურად** (prompt-ში არ იყო): `server:dev` ბაზის გარეშე მონაცემით ეშვება.
+14. **ტესტის replica set — `enableTestCommands`** (`failCommand` failpoint): ატომურობა რეალური ჩავარდნით მოწმდება, არა mock-ით.
+15. **seed:** არაცარიელ ბაზაზე `--reset`-ის გარეშე — შეცდომა (არაფერი იცვლება); reset + ჩასმა ერთ ტრანზაქციაშია. `adminState`-ის დემო-მონახაზები (ავტორი `u-002`, ჩეკლისტის ხარვეზებით) seed-ში არ შედის.
+
+### ღია საკითხები
+
+1. **API-ის `Translations`** ბაზის ნაწილობრივ ტექსტურ ასლს უნდა გაუთანაბრდეს (`partialTextSchema`-ით) — B4.
+2. **`[YouTube-ის id]` წარმოებაში:** seed წარმოებაში არ ეშვება; სერვერის გამოქვეყნების ბლოკერმა `[…]` YouTube-ის id-ში შეცდომად უნდა ჩათვალოს (`validate.js` mock-ისთვის უშვებს) — B4. B6-ის საჯარო `Video` ჩანაცვლებიან id-ს spec-ით ვერ გადის (staging) — B6.
+3. **`featured` რედაქტორიდან:** B4-ის `update` მას არ უნდა იღებდეს (მხოლოდ `settings` → `setFeatured`); სხვაგვარად — 409.
+4. **გუნდის თარგმანი ორ ადგილას:** რედაქტორი — გვერდის `translations.en.team[i]`, mock-ის მონაცემი — წევრის `translations`; საჯარო `getTeam`-მა (B6) ორივე უნდა გააერთიანოს ან ერთი აირჩიოს — B4 / B6.
+5. **ფაილის წაშლის ბლოკი** (`mediaKeys`) ძველ ვერსიებს არ ითვალისწინებს — ვერსიის აღდგენამ შეიძლება წაშლილი ფაილი დააბრუნოს — B5.
+6. **`users.passwordHash`** ყველა სტატუსზე სავალდებულოა (`invited`-ის ჩათვლით) — B3-მა მოწვევის ნაკადით შეიძლება შეცვალოს (მიგრაცია 002).
+7. **deploy:** `npm run server:migrate` — Render-ის pre-deploy command; Atlas-ის მომხმარებელს `collMod` / `createIndex` სჭირდება (`readWrite` + `dbAdmin` ერთ ბაზაზე, ან მიგრაცია ცალკე მომხმარებლით) — B7.
+8. **Atlas Free:** TTL monitor 60 წმ-ში ერთხელ — B3-მა ვადა წაკითხვისასაც უნდა შეამოწმოს (`expiresAt > now`), TTL მხოლოდ დასუფთავებაა.
+9. B0 / B1-ის ღია საკითხები (ბიუჯეტი, დომენი, ვადების დადასტურება, cookie-ს `__Host-`, სერვერის შეცდომის ენა) ძალაშია — project-context §9 #24, #26, #27.
+
+### შემდეგი: B3 — ავტორიზაცია და უსაფრთხოება
+
+argon2id, cookie-სესია (`sessions`: token-ის hash, `csrfHash`, უმოქმედობა / 12 სთ), CSRF (`__Host-` ორივე მხარეს), rate limit, როლები / 403, მოწვევა (`invites`), პირველი ადმინისტრატორის ერთჯერადი სკრიპტი; repository — `server/db/users.js`, `sessions.js`, `invites.js` (B2-ის კონვენციით).

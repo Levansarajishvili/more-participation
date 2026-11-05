@@ -244,6 +244,8 @@
 
 26. B1-ის ღია საკითხები (B2–B6): ადმინის `translations.en` სქემა ჯერ თავისუფალი ობიექტია — ტიპის მიხედვით ტექსტური ველები B4-ში; მონახაზის (`*Draft`) სქემა სტრუქტურულია — სისრულე მხოლოდ გამოქვეყნებისას (`validate.js`); `content.update`-ით `status`: მხოლოდ `draft` ან უცვლელი — `published` / `scheduled` მხოლოდ `/publish` / `/schedule`-ით (B4); სერვერის ველის შეცდომის ტექსტი ახლა მხოლოდ ქართულია (გლობალური `t`) — `/en` ადმინისთვის ენა მოთხოვნიდან (B4 / B6); `[YouTube-ის id]` ჩანაცვლება spec-ს არ აკმაყოფილებს (ნამდვილი id-ის pattern) — seed-ის წესი B2-ში; მედიის id-ის ფორმა (ჩადგმული ფოტო თუ `media`-ს id) — B2 / B5; `x-step`-ის მიხედვით B3–B6 route-ებს spec-იდან `route(app, spec, operationId, handler)` არეგისტრირებს.
 
+27. B2-ის ღია საკითხები (B3–B7): API-ის `Translations` (ჯერ თავისუფალი) ბაზის ნაწილობრივ ტექსტურ ასლს უნდა გაუთანაბრდეს — თორემ ბაზა უარყოფს (121 → `validation` ველის გზით) — B4; სერვერის გამოქვეყნების ბლოკერი `[…]`-ს YouTube-ის id-ში შეცდომად უნდა თვლიდეს (`validate.js` mock-ისთვის მას უშვებს) — B4; რედაქტორის `update`-მა `featured` არ უნდა მიიღოს (მხოლოდ `setFeatured`) — B4; გუნდის თარგმანი ორ ადგილასაა — რედაქტორი წერს გვერდის `translations.en.team[i]`-ს, mock-ის მონაცემი — წევრის `translations`-ს — B4 / B6; mock-ის საჯარო ძიება სტატიებში ავტორსა და ტექსტსაც ეძებს, `searchText` — სათაურსა და აღწერას — B6; ფაილის წაშლის ბლოკი ძველ ვერსიებს არ ითვალისწინებს — B5; deploy-ის წინ `npm run server:migrate` (Render-ის pre-deploy) — B7; `users.passwordHash` სავალდებულოა ყველა სტატუსზე (`invited`-ის ჩათვლით) — B3-მა შეიძლება შეცვალოს მიგრაციით.
+
 **ყველა კვადრატული ფრჩხილი დიზაინსა და კოდში — `[00]`, `[სახელი]`, `[თარიღი]`, `[ფოტო: …]` — ჩასანაცვლებელი ადგილია. რეალური მონაცემი არსად არ არის გამოგონილი.**
 
 ## 10. გადაწყვეტილებები
@@ -390,22 +392,49 @@
 | Runtime | Node.js 22 LTS, ESM — frontend-ის იგივე ვერსია |
 | ბაზა | **MongoDB Atlas**, AWS `eu-central-1` (Frankfurt; replica set — ტრანზაქციებისთვის). B1–B6 — Free (backup ჩართული), წარმოება — Flex (ბიუჯეტი $0 → Free + კვირეული export) |
 | Framework | **Fastify 5** (5.12.7) — ვალიდაცია `server/openapi.yaml`-იდან (spec-first, B1; `Ajv2020`, `removeAdditional: false`); `@fastify/helmet` (B1); `@fastify/cookie`, `@fastify/rate-limit`, `@fastify/static`, `@fastify/multipart` — შემდეგ ნაბიჯებში |
-| ბაზასთან წვდომა | ოფიციალური **`mongodb` driver** + `$jsonSchema` validator-ები; სქემა `server/schemas/`-შია (route + validator) |
+| ბაზასთან წვდომა | ოფიციალური **`mongodb` driver** + `$jsonSchema` validator-ები — `server/openapi.yaml`-ის `*Draft`-იდან (`server/db/schema.js`, B2); repository — `server/db/`; მიგრაციები — `server/migrations/` (იდემპოტენტური) |
 | ჰოსტინგი | **Render** Web Service, Frankfurt — ერთი სერვისი: API (`/api/*`) + `dist/` (ერთი origin); წარმოება — Starter (ბიუჯეტი $0 → Fly.io `fra`); Cloudflare proxy — B7, არასავალდებულო |
 | ფაილები | **Cloudflare R2** (S3 API, `@aws-sdk/client-s3`); მიწოდება `/media/*`-ით |
 | ელფოსტა | **Resend** (`no-reply@[დომენი]`); მიმღები `CONTACT_INBOX` (env); dev / test — fake transport |
 | რეპო | იგივე რეპო, საქაღალდე `server/`; საერთო მოდულები `src/content/`-იდან — `validate.js`, `taxonomy.js`, `slug.js`, `localize.js`, `forms.js`, `text.js` (ერთი წესი ორივე მხარეს); `@/` alias Node-ში — resolve hook (`server/alias.js`, `module.registerHooks`; `imports` `@/`-ს ვერ ასახავს — B1); workspace `server` (ცალკე `package.json`, ერთი lockfile) |
 | ტესტი | Vitest (frontend-ის იგივე, `server/vitest.config.js`) + `mongodb-memory-server-core` (replica set; postinstall-ის გარეშე — deploy binary-ს არ ტვირთავს); MongoDB 8.0.34 (`fastdl.mongodb.org`, ✓ B1) |
 
-### მონაცემთა მოდელი — პირველადი ხედვა (B2-ში დასამტკიცებელი)
+### მონაცემთა მოდელი — დამტკიცებული (B2 ✅, 2026-11-05)
 
-- **`content`** — ერთი კოლექცია ყველა ტიპზე (`type: articles | series | videos | news | events | pages`): მოდელის ველები (`model.js`) + `translations.en` + მეტა (`version`, `createdAt`, `updatedAt`, `updatedBy`, `working` — გამოქვეყნებულის სამუშაო ასლი). ერთი კოლექცია ამარტივებს დაფას, ძიებას, ანგარიშს და ვერსიებს. ინდექსები: `{ type, slug }` უნიკალური, `{ type, status, publishedAt: -1 }`, `{ updatedAt: -1 }`.
-- **ძიება:** MongoDB-ის text index ქართულ ფუძეს ვერ ცნობს → ველი `searchText` (`text.js`-ის `normalizeSearch`, ქართული + ინგლისური) და ინდექსი მასზე; Atlas Search — საჭიროებისას.
-- **დაგეგმილი გამოქვეყნება** cron-ს არ საჭიროებს: საჯარო ხილვადობა წაკითხვისას ითვლება (`status` + `publishedAt <= now`, როგორც `query.js`-ის `isPublic`).
-- **ვერსიის კონფლიქტი (409):** `updateOne({ _id, version }, { $set, $inc: { version: 1 } })` — `matchedCount: 0` → `conflict`.
-- **`versions`** — `{ contentId, version, item, at, by }`; **`users`** — `email` უნიკალური, `passwordHash` (argon2id), `role`, `status`; **`sessions`** — token-ის hash, `userId`, `csrf`, `expiresAt` (TTL ინდექსი); **`invites`** — კოდის hash, როლი, ელფოსტა, `expiresAt` (TTL), `usedAt`; **`media`** — საცავის გასაღები, alt, ratio, ზომა, ენა, `tagged`; **`settings`** — ერთი დოკუმენტი + `translations.en`; **`messages`** (კონტაქტის ფორმა; TTL — B0 #10); **`subscribers`** — `email` (უნიკალური, ნორმალიზებული), `status: pending | confirmed`, `tokenHash`, `expiresAt` (TTL მხოლოდ `pending`-ზე), `confirmedAt`, `source`, `lang`; გაუქმება = წაშლა.
-- **B2-ის საკითხი:** ფოტო მასალაში ჩადგმული ობიექტია (`{ src, alt, ratio }`, როგორც ახლა) თუ `media`-ს id-ით მითითება (alt ერთ ადგილას ინახება).
-- **ტრანზაქცია** — გამოქვეყნება + ვერსიის ჩაწერა + რჩეულის ერთადერთობა ერთად; replica set-ს საჭიროებს.
+validator-ები `server/openapi.yaml`-ის `*Draft` სქემებიდან იქმნება (`server/db/schema.js`: `$ref` იხსნება, `integer` → `number` + `multipleOf: 1`, `const` → `enum`, `format` იშლება) — მოდელი ერთ ადგილას იწერება; ajv ↔ MongoDB-ის თანხვედრა ტესტითაა დაცული. ყოველი კოლექცია — `validationLevel: strict`, `validationAction: error`. მიგრაცია — `npm run server:migrate` (იდემპოტენტური, `server/migrations/`).
+
+| კოლექცია | ველები | ინდექსი | TTL |
+|---|---|---|---|
+| `content` | `_id` (`a-001` / `a-<ObjectId>`, პრეფიქსი ტიპით), `type`, `item` (მოდელი უცვლელად, `*Draft` ტიპის მიხედვით), `slug` (მხოლოდ შევსებული), `status`, `publishedAt` (Date), `version`, `createdAt`, `updatedAt`, `updatedBy`, `working` (`{ item, at, by }` \| null), `searchText`, `mediaKeys` | `{ type, slug }` unique (partial: slug არსებობს); `{ type, status, publishedAt: -1 }`; `{ updatedAt: -1 }`; `{ searchText }`; `{ type, createdAt, _id }`; `{ type }` unique partial `item.featured: true` (ერთი რჩეული ტიპზე); `{ mediaKeys }` | — |
+| `versions` | `contentId`, `type`, `version`, `item` (`*Draft`), `at`, `by` | `{ contentId, version: -1 }` unique | — (ბოლო `VERSIONS_KEEP` = 30, ჭრა ტრანზაქციაში) |
+| `users` | `_id` (`u-…`), `name`, `email` (ნორმალიზებული), `passwordHash` (მხოლოდ `$argon2id$v=19$`), `role`, `status`, `createdAt`, `updatedAt`, `lastLoginAt?` | `{ email }` unique | — |
+| `sessions` | `_id` = token-ის sha256, `userId`, `csrfHash`, `createdAt`, `lastSeenAt`, `expiresAt` (უმოქმედობა), `maxExpiresAt` (12 სთ) | `{ userId }` | `expiresAt`, 0 |
+| `invites` | `_id` = კოდის sha256, `role`, `email` \| null, `createdAt`, `createdBy`, `expiresAt`, `usedAt`, `usedBy` | — | `expiresAt`, 0 |
+| `media` | `_id` (`m-…`), `kind` (`image` \| `document` \| `track`), `key` (R2), `mime`, `size`, `title`, `alt` (შემოთავაზება), `ratio`, `width`, `height`, `lang`, `tagged`, `createdAt`, `createdBy` | `{ key }` unique; `{ kind, createdAt: -1 }` | — |
+| `settings` | `_id: 'site'`, `item` (`SiteSettingsDraft`, `translations.en`-ით), `version`, `updatedAt`, `updatedBy` | — | — |
+| `messages` | `ContactPayload`-ის ველები honeypot-ის გარეშე (`consent: true`), `lang`, `createdAt`, `sentAt` | — | `createdAt`, `MESSAGES_TTL_DAYS` (30) |
+| `subscribers` | `email` (ნორმალიზებული), `status` (`pending` → `tokenHash` + `expiresAt`; `confirmed` → `confirmedAt`, ბმულის გარეშე), `source`, `lang`, `createdAt` | `{ email }` unique; `{ tokenHash }` unique partial | `expiresAt`, 0, მხოლოდ `pending` |
+
+- **`item` ზედა დონეზე არ ჩამოდის:** სიახლის `type` (announcement…) კოლექციის `type`-ს ემთხვევა, სტატიის `updatedAt` (საჯარო „განახლდა“) — მეტას. ზედა დონის `slug`, `status`, `publishedAt`, `searchText`, `mediaKeys` ჩაწერისას `item`-იდან ითვლება (`server/db/derive.js`). `publishedAt` Date-ია: ISO სტრიქონი სხვადასხვა ოფსეტით ქრონოლოგიურად არ ლაგდება; `item.publishedAt` სტრიქონად რჩება.
+- **`translations.en`** ბაზაში მშობლის ნაწილობრივი ტექსტური ასლია: მხოლოდ ტექსტური ველები (enum, რიცხვი, boolean, თარიღი, id, slug, მისამართი, ფაილი, YouTube — არა), არაფერი სავალდებულო, `null` დასაშვებია (რედაქტორის მასივის ნახვრეტი); `body` (ტექსტის ბლოკები) — სრული სქემა. რედაქტორის ყოველი თარგმნადი ველი ბაზაში ინახება (ტესტი ადმინის სქემებით). API-ის `Translations` ჯერ თავისუფალი ობიექტია — B4 მას იმავე წესით დააზუსტებს.
+- **ძიება:** `searchText` = `normalizeSearch`(slug, სათაური / სახელი, აღწერა — ქართული და ინგლისური); ფილტრი `searchFilter(q)` — `matchesQuery`-ის სემანტიკა (`searchStem`, AND, ნაწილობრივი დამთხვევა), `$regex` ინდექსზე `searchText`. Atlas Search — საჭიროებისას.
+- **დაგეგმილი გამოქვეყნება** cron-ს არ საჭიროებს: საჯარო ფილტრი `status: published` ან `scheduled` + `publishedAt <= now` (`query.js`-ის `isPublic`, ინდექსი `{ type, status, publishedAt: -1 }`).
+- **ვერსიის კონფლიქტი (409):** `updateOne({ _id, version }, { $set, $inc: { version: 1 } })` — `matchedCount: 0` → `conflict`. ისტორიის ჩანაწერი, ჭრა და რჩეულის ცვლილება ერთ ტრანზაქციაშია (`withTransaction`, replica set).
+- **რჩეული:** ერთი ტიპზე (სტატია, სერია, ვიდეო, სიახლე) — ტრანზაქცია + უნიკალური partial ინდექსი (ტრანზაქცია მარტო write skew-ს ვერ აკავებს, როცა რჩეული ჯერ არ არის); `featured` მხოლოდ `setFeatured`-ით იცვლება, ვერსიის აღდგენა მას არ ცვლის.
+- **გუნდი, პარტნიორები, „ჩვენი გზა“** — „ჩვენ შესახებ“ გვერდის (`pages`, slug `about`) `item`-ში (`team`, `partners`, `stages`; `PageDraft`-ს `stages` B2-ში დაემატა). ცალკე კოლექცია არ არის.
+- **Seed** (`npm run server:seed`): `createMockData()` (თარგმანებით) + ადმინის 7 გვერდი, mock-ის id-ებითა და მეტათი; `validateContent` ბაზიდან წაკითხულზე — 0. მომხმარებელი არ იქმნება (B3). წარმოებაში არ ეშვება; `[YouTube-ის id]` და სხვა `[…]` მხოლოდ dev / staging-ზე. dev-ის in-memory ბაზაზე migrate + seed ავტომატურია.
+
+#### ფოტო: ჩადგმული ობიექტი თუ `media`-ს id (B2 — გადაწყვეტილია)
+
+| კრიტერიუმი | ჩადგმული `{ src, alt, ratio }` (არჩეული) | `media`-ს id |
+|---|---|---|
+| alt-ის წყარო | თითო გამოყენებაზე, მასალაში — ერთი ფოტო სხვადასხვა კონტექსტში სხვა alt-ს საჭიროებს (WCAG 1.1.1); ინგლისური — `translations.en.cover.alt` (`localize`); ვერსია alt-საც ინახავს | ერთ ადგილას — ყველგან ერთნაირი, კონტექსტისგან დამოუკიდებლად; ინგლისურს `media`-ში ცალკე თარგმანი სჭირდება; ძველი ვერსიის აღდგენა alt-ს ვერ აბრუნებს |
+| გამოყენების დათვლა | `mediaKeys` (`src` → `/media/<key>`, სამუშაო ასლითაც), multikey ინდექსი | მითითების ველის ინდექსი — იგივე სირთულე |
+| წაშლის ბლოკი | `countDocuments({ mediaKeys: key })` → `conflict` (B5) | იგივე |
+| კითხვა / ვალიდაცია | `validate.js`, `localize.js`, საჯარო პასუხი — ცვლილების გარეშე | `$lookup` ან მეორე მოთხოვნა ყოველ პასუხზე (Atlas Free — 100 ops/s); `validate.js` ფოტოს გახსნილ ობიექტს ელოდება |
+| მიგრაცია | არ სჭირდება (მოდელი უცვლელია) | `model.js`, adapter-ები, რედაქტორი, OpenAPI `Image` — კონტრაქტი ორივე მხარეს; ყოველი მასალისა და ვერსიის გადაწერა |
+
+**არჩევანი — ჩადგმული ობიექტი.** `media` — ფაილების რეესტრი (საცავის გასაღები, MIME, ზომა, PDF-ის ენა / tagged, ატვირთვისას მიცემული alt — შემოთავაზება ჩასმისას); ავტორიტეტული alt მასალაშია. ბიბლიოთეკის „alt-ის შეცვლა“ (F8, `img:<id>:<ველი>`) უკვე თითო გამოყენებაზე მუშაობს. მომავალში id-ზე გადასვლა `mediaKeys`-ით შესაძლებელია.
 
 ### Backend-ის წესები (არადათმობადი)
 
@@ -425,7 +454,7 @@
 |---|---|---|---|
 | B0 ✅ | გადაწყვეტილებები (2026-11-04) | ქვემოთ — 11 პუნქტი; §9, §10, §11, §12 განახლებულია | ღია საკითხი B1-ს არ ბლოკავს ✓ |
 | B1 ✅ | API-ის სპეციფიკაცია + `server/`-ის ჩონჩხი (2026-11-05) | OpenAPI 3.1 (46 ოპერაცია, 138 სქემა), config (`.env`), health-check, საერთო მოდულების import, lint / test | frontend-ის HTTP adapter-ის contract-ტესტი spec-თან მწვანეა ✓ |
-| B2 | მონაცემთა ბაზა | კოლექციები, `$jsonSchema` validator-ები, ინდექსები, seed (mock-იდან), მიგრაციის სკრიპტი | seed-ზე `validateContent` — 0 შენიშვნა; ინდექსები ტესტით |
+| B2 ✅ | მონაცემთა ბაზა (2026-11-05) | 9 კოლექცია, `$jsonSchema` (`*Draft`-იდან), ინდექსები და TTL, repository (`content`, `settings`), `server:migrate`, `server:seed` | seed-ზე `validateContent` — 0 ✓; ინდექსები და TTL ტესტით ✓; parity mock-თან ✓ |
 | B3 | ავტორიზაცია და უსაფრთხოება | argon2id, cookie-სესია (TTL), CSRF, rate limit, როლები / 403, მოწვევა, სესიის გაგრძელება, CORS, უსაფრთხოების header-ები | შესვლის ზოგადი შეცდომა (ტექსტი და დრო); ASVS L1-ის ჩეკლისტი; ტესტები |
 | B4 | კონტენტი (ადმინი) | CRUD, ავტოშენახვის სამუშაო ასლი, გამოქვეყნება / დაგეგმვა (სერვერზე `validate.js`), ვერსიები / აღდგენა, 409, წაშლა, ძიება, stats, a11yReport, პარამეტრები + რჩეული | frontend-ის ადმინის ტესტები HTTP adapter-ით მწვანეა |
 | B5 | მედია და დოკუმენტები | ატვირთვა (ზომის / ტიპის ზღვარი, MIME-ის შემოწმება; სუბტიტრის VTT — `WEBVTT` თავსართი), ობიექტების საცავი, alt, გამოყენება, წაშლის ბლოკი, PDF-ის ენა / tagged | alt-ის გარეშე ფოტო და ქართული VTT-ის გარეშე ვიდეო გამოქვეყნებას ბლოკავს სერვერზე |
@@ -458,10 +487,10 @@ F10 (YouTube) ✅ — B0-ის შემდეგ და **B1-მდე**: ვ�
 
 | მონაცემი | ვადა | მექანიზმი | ნაბიჯი |
 |---|---|---|---|
-| კონტაქტის შეტყობინება (`messages`) | 30 დღე | TTL `createdAt`-ზე; წერილი უკვე inbox-შია (ორგანიზაციის პასუხისმგებლობა) | B2 / B6 |
+| კონტაქტის შეტყობინება (`messages`) | 30 დღე | TTL `createdAt`-ზე, `MESSAGES_TTL_DAYS` (B2 ✓; ცვლილება → `server:migrate`); წერილი უკვე inbox-შია (ორგანიზაციის პასუხისმგებლობა) | B2 / B6 |
 | გამოწერა, `pending` | 7 დღე | TTL `expiresAt` (= ბმულის ვადა) | B6 |
 | გამოწერა, `confirmed` | გაუქმებამდე; გაუქმება = წაშლა | — | B6 |
-| ვერსიები | ბოლო 30 თითო მასალაზე; მასალის წაშლისას ყველა (F8.1) | ჭრა ჩაწერის ტრანზაქციაში | B4 |
+| ვერსიები | ბოლო 30 თითო მასალაზე; მასალის წაშლისას ყველა (F8.1) | ჭრა ჩაწერის ტრანზაქციაში, `VERSIONS_KEEP` (B2 ✓ — repository) | B4 |
 | სესია | უმოქმედობა 30 წთ, მაქსიმუმ 12 სთ | TTL `expiresAt` | B3 |
 | მოწვევა | 7 დღე (mock-ში 14) | TTL | B3 |
 | აპლიკაციის ლოგი | პლატფორმის ნაგულისხმევი `[ვადა — შესამოწმებელი]` | PII არ იწერება (IP, ელფოსტა, სახელი, ტექსტი); rate limit-ის IP მხოლოდ მეხსიერებაში, ფანჯრის ვადით | B1 / B7 |
