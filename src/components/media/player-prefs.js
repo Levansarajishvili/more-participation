@@ -4,8 +4,9 @@ import { RATES } from './native-controller.js';
 
 /**
  * ფლეიერის არჩევანი ვიდეოებს შორის და სესიებს შორის ინახება: `localStorage['mc-player']` =
- * `{ captions, sign, audioDescription, rate }`. ნაგულისხმევი — სუბტიტრები და ჟესტური ენა ჩართულია
- * (ContentKit / VideosPage), აუდიოაღწერა გამორთულია, სიჩქარე 1×. ხმა არ ინახება.
+ * `{ captions, sign, audioDescription, rate }`. ნაგულისხმევი — სუბტიტრები ჩართულია, აუდიოაღწერა
+ * გამორთულია, სიჩქარე 1×. ხმა არ ინახება. `sign` მხოლოდ F7-ის native ფლეიერს ეხება (`/__kit`) —
+ * YouTube-ის ვიდეოზე ჟესტური ენის ვერსია არ არის (B0) და ის იგნორდება.
  */
 export const PLAYER_STORAGE_KEY = 'mc-player';
 

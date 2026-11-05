@@ -12,7 +12,10 @@ import { fieldId, getIn } from './path.js';
  * ფაილი, ფოტო და სტრუქტურა (დამატება, წაშლა, რიგი) ქართული ვერსიისაა. ყოველი ველი
  * არასავალდებულოა: ცარიელი საიტზე ქართულად ჩანს. მინიშნება — ქართული ორიგინალი.
  *
- * @typedef {import('../schemas/index.js').FieldSchema & { translate?: boolean }} TranslatableField
+ * F10: სუბტიტრის ველი (`translate: 'track'`) English ჩანართში ინგლისურ VTT-ს ტვირთავს — ბილიკი
+ * `captions`-შია (`srclang: 'en'`), არა `translations.en`-ში: ფაილი თარგმანის ტექსტი არ არის.
+ *
+ * @typedef {import('../schemas/index.js').FieldSchema} TranslatableField
  */
 
 /** ქართული ორიგინალი მინიშნებად (≤ 140 სიმბოლო). @param {unknown} value */
@@ -58,6 +61,23 @@ export default function TranslationFields({ sections, ctx, headingLevel: Heading
  */
 function EnField({ field, path, ctx }) {
   const enPath = `${EN_PREFIX}.${path}`;
+  if (field.translate === 'track') {
+    return (
+      <div className="mc-en-field">
+        <FieldRenderer
+          field={{
+            ...field,
+            srclang: 'en',
+            required: false,
+            label: 'editor.fields.captionsEn',
+            hint: 'editor.hints.captionsEn',
+          }}
+          path={path}
+          ctx={ctx}
+        />
+      </div>
+    );
+  }
   if (field.kind === 'image') {
     const id = fieldId(`${enPath}.alt`);
     return (

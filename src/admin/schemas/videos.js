@@ -3,8 +3,11 @@ import { VIDEO_CATEGORIES } from '@/content/taxonomy.js';
 import { excerptField, isoDays, slugField, titleField } from './common.js';
 
 /**
- * ვიდეო: პოსტერი 16:9, ფაილი, VTT სუბტიტრები, ტრანსკრიპტი (VTT-დან იმპორტით), აუდიოაღწერა
- * (ან „ვიზუალური ინფორმაცია აუდიოშიცაა“), ჟესტური ენის ვიდეო.
+ * ვიდეო (F10, B0 / B0.1): წყარო — YouTube-ის ბმული (ინახება მხოლოდ id; ფაილი საიტზე არ
+ * იტვირთება); სათაური და მოკლე აღწერა რედაქტორი წერს — ბმულის ჩასმა მათ არ ავსებს და არ ცვლის,
+ * YouTube-ის oEmbed / Data API არ გამოიძახება. კადრი id-იდან ითვლება (`<img>`). სუბტიტრი — ჩვენი VTT
+ * (ქართული სავალდებულო; ინგლისური — English ჩანართში), აუდიოაღწერა — ცალკე YouTube-ვერსია ან
+ * „ვიზუალური ინფორმაცია აუდიოშიცაა“, ტრანსკრიპტი (VTT-დან იმპორტით). ჟესტური ენის ვერსია არ კეთდება.
  */
 /** @type {import('./index.js').EntitySchema} */
 export default {
@@ -35,49 +38,34 @@ export default {
       title: 'editor.sections.video',
       fields: [
         {
-          name: 'poster',
-          kind: 'image',
-          label: 'editor.fields.poster',
-          ratio: '16:9',
+          name: 'youtube.id',
+          kind: 'youtube',
+          label: 'editor.fields.youtube',
+          hint: 'editor.hints.youtube',
           required: true,
+          preview: true,
         },
         {
-          name: 'sources[0]',
-          kind: 'file',
-          label: 'editor.fields.videoFile',
-          accept: 'video/*',
-          template: { type: 'video/mp4' },
-        },
-        {
-          name: 'captions[0]',
-          kind: 'file',
+          name: 'captions',
+          kind: 'captions',
           label: 'editor.fields.captions',
           hint: 'editor.hints.captions',
-          accept: '.vtt,text/vtt',
+          srclang: 'ka',
           required: true,
-          template: { kind: 'captions', srclang: 'ka', label: 'ქართული', default: true },
+          translate: 'track',
         },
         {
-          name: 'audioDescription',
-          kind: 'file',
-          label: 'editor.fields.audioDescription',
-          hint: 'editor.hints.audioDescription',
-          accept: 'audio/*,video/*',
-          template: { srclang: 'ka', label: 'აუდიოაღწერა' },
+          name: 'youtube.adId',
+          kind: 'youtube',
+          label: 'editor.fields.youtubeAd',
+          hint: 'editor.hints.youtubeAd',
+          differentFrom: 'youtube.id',
         },
         {
           name: 'visualInAudio',
           kind: 'checkbox',
           label: 'editor.fields.visualInAudio',
           hint: 'editor.hints.visualInAudio',
-        },
-        {
-          name: 'signLanguage',
-          kind: 'file',
-          label: 'editor.fields.signLanguage',
-          hint: 'editor.hints.signLanguage',
-          accept: 'video/*',
-          template: { label: 'ჟესტური ენა' },
         },
       ],
     },
@@ -125,26 +113,22 @@ export default {
     excerpt: '',
     category: VIDEO_CATEGORIES[0],
     person: { name: '', role: '' },
-    poster: { src: null, alt: '', ratio: '16:9' },
     duration: 0,
     language: 'ka',
     status: 'draft',
     publishedAt: isoDays(now, 0),
     featured: false,
-    sources: [],
+    youtube: { id: '' },
     captions: [],
-    audioDescription: null,
-    signLanguage: null,
     transcript: [],
     visualInAudio: false,
   }),
   rules: [
     'required',
-    'altMissing',
+    'videoSource',
     'captionsMissing',
     'transcriptMissing',
     'audioDescriptionMissing',
-    'signLanguageMissing',
     'contrast',
   ],
 };

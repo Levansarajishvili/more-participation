@@ -1,8 +1,10 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 
 import {
   Button,
   Checkbox,
+  Icon,
   LiveRegion,
   Media,
   RadioGroup,
@@ -13,12 +15,13 @@ import {
 import { FieldError, FieldHint } from '@/components/ui/fields/Field.jsx';
 import { slugify } from '@/content/slug.js';
 import { options as taxonomyOptions } from '@/content/taxonomy.js';
-import { formatFileSize } from '@/i18n/index.js';
+import { VTT_MAX_BYTES, parseCaptions, parseVtt, summarizeCues } from '@/content/vtt.js';
+import { isYouTubeId, parseYouTube, youtubePoster } from '@/content/youtube.js';
+import { formatDuration, formatFileSize } from '@/i18n/index.js';
 
 import { ta } from '../../i18n/index.js';
 import { fromClock, joinTbilisi, splitTbilisi, toClock } from '../datetime.js';
 import { fieldId, getIn } from '../path.js';
-import { parseVtt } from '../vtt.js';
 
 /** TipTap ცალკე chunk-ია: პარამეტრების / ბიბლიოთეკის ეკრანები მას არ ტვირთავს. */
 const RichTextEditor = lazy(() => import('../RichTextEditor.jsx'));
@@ -36,6 +39,8 @@ const RichTextEditor = lazy(() => import('../RichTextEditor.jsx'));
  * @property {(path: string) => string | null} errorFor
  * @property {(file: File) => Promise<string | null>} upload
  * @property {(slug: string) => Promise<boolean>} checkSlug
+ * @property {(id: string) => Promise<{ available: boolean, usedBy: { id: string, title: string } | null }>} [checkYouTube]
+ *   F10: YouTube-ის id სხვა ვიდეოში უკვე არის? (ჩვენი საცავი — YouTube-თან მოთხოვნა არ ხდება)
  * @property {import('../../content-types.js').ContentType} type
  */
 
@@ -145,6 +150,10 @@ export default function FieldRenderer({ field, path = field.name, ctx }) {
       return <DurationField field={field} path={path} ctx={ctx} />;
     case 'repeater':
       return <RepeaterField field={field} path={path} ctx={ctx} />;
+    case 'youtube':
+      return <YouTubeField field={field} path={path} ctx={ctx} />;
+    case 'captions':
+      return <CaptionsField field={field} path={path} ctx={ctx} />;
     default:
       return null;
   }
@@ -513,6 +522,286 @@ function FileField({ field, path, ctx }) {
         </div>
       )}
       {ctx.errorFor(path) && <FieldError id={`${id}-error`}>{ctx.errorFor(path)}</FieldError>}
+      <LiveRegion>{status}</LiveRegion>
+    </fieldset>
+  );
+}
+
+/* ─── F10: YouTube-ის ბმული ───────────────────────────────────────────── */
+
+/** @param {string} id */
+const watchUrl = (id) => `https://www.youtube.com/watch?v=${id}`;
+
+/**
+ * YouTube-ის ბმული: ჩასმისას ინახება მხოლოდ id (`parseYouTube`), ქვეშ — „ვიდეოს id: …“ და (მთავარ
+ * ველზე) კადრის გადახედვა `<img>`-ით. სათაური და აღწერა ცალკე ველებია და ბმულის ჩასმა მათ არ ცვლის —
+ * YouTube-თან ქსელის მოთხოვნა (oEmbed / Data API) აქ არ ხდება.
+ * - არასწორი ბმული → ველის შეცდომა ხატულით და ტექსტით (ჩასმისას ან ველიდან გასვლისას — აკრეფის შუაში არა);
+ *   მოდელში id იშლება, რომ ჩეკლისტმა „ვიდეოს წყარო“ დაბლოკოს;
+ * - `differentFrom` — აუდიოაღწერის ვერსია მთავარ ვიდეოს არ უნდა ემთხვეოდეს;
+ * - `preview` — სხვა ვიდეოში უკვე გამოყენებული id → გაფრთხილება ბმულით იმ მასალაზე (`checkYouTube`).
+ * @param {{ field: FieldSchema, path: string, ctx: FieldContext }} props
+ */
+function YouTubeField({ field, path, ctx }) {
+  const stored = /** @type {string} */ (getIn(ctx.values, path) ?? '');
+  const display = (/** @type {string} */ value) => (isYouTubeId(value) ? watchUrl(value) : value);
+  const [text, setText] = useState(() => display(stored));
+  const [lastStored, setLastStored] = useState(stored);
+  const [touched, setTouched] = useState(false);
+  const [status, setStatus] = useState('');
+  // დუბლიკატის პასუხი იმ id-სთვის, რომელზეც შემოწმდა (ძველი პასუხი ახალ id-ზე არ ჩანს)
+  const [duplicate, setDuplicate] = useState(
+    /** @type {{ for: string, usedBy: { id: string, title: string } | null }} */ ({
+      for: '',
+      usedBy: null,
+    }),
+  );
+  const id = fieldId(path);
+  const valid = isYouTubeId(stored);
+  const usedBy = field.preview && valid && duplicate.for === stored ? duplicate.usedBy : null;
+  const other = field.differentFrom ? getIn(ctx.values, field.differentFrom) : null;
+
+  // ველის მნიშვნელობა გარედან შეიცვალა (ვერსიის აღდგენა, კონფლიქტი) — ტექსტი მას მიჰყვება
+  if (stored !== lastStored) {
+    setLastStored(stored);
+    if (parseYouTube(text) !== stored && !(stored === '' && text.trim() !== '')) {
+      setText(display(stored));
+    }
+  }
+
+  useEffect(() => {
+    if (!field.preview || !valid || !ctx.checkYouTube) return undefined;
+    let alive = true;
+    ctx
+      .checkYouTube(stored)
+      .then(
+        (result) =>
+          alive && setDuplicate({ for: stored, usedBy: result.available ? null : result.usedBy }),
+      )
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+    // ctx.checkYouTube სტაბილურია (EntityEditor)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stored, valid, field.preview]);
+
+  /** @param {string} value @param {boolean} [settle] ჩასმა / ველიდან გასვლა — შეცდომა ჩანს */
+  function update(value, settle = false) {
+    setText(value);
+    const parsed = parseYouTube(value);
+    if (settle) setTouched(true);
+    if (parsed) {
+      if (parsed !== stored) setStatus(ta('editor.youtube.recognized', { id: parsed }));
+      ctx.setValue(path, parsed);
+    } else if (stored !== '') {
+      ctx.setValue(path, '');
+    }
+  }
+
+  const parsedNow = parseYouTube(text);
+  let error = null;
+  if (text.trim() && !parsedNow && touched) error = ta('editor.youtube.invalid');
+  else if (valid && other && other === stored) error = ta('editor.youtube.same');
+  else error = ctx.errorFor(path);
+
+  const poster = youtubePoster(stored);
+  return (
+    <div className="mc-youtube-field">
+      <TextField
+        id={id}
+        type="url"
+        inputMode="url"
+        lang="en"
+        spellCheck={false}
+        autoCapitalize="none"
+        autoComplete="off"
+        label={ta(field.label)}
+        hint={field.hint ? ta(field.hint) : undefined}
+        error={error}
+        required={field.required}
+        optional={!field.required}
+        aria-describedby={
+          [
+            field.hint && `${id}-hint`,
+            error && `${id}-error`,
+            valid && `${id}-id`,
+            usedBy && `${id}-warning`,
+          ]
+            .filter(Boolean)
+            .join(' ') || undefined
+        }
+        value={text}
+        onChange={(event) => update(event.target.value)}
+        onPaste={(event) => {
+          const pasted = event.clipboardData?.getData('text') ?? '';
+          if (!pasted) return;
+          event.preventDefault();
+          update(pasted.trim(), true);
+        }}
+        onBlur={() => {
+          setTouched(true);
+          ctx.onBlur();
+        }}
+      />
+      {valid && (
+        <p className="mc-youtube-field__id" id={`${id}-id`}>
+          {ta('editor.youtube.idLabel')}{' '}
+          <code lang="en" translate="no">
+            {stored}
+          </code>
+        </p>
+      )}
+      {valid && field.preview && (
+        <Media
+          image={poster}
+          fallbackSrc={poster.fallbackSrc}
+          ratio="16:9"
+          kind="poster"
+          decorative
+          className="mc-youtube-field__preview"
+        />
+      )}
+      {usedBy && (
+        <p className="mc-field-warning" id={`${id}-warning`}>
+          <Icon name="alert" size="1.25rem" className="mc-field-warning__icon" />
+          <span>
+            {ta('editor.youtube.duplicate')}{' '}
+            <Link to={`/admin/videos/${encodeURIComponent(usedBy.id)}`}>{usedBy.title}</Link>
+          </span>
+        </p>
+      )}
+      <LiveRegion>{status}</LiveRegion>
+    </div>
+  );
+}
+
+/* ─── F10: სუბტიტრი (ჩვენი VTT) ───────────────────────────────────────── */
+
+/**
+ * WebVTT-ის ატვირთვა ერთ ენაზე (`srclang`). ფაილი ჯერ მოწმდება (`parseCaptions`) — დაზიანებული,
+ * დაულაგებელი ან ცარიელი არ ინახება და შეცდომა სტრიქონის ნომრით ჩანს; სწორზე ბილიკს ემატება
+ * `cues` და `end` (ჩეკლისტი: ცარიელი არ არის, ვიდეოზე გრძელი არ არის). ქართული ნაგულისხმევია.
+ * @param {{ field: FieldSchema, path: string, ctx: FieldContext }} props
+ */
+function CaptionsField({ field, path, ctx }) {
+  const srclang = field.srclang ?? 'ka';
+  const tracks = /** @type {import('@/content/model.js').CaptionTrack[]} */ (
+    getIn(ctx.values, path) ?? []
+  );
+  const track = tracks.find((item) => item.srclang === srclang) ?? null;
+  const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  const [status, setStatus] = useState('');
+  const [problem, setProblem] = useState(/** @type {string | null} */ (null));
+  const [busy, setBusy] = useState(false);
+  const id = fieldId(srclang === 'ka' ? path : `${path}-${srclang}`);
+  const label = ta(field.label);
+
+  /** @param {File | undefined} file */
+  async function take(file) {
+    if (!file) return;
+    setProblem(null);
+    if (!/\.vtt$/i.test(file.name) && file.type !== 'text/vtt') {
+      setProblem(ta('editor.captions.errors.type'));
+      return;
+    }
+    if (file.size > VTT_MAX_BYTES) {
+      setProblem(ta('editor.captions.errors.size', { max: formatFileSize(VTT_MAX_BYTES) }));
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = parseCaptions(await file.text());
+      if (!result.ok) {
+        setProblem(ta(`editor.captions.errors.${result.code}`, { line: result.line }));
+        return;
+      }
+      const src = await ctx.upload(file);
+      /** @type {import('@/content/model.js').CaptionTrack} */
+      const next = {
+        kind: srclang === 'ka' ? 'captions' : 'subtitles',
+        srclang,
+        label: srclang === 'ka' ? 'ქართული' : 'English',
+        src,
+        default: srclang === 'ka',
+        ...summarizeCues(result.cues),
+      };
+      ctx.setValue(path, [...tracks.filter((item) => item.srclang !== srclang), next]);
+      setStatus(ta('editor.captions.uploaded', { name: file.name, cues: result.cues.length }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const error = problem ?? (srclang === 'ka' ? ctx.errorFor(path) : null);
+  const hintId = `${id}-hint`;
+  const errorId = `${id}-error`;
+  return (
+    <fieldset
+      id={id}
+      className="mc-fieldset mc-file-field"
+      tabIndex={-1}
+      aria-describedby={
+        [field.hint && hintId, error && errorId].filter(Boolean).join(' ') || undefined
+      }
+    >
+      <legend className="mc-label">
+        {label}{' '}
+        <span className="mc-label__optional">
+          ({ta(field.required ? 'editor.required' : 'editor.optional')})
+        </span>
+      </legend>
+      {field.hint && <FieldHint id={hintId}>{ta(field.hint)}</FieldHint>}
+      <p className="mc-file-field__state">
+        {track
+          ? ta('editor.captions.attached', {
+              cues: track.cues ?? '—',
+              end: typeof track.end === 'number' ? formatDuration(track.end) : '—',
+            })
+          : ta('editor.file.none')}
+      </p>
+      <div className="mc-image-field__actions">
+        <input
+          ref={inputRef}
+          type="file"
+          accept=".vtt,text/vtt"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden="true"
+          onChange={(event) => {
+            take(event.target.files?.[0]);
+            event.target.value = '';
+          }}
+        />
+        <Button
+          variant="secondary"
+          size="sm"
+          icon="captions"
+          loading={busy}
+          onClick={() => inputRef.current?.click()}
+        >
+          {track ? ta('editor.file.replace') : ta('editor.file.upload')}
+          <span className="sr-only">: {label}</span>
+        </Button>
+        {track && (
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              ctx.setValue(
+                path,
+                tracks.filter((item) => item.srclang !== srclang),
+              );
+              setProblem(null);
+              setStatus(ta('editor.file.removed'));
+            }}
+          >
+            {ta('editor.file.remove')}
+            <span className="sr-only">: {label}</span>
+          </Button>
+        )}
+      </div>
+      {error && <FieldError id={errorId}>{error}</FieldError>}
       <LiveRegion>{status}</LiveRegion>
     </fieldset>
   );

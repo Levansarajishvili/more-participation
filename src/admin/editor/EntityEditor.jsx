@@ -284,7 +284,22 @@ export default function EntityEditor({ type, routeId }) {
     [type],
   );
 
-  const ctx = { values, setValue, onBlur: saveNow, errorFor, upload, checkSlug, type };
+  // F10: YouTube-ის id-ის დუბლიკატი — ჩვენს საცავში (YouTube-თან მოთხოვნა არ ხდება)
+  const checkYouTube = useCallback(
+    async (/** @type {string} */ youtubeId) => content.checkYouTube(youtubeId, idRef.current),
+    [],
+  );
+
+  const ctx = {
+    values,
+    setValue,
+    onBlur: saveNow,
+    errorFor,
+    upload,
+    checkSlug,
+    checkYouTube,
+    type,
+  };
 
   /* ─── გამოქვეყნება ─────────────────────────────────────────────────── */
 

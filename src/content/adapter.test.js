@@ -207,10 +207,11 @@ describe('სერიები და ვიდეოები', () => {
     const adapter = mock();
     const all = await adapter.listVideos();
     expect(all).toHaveLength(6);
-    expect(all.every((v) => v.hasCaptions && v.hasSignLanguage && v.hasAudioDescription)).toBe(
-      true,
-    );
+    expect(all.every((v) => v.hasCaptions && v.hasAudioDescription)).toBe(true);
+    expect(all.every((v) => v.youtubeId === '[YouTube-ის id]')).toBe(true);
     expect(all[0]).not.toHaveProperty('transcript');
+    expect(all[0]).not.toHaveProperty('youtube');
+    expect(all[0]).not.toHaveProperty('hasSignLanguage');
     expect(await adapter.listVideos({ category: 'art' })).toHaveLength(2);
     const [weekly] = await adapter.listVideos({ featured: true });
     const video = await adapter.getVideo(weekly.slug);

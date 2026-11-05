@@ -1,4 +1,5 @@
 import { contentLang } from '@/content/localize.js';
+import { youtubePoster } from '@/content/youtube.js';
 import { label } from '@/content/taxonomy.js';
 import { formatDuration, formatDurationLabel, t } from '@/i18n/index.js';
 
@@ -9,7 +10,9 @@ import { cx } from '../utils.js';
 import VisuallyHidden from '../VisuallyHidden.jsx';
 
 /**
- * ვიდეოს ბარათი (`VideoSummary`): კადრი 16:9, ხანგრძლივობა, CC და ჟესტური ენის ნიშნები, ავტორი.
+ * ვიდეოს ბარათი (`VideoSummary`): კადრი 16:9, ხანგრძლივობა, CC ნიშანი, ავტორი.
+ * F10: კადრი YouTube-იდანაა (`youtubeId` → `i.ytimg.com`, maxres → hq, `alt=""` — სათაური ბარათზეა,
+ * `loading="lazy"`); id-ის ჩანაცვლებაზე — წყვეტილი ჩარჩო. ჟესტური ენის ნიშანი ამოღებულია (B0).
  * ნიშნები კადრზეა — ფოტოს ფერისგან დამოუკიდებლად იკითხება (ფიქსირებული წყვილები
  * #FFFFFF / #0B2545 15.39:1 და #0A1D38 / #FFFFFF 16.86:1); ეკრანის მკითხველი სრულ სიტყვებს ისმენს.
  * hover / ფოკუსი: დაკვრის წრე (დეკორატიული, `aria-hidden`).
@@ -19,7 +22,7 @@ import VisuallyHidden from '../VisuallyHidden.jsx';
  * F5:
  * - `eyebrow` — წარწერა კატეგორიის ნაცვლად („კვირის ვიდეო“);
  * - `feature` — დაკვრის წრე მუდმივად ჩანს და დიდია (ჰეროს ბარათი, HomePage დაფა);
- * - `layout="row"` — კადრი მარცხნივ (მცირე სია): კადრზე მხოლოდ ხანგრძლივობაა, CC / ჟესტური ენა
+ * - `layout="row"` — კადრი მარცხნივ (მცირე სია): კადრზე მხოლოდ ხანგრძლივობაა, CC / აუდიოაღწერა
  *   ეკრანის მკითხველისთვის მეტაში რჩება; ჩანაცვლების ჩარჩოში მხოლოდ „[ვიდეოს კადრი]“;
  * - `showExcerpt={false}` — მოკლე აღწერის გარეშე.
  *
@@ -48,20 +51,26 @@ export default function VideoCard({
   className,
   ...rest
 }) {
-  const { slug, title, excerpt, category, person, poster, duration } = video;
+  const { slug, title, excerpt, category, person, duration } = video;
+  const poster = youtubePoster(video.youtubeId);
   const row = layout === 'row';
   const features = [
     video.hasCaptions && t('player.captions'),
-    video.hasSignLanguage && t('player.sign'),
     video.hasAudioDescription && t('player.audioDescription'),
   ].filter(Boolean);
   const media = (
     <div className={cx('mc-video-thumb', feature && 'mc-video-thumb--feature')}>
-      <Media image={poster} ratio="16:9" kind="poster" compact={row} />
+      <Media
+        image={poster}
+        fallbackSrc={poster.fallbackSrc}
+        ratio="16:9"
+        kind="poster"
+        decorative
+        compact={row}
+      />
       {!row && (
         <span className="mc-video-thumb__badges" aria-hidden="true">
           {video.hasCaptions && <span className="mc-thumb-badge">{t('videos.badgeCaptions')}</span>}
-          {video.hasSignLanguage && <span className="mc-thumb-badge">{t('videos.badgeSign')}</span>}
         </span>
       )}
       <span className="mc-thumb-badge mc-thumb-badge--time" aria-hidden="true">

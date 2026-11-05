@@ -96,9 +96,6 @@ const EN = {
       excerpt:
         '[From the first course to the first contract — what was hardest, who helped and what I would advise.]',
       person: { role: '[Web developer]' },
-      poster: {
-        alt: '[Video still: eye level, a moment of action — the participant writes code in an office with a screen reader and headphones]',
-      },
       transcript: [
         {
           text: '[Audio description: what the first shot shows — the place, the person, the action.]',

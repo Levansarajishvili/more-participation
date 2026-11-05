@@ -87,14 +87,20 @@ describe('mock: რაოდენობები (Prompt 2)', () => {
     );
   });
 
-  it('6 ვიდეო ტრანსკრიპტით, სუბტიტრით, აუდიოაღწერით და ჟესტური ენით', () => {
+  it('F10: 6 ვიდეო — YouTube-ის id-ის ჩანაცვლება, ქართული სუბტიტრი, აუდიოაღწერის ვერსია, ტრანსკრიპტი', () => {
     expect(data.videos).toHaveLength(6);
     for (const video of data.videos) {
       expect(video.transcript.length).toBeGreaterThanOrEqual(5);
       expect(video.transcript.some((line) => line.kind === 'description')).toBe(true);
-      expect(video.captions).toHaveLength(1);
-      expect(video.audioDescription).not.toBeNull();
-      expect(video.signLanguage).not.toBeNull();
+      expect(video.captions).toEqual([
+        expect.objectContaining({ srclang: 'ka', default: true, src: null }),
+      ]);
+      expect(video.youtube.id).toMatch(/^\[.+\]$/);
+      expect(video.youtube.adId).toMatch(/^\[.+\]$/);
+      // F7-ის native ველები და ჟესტური ენა მოდელში აღარ არის (B0)
+      for (const key of ['sources', 'poster', 'signLanguage', 'audioDescription']) {
+        expect(video).not.toHaveProperty(key);
+      }
     }
     expect(data.videos.filter((v) => v.featured)).toHaveLength(1);
   });

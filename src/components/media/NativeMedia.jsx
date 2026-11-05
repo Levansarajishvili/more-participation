@@ -4,7 +4,7 @@ import { createNativeController } from './native-controller.js';
 
 /**
  * @typedef {object} MediaProps
- * @property {import('@/content/model.js').Video} video
+ * @property {import('./sources.js').NativeVideo} video
  * @property {(controller: import('./native-controller.js').PlaybackController | null) => void} onController
  *   სტაბილური ფუნქცია (`useState`-ის setter)
  * @property {boolean} signVisible   ჟესტური ენის კადრი ჩანს

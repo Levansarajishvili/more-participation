@@ -41,8 +41,9 @@ describe('შესვლა / რეგისტრაცია (AdminAuth)', (
     );
     expect(router.state.location.pathname).toBe('/admin/articles');
     expect(router.state.location.search).toBe('?status=draft');
-    await waitFor(() => expect(h1).toHaveFocus(), { timeout: 3000 });
-  });
+    await waitFor(() => expect(h1).toHaveFocus(), { timeout: 8000 });
+    // პირველი ტესტი ცივ lazy chunk-ებს ტვირთავს — 42 ფაილის პარალელურ გაშვებაზე 5 წმ არ ჰყოფნის
+  }, 20_000);
 
   it('ჩანართები: ← → Home End, roving tabindex, aria-controls, URL-ში', async () => {
     setupAdmin();

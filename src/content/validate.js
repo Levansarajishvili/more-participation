@@ -16,6 +16,7 @@ import {
   isOneOf,
 } from './taxonomy.js';
 import { inlineText } from './text.js';
+import { isPlaceholder, isYouTubeId } from './youtube.js';
 
 /**
  * კონტენტის შემოწმება — AdminPanel-ის ხელმისაწვდომობის ჩეკლისტის ანალოგი.
@@ -24,8 +25,11 @@ import { inlineText } from './text.js';
  *
  * severity:
  * - `error` — გამოქვეყნების ბლოკერი (§10): alt, სათაურების იერარქია, ბმულის ტექსტი,
- *   სუბტიტრი, ტრანსკრიპტი, აუდიოაღწერა, ასევე ფორმატის შეცდომები (slug, თარიღი, ტიპი);
- * - `warning` — გამოქვეყნება გადის: ჟესტური ენის ვერსია, ქართული სუბტიტრი ნაგულისხმევად.
+ *   ვიდეოს წყარო (YouTube-ის id), ქართული სუბტიტრი (ნაგულისხმევი, ხანგრძლივობაში ეტევა),
+ *   ტრანსკრიპტი, აუდიოაღწერა (ვერსია ან `visualInAudio`), ასევე ფორმატის შეცდომები (slug, თარიღი, ტიპი);
+ * - `warning` — გამოქვეყნება გადის: PDF/UA, ერთი YouTube-ის id ორ ვიდეოში.
+ *
+ * F10: ჟესტური ენის ვერსია B0-დან არ კეთდება — მისი გაფრთხილება ამოღებულია.
  */
 
 /** @typedef {import('./model.js').ContentSnapshot} ContentSnapshot */
@@ -316,6 +320,17 @@ export function validateSeries(series, sink = []) {
 }
 
 /**
+ * ვიდეოს id: ცარიელი → `youtubeMissing`; ფორმატით არასწორი (და არა `[ჩანაცვლება]`) → `youtubeInvalid`.
+ * @param {Collector} c @param {string} field @param {unknown} value
+ * @returns {boolean} მნიშვნელობა შევსებულია
+ */
+function youtubeId(c, field, value) {
+  if (!filled(value)) return false;
+  if (!isYouTubeId(value) && !isPlaceholder(value)) c.add('error', field, 'youtubeInvalid');
+  return true;
+}
+
+/**
  * @param {Video} video
  * @param {Issue[]} sink
  */
@@ -324,13 +339,31 @@ export function validateVideo(video, sink = []) {
   c.required(video, ['title', 'excerpt']);
   c.required(video.person ?? {}, ['name']);
   c.oneOf('category', video.category, VIDEO_CATEGORIES);
-  c.image('poster', video.poster, MEDIA_RATIO.videoPoster);
   c.publication(video);
 
-  if (!video.captions?.length) c.add('error', 'captions', 'captionsMissing');
-  else if (!video.captions.some((track) => track.srclang === video.language && track.default)) {
-    c.add('warning', 'captions', 'captionsDefault');
+  // F10: წყარო — YouTube-ის id (ბმულიდან ამოღებული; ფაილი საიტზე არ იტვირთება)
+  const id = video.youtube?.id;
+  if (!youtubeId(c, 'youtube.id', id)) c.add('error', 'youtube.id', 'youtubeMissing');
+
+  // სუბტიტრი — ჩვენი VTT: ქართული სავალდებულოა და ნაგულისხმევია; ფაილი ხანგრძლივობაში ეტევა
+  const tracks = Array.isArray(video.captions) ? video.captions : [];
+  const ka = tracks.find((track) => track.srclang === 'ka');
+  if (!ka) c.add('error', 'captions', 'captionsMissing');
+  else {
+    if (!ka.default) c.add('error', 'captions', 'captionsDefault');
+    if (ka.cues === 0) c.add('error', 'captions', 'captionsEmpty');
   }
+  const limit = Number.isFinite(video.duration) && video.duration > 0 ? video.duration + 1 : null;
+  for (const track of tracks) {
+    if (limit !== null && typeof track.end === 'number' && track.end > limit) {
+      c.add('error', 'captions', 'captionsLength', {
+        lang: track.srclang,
+        end: Math.round(track.end),
+        duration: Math.round(video.duration),
+      });
+    }
+  }
+
   if (!video.transcript?.length) c.add('error', 'transcript', 'transcriptMissing');
   else {
     const ordered = video.transcript.every(
@@ -343,12 +376,35 @@ export function validateVideo(video, sink = []) {
     );
     if (!ordered) c.add('error', 'transcript', 'transcriptOrder');
   }
-  // F8: აუდიოაღწერა არ სჭირდება, თუ რედაქტორმა მონიშნა „ვიზუალური ინფორმაცია აუდიოშიცაა“
-  if (!video.audioDescription && !video.visualInAudio) {
-    c.add('error', 'audioDescription', 'audioDescriptionMissing');
+
+  // აუდიოაღწერა — ცალკე YouTube-ვერსია ან „ვიზუალური ინფორმაცია აუდიოშიცაა“
+  const adId = video.youtube?.adId;
+  if (youtubeId(c, 'youtube.adId', adId)) {
+    if (adId === id) c.add('error', 'youtube.adId', 'audioDescriptionSame');
+  } else if (!video.visualInAudio) {
+    c.add('error', 'youtube.adId', 'audioDescriptionMissing');
   }
-  if (!video.signLanguage) c.add('warning', 'signLanguage', 'signLanguageMissing');
   return sink;
+}
+
+/**
+ * ერთი YouTube-ის id ორ ვიდეოში (ჩანაცვლების გარდა) — გაფრთხილება (მეორე და შემდეგ მასალაზე).
+ * @param {Video[]} videos
+ * @param {Issue[]} sink
+ */
+function checkYouTubeDuplicates(videos, sink) {
+  /** @type {Map<string, string>} */
+  const seen = new Map();
+  for (const video of videos) {
+    const id = video.youtube?.id;
+    if (!isYouTubeId(id)) continue;
+    const first = seen.get(id);
+    if (first) {
+      new Collector('video', video.slug, sink).add('warning', 'youtube.id', 'youtubeDuplicate', {
+        slug: first,
+      });
+    } else seen.set(id, video.slug);
+  }
 }
 
 /**
@@ -422,6 +478,7 @@ export function validateContent(data) {
   data.articles.forEach((a) => validateArticle(a, articleSlugs, issues));
   data.series.forEach((s) => validateSeries(s, issues));
   data.videos.forEach((v) => validateVideo(v, issues));
+  checkYouTubeDuplicates(data.videos, issues);
   data.news.forEach((n) => validateNews(n, articleSlugs, issues));
   data.events.forEach((e) => validateEvent(e, issues));
 

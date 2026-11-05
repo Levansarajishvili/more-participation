@@ -1,6 +1,6 @@
 import { slugify } from '../slug.js';
 
-import { image, tbilisi } from './helpers.js';
+import { tbilisi } from './helpers.js';
 
 /** @typedef {import('../model.js').Video} Video */
 /** @typedef {import('../model.js').TranscriptLine} TranscriptLine */
@@ -9,8 +9,13 @@ import { image, tbilisi } from './helpers.js';
 /**
  * VideosPage / HomePage დაფების ექვსი ისტორია. ხანგრძლივობა დაფის `[04:30]`-ის მსგავსი
  * სინთეზური რიცხვია (წამებში), რომ ფლეიერის პროგრესი და ტრანსკრიპტი შემოწმდეს.
+ *
+ * F10: წყარო — YouTube; რეალური id არ ვიცით, ამიტომ `[YouTube-ის id]` (ფორმატით არავალიდური →
+ * ფლეიერი ჩანაცვლების ჩარჩოს ხატავს, ჩართვა `aria-disabled` + მიზეზი). კადრი YouTube-ისაა
+ * (ორგანიზაცია YouTube Studio-ში ირჩევს — ფოტოს წესები იქაც ვრცელდება), ამიტომ `poster` აღარ არის.
+ * სუბტიტრის ფაილი ჯერ არ არის (`src: null`, mock-ის წესი); `cues` / `end` ატვირთვისას ითვლება.
  * @type {{ title: string, slugFrom: string, excerpt: string, category: VideoCategory,
- *   role: string, poster: string, duration: number, featured?: boolean }[]}
+ *   role: string, duration: number, featured?: boolean }[]}
  */
 const ENTRIES = [
   {
@@ -20,8 +25,6 @@ const ENTRIES = [
       '[პირველი კურსიდან პირველ კონტრაქტამდე — რა გამოდგა ყველაზე რთული, ვინ დამეხმარა და რას ვურჩევდი მათ, ვინც ახლა იწყებს.]',
     category: 'career',
     role: '[ვებ-დეველოპერი]',
-    poster:
-      '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — მონაწილე ოფისში კოდს წერს ეკრანის მკითხველით და ყურსასმენით]',
     duration: 270,
     featured: true,
   },
@@ -31,8 +34,6 @@ const ENTRIES = [
     excerpt: '[ადაპტირებული კალათბურთი: პირველი ვარჯიშიდან პირველ ოფიციალურ მატჩამდე.]',
     category: 'sport',
     role: '[ადაპტირებული კალათბურთი]',
-    poster:
-      '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — ვარჯიში დარბაზში, მოთამაშე ბურთს კალათში აგდებს]',
     duration: 192,
   },
   {
@@ -41,8 +42,6 @@ const ENTRIES = [
     excerpt: '[მსახიობის ისტორია: როგორ შეიქმნა სპექტაკლი, სადაც ჟესტური ენა სცენის ენაა.]',
     category: 'art',
     role: '[მსახიობი]',
-    poster:
-      '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — მსახიობი სცენაზე ჟესტურ ენაზე თამაშობს, პროჟექტორის შუქში]',
     duration: 305,
   },
   {
@@ -51,8 +50,6 @@ const ENTRIES = [
     excerpt: '[აქტივისტი ქალაქის ბარიერებს რუკაზე აღრიცხავს და მათ გამოსწორებას ითხოვს.]',
     category: 'achievements',
     role: '[აქტივისტი]',
-    poster:
-      '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — ქუჩაში პანდუსის გაზომვა, აქტივისტი ჩანაწერს აკეთებს]',
     duration: 400,
   },
   {
@@ -61,7 +58,6 @@ const ENTRIES = [
     excerpt: '[მხატვრის სახელოსნო: როგორ იბადება ნახატი და რას ნიშნავს პირველი გამოფენა.]',
     category: 'art',
     role: '[მხატვარი]',
-    poster: '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — სახელოსნო, მხატვარი ტილოზე მუშაობს]',
     duration: 228,
   },
   {
@@ -71,14 +67,12 @@ const ENTRIES = [
       '[სტუდენტის ყოველდღიურობა: უნივერსიტეტი, საზოგადოებრივი ტრანსპორტი და საკუთარი გრაფიკი.]',
     category: 'everyday',
     role: '[სტუდენტი]',
-    poster:
-      '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი — სტუდენტი უნივერსიტეტის ეზოში მეგობრებთან ერთად]',
     duration: 330,
   },
 ];
 
 /**
- * ტრანსკრიპტი: საუბარი + აუდიოაღწერის სტრიქონები, თანაბრად განაწილებული.
+ * ტრანსკრიპტი: საუბარი + ვიზუალური ინფორმაციის (აღწერის) სტრიქონები, თანაბრად განაწილებული.
  * @param {number} duration
  * @returns {TranscriptLine[]}
  */
@@ -133,16 +127,13 @@ export function createVideos(now) {
     excerpt: entry.excerpt,
     category: entry.category,
     person: { name: '[სახელი გვარი]', role: entry.role },
-    poster: image(entry.poster, '16:9'),
     duration: entry.duration,
     language: 'ka',
     status: 'published',
     publishedAt: tbilisi(now, -(3 + i * 11), '12:00'),
     featured: entry.featured === true,
-    sources: [{ src: null, type: 'video/mp4' }],
+    youtube: { id: '[YouTube-ის id]', adId: '[YouTube-ის id: აუდიოაღწერის ვერსია]' },
     captions: [{ kind: 'captions', srclang: 'ka', label: 'ქართული', src: null, default: true }],
-    audioDescription: { src: null, srclang: 'ka', label: 'აუდიოაღწერა' },
-    signLanguage: { src: null, label: '[ქართული ჟესტური ენა]' },
     transcript: transcript(entry.duration),
   }));
 }

@@ -67,7 +67,7 @@ export default function VideoStage({ state, empty = false, headingRef, playerRef
                     {formatDuration(video.duration)}
                   </time>
                 </li>
-                <li>{video.signLanguage ? t('videos.languages') : t('videos.languageKa')}</li>
+                <li>{video.language === 'en' ? t('videos.languageEn') : t('videos.languageKa')}</li>
               </ul>
               <p className="mc-video-stage__note">{t('videos.noAutoplay')}</p>
             </>

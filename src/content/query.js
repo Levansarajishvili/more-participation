@@ -320,12 +320,12 @@ export function findSeries(series, slug, now) {
  * @returns {VideoSummary}
  */
 export function toVideoSummary(video) {
-  const { sources: _s, captions, audioDescription, signLanguage, transcript: _t, ...rest } = video;
+  const { youtube, captions, transcript: _t, ...rest } = video;
   return {
     ...rest,
-    hasCaptions: captions.length > 0,
-    hasSignLanguage: signLanguage !== null,
-    hasAudioDescription: audioDescription !== null,
+    youtubeId: youtube?.id ?? null,
+    hasCaptions: (captions ?? []).some((track) => track.srclang === 'ka'),
+    hasAudioDescription: Boolean(youtube?.adId),
   };
 }
 

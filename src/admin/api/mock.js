@@ -4,6 +4,7 @@ import { tbilisi } from '@/content/mock/helpers.js';
 import { ID_PREFIX, getSharedMockStore } from '@/content/mock/store.js';
 import { isPublic } from '@/content/query.js';
 import { matchesQuery, normalizeSearch } from '@/content/text.js';
+import { isYouTubeId } from '@/content/youtube.js';
 import {
   validateArticle,
   validateEvent,
@@ -196,9 +197,8 @@ export function adminState(store) {
         title: '[ვიდეოს სათაური — მონახაზი]',
         status: 'draft',
         featured: false,
+        youtube: { id: '' },
         captions: [],
-        audioDescription: null,
-        signLanguage: null,
       },
       { by: 'u-002' },
     );
@@ -470,7 +470,7 @@ export function createMockAdminAdapter(options = {}) {
   function imagesOf(item) {
     /** @type {{ field: string, image: Record<string, any> }[]} */
     const out = [];
-    for (const field of ['cover', 'poster', 'photo']) {
+    for (const field of ['cover', 'photo']) {
       if (item[field] && typeof item[field] === 'object' && 'alt' in item[field]) {
         out.push({ field, image: item[field] });
       }
@@ -701,6 +701,24 @@ export function createMockAdminAdapter(options = {}) {
           return { available: !found || found.id === id };
         }),
 
+      // F10: YouTube-ის id-ის დუბლიკატი — მთავარი ან აუდიოაღწერის ვერსია, გამოქვეყნებული ან სამუშაო ასლი
+      checkYouTube: (youtubeId, id = null) =>
+        respond(() => {
+          requireUser('content.read');
+          if (!isYouTubeId(youtubeId))
+            throw new ContentError('bad-request', { detail: 'youtubeId' });
+          for (const record of store.records('videos')) {
+            if (record.id === id) continue;
+            const items = [record.item, state.working.get(record.id)?.item].filter(Boolean);
+            const used = items.some(
+              (item) => item.youtube?.id === youtubeId || item.youtube?.adId === youtubeId,
+            );
+            if (used)
+              return { available: false, usedBy: { id: record.id, title: record.item.title } };
+          }
+          return { available: true, usedBy: null };
+        }),
+
       // სამუდამო წაშლა: ჩანაწერი, მისი ვერსიები და სამუშაო ასლი ქრება — საჯარო საიტიდანაც.
       // ჩადგმული ფოტო / PDF მასთან ერთად იშლება; სხვა მასალის ბმული მასზე ჩეკლისტში „არარსებულ
       // მასალად“ გამოჩნდება. 7 საჯარო გვერდი არ იშლება.
@@ -803,6 +821,9 @@ export function createMockAdminAdapter(options = {}) {
           requireUser('media.write');
           state.uploadCount += 1;
           const isPdf = file?.type === 'application/pdf';
+          // F10: სუბტიტრის VTT ბიბლიოთეკაში არ ჩანს (ფოტო / PDF არ არის) — მხოლოდ მისამართი ბრუნდება;
+          // ფაილების რეალური საცავი და MIME-ის შემოწმება — B5
+          const isTrack = file?.type === 'text/vtt' || /\.vtt$/i.test(file?.name ?? '');
           /** @type {MediaItem} */
           const item = {
             id: `up:${String(state.uploadCount).padStart(3, '0')}`,
@@ -819,7 +840,7 @@ export function createMockAdminAdapter(options = {}) {
             tagged: isPdf ? (meta.tagged ?? false) : null,
             usage: [],
           };
-          state.uploads.push(item);
+          if (!isTrack) state.uploads.push(item);
           return item;
         }),
 

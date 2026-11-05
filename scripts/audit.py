@@ -20,6 +20,9 @@ node_modules-შია (vitest-axe-ის დამოკიდებულე�
 - en      — F9: ინგლისური ვერსია — საჯარო როუტები `/en`-ით + ადმინი `/en/admin` (შესვლა, დაფა, სია,
             რედაქტორი English ჩანართით, პარამეტრები) × light / dark / contrast × 1440 / 390: axe,
             ჰორიზ. სქროლი, `<html lang="en">` (EN_THEMES / EN_WIDTHS — ნაწილ-ნაწილ);
+- youtube — F10: `/videos`, `/en/videos` (mock) და ვიდეოს რედაქტორი (ცარიელი / ბმულით + VTT) × 3 თემა ×
+            1440 / 390; შემდეგ გამოქვეყნება → facade (iframe და API-ის სკრიპტი არ არის) → Enter → ყალბი
+            IFrame API (page.route) → სუბტიტრის ზოლი, ფოკუსი, K / C; axe `iframes: false` (შიგთავსი გარეა);
 - admin   — F8: ადმინის როუტები (შესვლა / რეგისტრაცია / მდგომარეობები, დაფა, სიები, ანგარიში,
             ძიება, 403, 404, გახსნილი compact-მენიუ) × light / dark / contrast × 1440 / 390 — axe +
             ჰორიზ. სქროლი; Tab-ით გავლა (რგოლი, ხილვადობა, ≥ 24px) შესვლაზე, დაფასა და სიაზე.
@@ -776,11 +779,167 @@ def make_fixtures(target):
         '00:08.000 --> 00:20.000\n[მესამე ფრაზა]\n', encoding='utf-8')
 
 
+# ───────────────────────────────────────────────────────────────── youtube (F10)
+# YouTube-ის ქსელი sandbox-ში მიუწვდომელია: IFrame API, youtube-nocookie.com და i.ytimg.com
+# page.route-ით ყალბდება. ყალბი API iframe-ს ქმნის და დროს Date.now()-ით ითვლის.
+YT_FAKE_API = """
+(() => {
+  class Player {
+    constructor(host, o) {
+      this.o = o; this.t = 0; this.s = -1; this.start = 0;
+      const f = document.createElement('iframe');
+      f.src = o.host + '/embed/' + o.videoId + '?controls=0&enablejsapi=1';
+      f.setAttribute('allow', 'autoplay; encrypted-media');
+      host.replaceWith(f); this.f = f;
+      setTimeout(() => o.events.onReady && o.events.onReady({ target: this }), 60);
+    }
+    getIframe() { return this.f; }
+    emit(s) { this.s = s; this.o.events.onStateChange && this.o.events.onStateChange({ data: s }); }
+    playVideo() { this.start = Date.now() - this.t * 1000; this.emit(1); }
+    pauseVideo() { this.t = this.getCurrentTime(); this.emit(2); }
+    seekTo(t) { this.t = t; this.start = Date.now() - t * 1000; }
+    loadVideoById(v) { this.t = v.startSeconds || 0; this.playVideo(); }
+    cueVideoById(v) { this.t = v.startSeconds || 0; this.emit(5); }
+    getCurrentTime() { return this.s === 1 ? (Date.now() - this.start) / 1000 : this.t; }
+    getDuration() { return 270; }
+    setVolume() {} mute() {} unMute() {} setPlaybackRate() {}
+    destroy() { this.f.remove(); }
+  }
+  window.YT = { Player };
+  if (typeof window.onYouTubeIframeAPIReady === 'function') window.onYouTubeIframeAPIReady();
+})();
+"""
+YT_FAKE_EMBED = '<!doctype html><html lang="en"><head><title>[YouTube embed]</title></head><body style="margin:0;background:#000"></body></html>'
+YT_FAKE_THUMB = ('<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">'
+                 '<rect width="1280" height="720" fill="#0A1D38"/></svg>')
+YT_TEST_ID = 'TestVideo01'
+YT_TEST_AD = 'TestVideoAD'
+YT_VTT = 'WEBVTT\n\n00:00:00.500 --> 00:00:06.000\n[სუბტიტრი: პირველი ფრაზა]\n\n00:00:06.000 --> 00:00:12.000\n[სუბტიტრი: მეორე ფრაზა]\n'
+
+
+def youtube_routes(context, log):
+    def api(route):
+        log.append(route.request.url)
+        route.fulfill(status=200, content_type='text/javascript', body=YT_FAKE_API)
+
+    def embed(route):
+        log.append(route.request.url)
+        route.fulfill(status=200, content_type='text/html', body=YT_FAKE_EMBED)
+
+    def thumb(route):
+        route.fulfill(status=200, content_type='image/svg+xml', body=YT_FAKE_THUMB)
+
+    context.route('https://www.youtube.com/**', api)
+    context.route('https://www.youtube-nocookie.com/**', embed)
+    context.route('https://i.ytimg.com/**', thumb)
+
+
+def run_axe_no_frames(page):
+    """axe ჩვენს გვერდზე; iframe-ის შიგთავსი გარეა (YouTube) — `iframes: false`."""
+    if not page.evaluate('() => !!window.axe'):
+        page.add_script_tag(path=str(AXE))
+    return page.evaluate("""async () => {
+      const r = await axe.run(document, { iframes: false, resultTypes: ['violations', 'incomplete'] });
+      const pick = (list) => list.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length,
+        targets: v.nodes.slice(0, 3).map((n) => n.target.join(' ')) }));
+      return { violations: pick(r.violations), incomplete: pick(r.incomplete) };
+    }""")
+
+
+def open_video_editor(page):
+    admin_login(page, 'editor@example.org')
+    admin_nav(page, '/admin/videos')
+    page.click('a:has-text("[ვიდეოს სათაური — მონახაზი]")')
+    page.wait_for_selector('.mc-editor__grid')
+    admin_ready(page)
+
+
+def fill_youtube(page):
+    page.fill('#f-youtube-id', f'https://youtu.be/{YT_TEST_ID}?t=4')
+    page.fill('#f-youtube-adId', f'https://www.youtube.com/watch?v={YT_TEST_AD}')
+    page.set_input_files('#f-captions input[type=file]',
+                         files=[{'name': 'ka.vtt', 'mimeType': 'text/vtt', 'buffer': YT_VTT.encode('utf-8')}])
+    page.wait_for_selector('text=ფაილი ატვირთულია')
+    page.wait_for_timeout(300)
+
+
+def audit_youtube(browser, report):
+    rows = []
+    # 1. /videos, /en/videos — mock (id-ის ჩანაცვლება): ჩანაცვლების ჩარჩო, ჩართვა aria-disabled
+    for path in ['/videos', '/en/videos']:
+        for theme in THEMES:
+            for width in WIDTHS:
+                context, page = new_page(browser, width, theme)
+                log = []
+                youtube_routes(context, log)
+                goto(page, path)
+                print(f'  youtube {path} {theme} {width}', file=sys.stderr, flush=True)
+                rows.append({'path': path, 'state': 'mock', 'theme': theme, 'width': width, **run_axe(page),
+                             'scroll': page.evaluate(OVERFLOW)['scroll'], 'youtubeRequests': len(log)})
+                context.close()
+    # 2. ვიდეოს რედაქტორი — ბმული ჩასმული (id + კადრი), VTT ატვირთული; 3. გამოქვეყნება → facade → ჩართვა
+    for theme in THEMES:
+        for width in WIDTHS:
+            context, page = new_page(browser, width, theme)
+            log = []
+            youtube_routes(context, log)
+            print(f'  youtube editor {theme} {width}', file=sys.stderr, flush=True)
+            open_video_editor(page)
+            rows.append({'path': '/admin/videos/:id', 'state': 'editor-empty', 'theme': theme, 'width': width,
+                         **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
+            fill_youtube(page)
+            title_before = page.input_value('#f-title')
+            rows.append({'path': '/admin/videos/:id', 'state': 'editor-filled', 'theme': theme, 'width': width,
+                         **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll'],
+                         'titleUnchanged': page.input_value('#f-title') == title_before,
+                         'youtubeRequests': len(log)})
+            page.click('button:has-text("გამოქვეყნება")')
+            page.wait_for_selector('text=გამოქვეყნდა', timeout=10000)
+            admin_nav(page, '/videos?video=akhali-video-monakhazi')
+            page.wait_for_selector('.mc-player__facade')
+            page.wait_for_timeout(300)
+            facade = {
+                'iframe': page.evaluate("() => document.querySelectorAll('iframe').length"),
+                'apiScript': page.evaluate("() => !!document.querySelector('script[src*=\"iframe_api\"]')"),
+                'requests': len(log),
+            }
+            rows.append({'path': '/videos?video=…', 'state': 'facade', 'theme': theme, 'width': width,
+                         **run_axe_no_frames(page), 'scroll': page.evaluate(OVERFLOW)['scroll'], **facade})
+            page.focus('.mc-player__facade')
+            page.keyboard.press('Enter')
+            page.wait_for_selector('iframe.mc-player__iframe')
+            page.wait_for_selector('.mc-player__band-text:has-text("[სუბტიტრი: პირველი ფრაზა]")', timeout=8000)
+            live = page.evaluate("""() => {
+              const f = document.querySelector('iframe.mc-player__iframe');
+              const band = document.querySelector('.mc-player__band');
+              const a = document.activeElement;
+              return { title: f.title, tabindex: f.getAttribute('tabindex'), src: f.src,
+                       referrer: f.getAttribute('referrerpolicy'),
+                       bandOutsideStage: !band.closest('.mc-player__stage'),
+                       focus: a && (a.getAttribute('aria-label') || a.textContent),
+                       stage: (() => { const r = document.querySelector('.mc-player__stage').getBoundingClientRect();
+                                       return [Math.round(r.width), Math.round(r.height)]; })() };
+            }""")
+            # კლავიატურა: K — პაუზა, C — სუბტიტრი გამორთვა / ჩართვა
+            page.focus('.mc-player')
+            page.keyboard.press('k')
+            page.wait_for_timeout(200)
+            live['pausedByK'] = page.evaluate("() => !!document.querySelector('.mc-player__play[aria-label=\"ჩართვა\"]')")
+            page.keyboard.press('c')
+            page.wait_for_timeout(200)
+            live['bandHiddenByC'] = page.evaluate("() => !document.querySelector('.mc-player__band')")
+            page.keyboard.press('c')
+            rows.append({'path': '/videos?video=…', 'state': 'live', 'theme': theme, 'width': width,
+                         **run_axe_no_frames(page), 'scroll': page.evaluate(OVERFLOW)['scroll'], **live})
+            context.close()
+    report['youtube'] = rows
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default='audit.json')
     parser.add_argument('--fixtures', default=str(ROOT / '.audit-fixtures'))
-    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin,en')
+    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin,en,youtube')
     parser.add_argument('--make-fixtures', action='store_true')
     args = parser.parse_args()
     fixtures = pathlib.Path(args.fixtures)
@@ -796,7 +955,7 @@ def main():
             report['axeCore'] = json.loads((AXE.parent / 'package.json').read_text())['version']
             for name, fn in [('axe', audit_axe), ('keyboard', audit_keyboard), ('motion', audit_motion),
                              ('reflow', audit_reflow), ('placeholders', audit_placeholders),
-                             ('admin', audit_admin), ('en', audit_en)]:
+                             ('admin', audit_admin), ('en', audit_en), ('youtube', audit_youtube)]:
                 if name in parts:
                     t0 = time.time()
                     fn(browser, report)

@@ -211,10 +211,11 @@ describe('mock adminAdapter + საერთო საცავი', () => {
         'linkText',
         'captionsMissing',
         'audioDescriptionMissing',
-        'signLanguageMissing',
+        'youtubeMissing',
       ]),
     );
-    expect(report.groups.find((g) => g.code === 'signLanguageMissing')?.severity).toBe('warning');
+    expect(report.groups.find((g) => g.code === 'youtubeMissing')?.severity).toBe('error');
+    expect(codes).not.toContain('signLanguageMissing');
   });
 });
 

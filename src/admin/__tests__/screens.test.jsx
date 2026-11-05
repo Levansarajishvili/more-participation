@@ -11,6 +11,8 @@ import { setAdminAdapter } from '../api/adminAdapter.js';
 
 import { AXE, renderAdmin, setupAdmin, signInDirect } from './admin-helpers.jsx';
 
+const WARNING_NONE = 'გაფრთხილება არ არის.';
+
 // ადმინის როუტების chunk (lazy discovery) ცივ გაშვებაზე > 1 წმ იტვირთება — წინასწარ
 beforeAll(() => import('../routes.jsx'), 20_000);
 
@@ -213,9 +215,10 @@ describe('ანგარიში და ძიება', () => {
     expect(screen.getByText(/^\d+ ბლოკერი, \d+ გაფრთხილება/)).toHaveAttribute('role', 'status');
     const blocking = screen.getByRole('table', { name: 'გამოქვეყნებას ბლოკავს' });
     expect(within(blocking).getAllByText('ფოტოს alt-ტექსტი აკლია').length).toBeGreaterThan(0);
-    expect(
-      screen.getByRole('table', { name: 'გაფრთხილება — გამოქვეყნება გადის' }),
-    ).toBeInTheDocument();
+    // F10: mock-ის გაფრთხილებები ჟესტური ენის ვერსიიდან მოდიოდა — წესი ამოღებულია (B0): ცხრილის
+    // ნაცვლად ახსნა ჩანს
+    expect(screen.queryByRole('table', { name: 'გაფრთხილება — გამოქვეყნება გადის' })).toBeNull();
+    expect(screen.getByText(WARNING_NONE)).toBeInTheDocument();
     expect(await axe(container, AXE)).toHaveNoViolations();
   });
 

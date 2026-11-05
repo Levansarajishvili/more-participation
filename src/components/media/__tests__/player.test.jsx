@@ -10,10 +10,10 @@ import { NOW } from '../../ui/__tests__/fixtures.jsx';
 import { PLAYER_STORAGE_KEY } from '../player-prefs.js';
 import VideoPlayer from '../VideoPlayer.jsx';
 
-import { createFakeSource, withFiles } from './fake-source.jsx';
+import { createFakeSource, nativeVideo, withFiles } from './fake-source.jsx';
 
 const OPTIONS = { rules: { 'color-contrast': { enabled: false } } };
-const base = createMockData({ now: NOW }).videos[0];
+const base = nativeVideo(createMockData({ now: NOW }).videos[0]);
 const video = withFiles(base);
 
 /**

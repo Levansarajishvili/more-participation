@@ -25,42 +25,69 @@ describe('validateContent', () => {
     expect(warn).not.toHaveBeenCalled();
   });
 
-  it('alt-ის ნაკლებობა: ყდა, ტექსტის ფოტო, გუნდის ფოტო, ვიდეოს კადრი', () => {
+  it('alt-ის ნაკლებობა: ყდა, ტექსტის ფოტო, გუნდის ფოტო (ვიდეოს კადრი YouTube-ისაა — F10)', () => {
     const data = fresh();
     data.articles[0].cover.alt = '  ';
     const figure = data.articles[0].body.findIndex((b) => b.type === 'image');
     const block = /** @type {import('./model.js').ImageBlock} */ (data.articles[0].body[figure]);
     block.image.alt = '';
     data.team[0].photo.alt = '';
-    data.videos[0].poster.alt = '';
     const issues = validateContent(data);
     expect(codes(issues)).toEqual(
       expect.arrayContaining([
         'error:article:cover.alt:altMissing',
         `error:article:body[${figure}].image.alt:altMissing`,
         'error:team:photo.alt:altMissing',
-        'error:video:poster.alt:altMissing',
       ]),
     );
     expect(issues[0].message).toBe('ფოტოს alt-ტექსტი შესავსებია (სავალდებულო)');
   });
 
-  it('ვიდეო: სუბტიტრი, ტრანსკრიპტი, აუდიოაღწერა — ბლოკერი; ჟესტური ენა — გაფრთხილება', () => {
+  it('F10 ვიდეო: წყარო, ქართული სუბტიტრი, ტრანსკრიპტი, აუდიოაღწერა — ბლოკერი; ჟესტური ენა აღარ მოწმდება', () => {
     const data = fresh();
     data.videos[0].captions = [];
     data.videos[1].transcript = [];
-    data.videos[2].audioDescription = null;
-    data.videos[3].signLanguage = null;
+    delete data.videos[2].youtube.adId;
+    data.videos[3].youtube = /** @type {any} */ ({ id: '' });
+    data.videos[3].visualInAudio = true;
     data.videos[4].transcript[2].start = 99_999;
     data.videos[5].captions[0].default = false;
     expect(codes(validateContent(data))).toEqual([
       'error:video:captions:captionsMissing',
       'error:video:transcript:transcriptMissing',
-      'error:video:audioDescription:audioDescriptionMissing',
-      'warning:video:signLanguage:signLanguageMissing',
+      'error:video:youtube.adId:audioDescriptionMissing',
+      'error:video:youtube.id:youtubeMissing',
       'error:video:transcript:transcriptOrder',
-      'warning:video:captions:captionsDefault',
+      'error:video:captions:captionsDefault',
     ]);
+  });
+
+  it('F10 ვიდეო: id-ის ფორმატი, ვერსია = მთავარი, VTT-ის მეტა (ცარიელი, ვიდეოზე გრძელი), დუბლიკატი', () => {
+    const data = fresh();
+    data.videos[0].youtube = { id: 'https://youtu.be/x', adId: 'short' };
+    data.videos[1].youtube = { id: 'M7lc1UVf-VE', adId: 'M7lc1UVf-VE' };
+    data.videos[2].captions[0] = { ...data.videos[2].captions[0], cues: 0 };
+    data.videos[3].captions.push({
+      kind: 'subtitles',
+      srclang: 'en',
+      label: 'English',
+      src: null,
+      default: false,
+      cues: 4,
+      end: data.videos[3].duration + 5,
+    });
+    data.videos[4].youtube = { id: 'M7lc1UVf-VE', adId: 'dQw4w9WgXcQ' };
+    expect(codes(validateContent(data))).toEqual([
+      'error:video:youtube.id:youtubeInvalid',
+      'error:video:youtube.adId:youtubeInvalid',
+      'error:video:youtube.adId:audioDescriptionSame',
+      'error:video:captions:captionsEmpty',
+      'error:video:captions:captionsLength',
+      `warning:video:youtube.id:youtubeDuplicate`,
+    ]);
+    // ზღვარი: ხანგრძლივობა + 1 წმ
+    data.videos[3].captions[1].end = data.videos[3].duration + 1;
+    expect(codes(validateContent(data))).not.toContain('error:video:captions:captionsLength');
   });
 
   it('სტატიის ტექსტი: H3 H2-მდე, არააღწერითი ბმული, გატეხილი შიდა ბმული', () => {

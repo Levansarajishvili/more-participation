@@ -7,7 +7,7 @@ import { buildChecklist, validateEntity } from '../editor/checklist.js';
 import { fromClock, joinTbilisi, splitTbilisi, toClock } from '../editor/datetime.js';
 import { getIn, parsePath, setIn } from '../editor/path.js';
 import { blocksToDoc, docToBlocks, mergeRuns } from '../editor/serialize.js';
-import { parseVtt } from '../editor/vtt.js';
+import { parseVtt } from '@/content/vtt.js';
 import { SCHEMAS } from '../schemas/index.js';
 
 const NOW = Date.parse('2026-10-26T10:00:00+04:00');
@@ -164,22 +164,22 @@ describe('ჩეკლისტი (validate.js-ის წესები)', () 
     );
   });
 
-  it('ვიდეო: სუბტიტრი / ტრანსკრიპტი / აუდიოაღწერა ბლოკავს; „ვიზუალური ინფორმაცია აუდიოშიცაა“ AD-ს ცვლის; ჟესტური — გაფრთხილება', () => {
+  it('F10 ვიდეო: წყარო / სუბტიტრი / ტრანსკრიპტი / აუდიოაღწერა ბლოკავს; „ვიზუალური ინფორმაცია აუდიოშიცაა“ AD-ს ცვლის; ჟესტური ენის წესი აღარ არის', () => {
     const video = {
       ...data.videos[0],
+      youtube: { id: '' },
       captions: [],
       transcript: [],
-      audioDescription: null,
-      signLanguage: null,
     };
     const result = buildChecklist(SCHEMAS.videos.rules, validateEntity('videos', video, slugs));
     const state = Object.fromEntries(result.items.map((i) => [i.id, i.state]));
     expect(state).toMatchObject({
+      videoSource: 'fail',
       captionsMissing: 'fail',
       transcriptMissing: 'fail',
       audioDescriptionMissing: 'fail',
-      signLanguageMissing: 'warn',
     });
+    expect(result.items.some((i) => i.id === 'signLanguageMissing')).toBe(false);
     const marked = buildChecklist(
       SCHEMAS.videos.rules,
       validateEntity('videos', { ...video, visualInAudio: true }, slugs),

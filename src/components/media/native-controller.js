@@ -1,8 +1,8 @@
 /**
  * ფლეიერის მართვის კონტრაქტი (`PlaybackController`) და მისი native რეალიზაცია `<video>`-ზე.
  *
- * ფლეიერის UI (`VideoPlayer`) მედია-ელემენტს პირდაპირ არ ეხება — მხოლოდ controller-ს: ამიტომ
- * YouTube-ის (ან სხვა პლატფორმის, §9.4) adapter-ს იგივე კონტრაქტი დასჭირდება და UI არ შეიცვლება.
+ * ფლეიერის UI (`VideoPlayer`) მედია-ელემენტს პირდაპირ არ ეხება — მხოლოდ controller-ს: YouTube-ის
+ * adapter-ი (F10, `youtube-controller.js`) იგივე კონტრაქტს აკმაყოფილებს.
  *
  * native რეალიზაცია:
  * - ჟესტური ენა — მეორე `<video>` (ხმის გარეშე), რომელიც მთავარს მიჰყვება: play / pause / waiting,
@@ -14,6 +14,10 @@
  *
  * ავტოდაკვრა არ არსებობს: `play()` მხოლოდ მომხმარებლის ქმედებით იძახება.
  */
+
+import { stripCueTags } from '@/content/vtt.js';
+
+export { stripCueTags };
 
 /** ← → და ტრანსკრიპტის ბიჯი (წამი). */
 export const SEEK_STEP = 5;
@@ -37,6 +41,10 @@ export const RATES = Object.freeze([0.5, 0.75, 1, 1.25, 1.5, 2]);
  * @property {boolean} muted        მომხმარებლის არჩევანი (აუდიოაღწერისას შიდა დადუმება არ ითვლება)
  * @property {number} rate
  * @property {boolean} error        ფაილი ვერ ჩაიტვირთა / ვერ ითამაშა
+ * @property {boolean} [loading]      F10 (YouTube): API / iframe იტვირთება
+ * @property {boolean} [unavailable]  F10: ვიდეო მიუწვდომელია (YouTube-ის შეცდომა 2 / 5 / 100 / 101 / 150, API)
+ * @property {boolean} [blocked]      F10: ბრაუზერმა `playVideo()` არ დაუშვა — საჭიროა „ჩართვა“
+ * @property {boolean} [captionsFailed]  F10: ჩვენი VTT ვერ ჩაიტვირთა / ვერ გაიარა პარსერი
  */
 
 /**
@@ -70,21 +78,6 @@ export const IDLE_STATE = Object.freeze({
   rate: 1,
   error: false,
 });
-
-/**
- * WebVTT-ის ტეგები (`<v Speaker>`, `<c.x>`, `<i>`) და entity-ები → უბრალო ტექსტი.
- * @param {string} text
- * @returns {string}
- */
-export function stripCueTags(text) {
-  return text
-    .replace(/<[^>]*>/g, '')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, '\u00a0')
-    .replace(/&amp;/g, '&')
-    .trim();
-}
 
 /**
  * ბილიკის აქტიური cue-ების ტექსტი (რამდენიმე — ახალ ხაზზე).

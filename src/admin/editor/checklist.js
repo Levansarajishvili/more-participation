@@ -10,10 +10,11 @@ import { t } from '@/i18n/index.js';
 
 /**
  * ხელმისაწვდომობის ჩეკლისტი (ATAG 2.0 Part B) — `validate.js`-ის წესებზე, ცოცხლად.
- * - ბლოკავს: სავალდებულო ველები, alt, სათაურების იერარქია, აღწერითი ბმული, სუბტიტრები,
- *   ტრანსკრიპტი, აუდიოაღწერა (ან „ვიზუალური ინფორმაცია აუდიოშიცაა“), მარტივი ენა, ღონისძიების
- *   ხელმისაწვდომობა;
- * - აფრთხილებს: ჟესტური ენის ვერსია, PDF/UA;
+ * - ბლოკავს: სავალდებულო ველები, alt, სათაურების იერარქია, აღწერითი ბმული, ვიდეოს წყარო
+ *   (YouTube-ის id, F10), ქართული სუბტიტრი (VTT: ნაგულისხმევი, ცარიელი არ არის, ვიდეოზე გრძელი არ
+ *   არის), ტრანსკრიპტი, აუდიოაღწერა (YouTube-ვერსია ან „ვიზუალური ინფორმაცია აუდიოშიცაა“), მარტივი
+ *   ენა, ღონისძიების ხელმისაწვდომობა;
+ * - აფრთხილებს: PDF/UA (ჟესტური ენის ვერსია B0-დან არ კეთდება — წესი ამოღებულია);
  * - ინფორმაციული: კონტრასტი ≥ 7:1 (ფერის არჩევა რედაქტორში არ არსებობს), ხმოვანი ვერსია.
  */
 
@@ -41,7 +42,12 @@ export const RULES = Object.freeze({
   altMissing: { id: 'altMissing', level: 'block', codes: ['altMissing'] },
   headingOrder: { id: 'headingOrder', level: 'block', codes: ['headingOrder'] },
   linkText: { id: 'linkText', level: 'block', codes: ['linkText', 'linkBroken'] },
-  captionsMissing: { id: 'captionsMissing', level: 'block', codes: ['captionsMissing'] },
+  videoSource: { id: 'videoSource', level: 'block', codes: ['youtubeMissing', 'youtubeInvalid'] },
+  captionsMissing: {
+    id: 'captionsMissing',
+    level: 'block',
+    codes: ['captionsMissing', 'captionsDefault', 'captionsEmpty', 'captionsLength'],
+  },
   transcriptMissing: {
     id: 'transcriptMissing',
     level: 'block',
@@ -50,15 +56,10 @@ export const RULES = Object.freeze({
   audioDescriptionMissing: {
     id: 'audioDescriptionMissing',
     level: 'block',
-    codes: ['audioDescriptionMissing'],
+    codes: ['audioDescriptionMissing', 'audioDescriptionSame'],
   },
   plainMissing: { id: 'plainMissing', level: 'block', codes: ['plainMissing'] },
   eventAccess: { id: 'eventAccess', level: 'block', codes: ['eventAccess'] },
-  signLanguageMissing: {
-    id: 'signLanguageMissing',
-    level: 'warn',
-    codes: ['signLanguageMissing', 'captionsDefault'],
-  },
   pdfUntagged: { id: 'pdfUntagged', level: 'warn', codes: ['pdfUntagged'] },
   contrast: { id: 'contrast', level: 'info', codes: [] },
   voice: { id: 'voice', level: 'info', codes: [] },

@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 
 import { clamp, IDLE_STATE } from '../native-controller.js';
+import { nativeSource } from '../sources.js';
 
 /**
  * ტესტისა და `/__kit`-ის წყარო: მედია-ფაილის გარეშე, მართვადი `PlaybackController`-ით.
@@ -109,23 +110,44 @@ export function createFakeSource(options) {
     }, [onController]);
     return <div className="mc-player__video" data-fake-media="" aria-hidden="true" />;
   }
-  return { controller, source: { id: 'fake', canPlay: () => true, Media: FakeMedia } };
+  return {
+    controller,
+    source: { ...nativeSource, id: 'fake', canPlay: () => true, Media: FakeMedia },
+  };
 }
 
 /**
- * ვიდეო ყველა ფაილით (src — სატესტო მისამართი; ქსელი არ გამოიყენება, წყარო ყალბია).
+ * F7-ის native ფლეიერის ობიექტი კონტენტის ვიდეოდან (F10-დან მოდელი YouTube-ისაა): კადრი,
+ * ფაილები, ჟესტური ენა და აუდიოაღწერის ბილიკი `src: null`-ით — „ვიდეო ფაილი მზადდება“.
  * @param {import('@/content/model.js').Video} video
- * @returns {import('@/content/model.js').Video}
+ * @returns {import('../sources.js').NativeVideo}
+ */
+export function nativeVideo(video) {
+  const { youtube: _youtube, ...rest } = video;
+  return {
+    ...rest,
+    poster: { src: null, alt: '[ვიდეოს კადრი: თვალის დონე, მოქმედების მომენტი]', ratio: '16:9' },
+    sources: [{ src: null, type: 'video/mp4' }],
+    audioDescription: { src: null, srclang: 'ka', label: 'აუდიოაღწერა' },
+    signLanguage: { src: null, label: '[ქართული ჟესტური ენა]' },
+  };
+}
+
+/**
+ * native ვიდეო ყველა ფაილით (src — სატესტო მისამართი; ქსელი არ გამოიყენება, წყარო ყალბია).
+ * @param {import('@/content/model.js').Video} video
+ * @returns {import('../sources.js').NativeVideo}
  */
 export function withFiles(video) {
+  const native = nativeVideo(video);
   return {
-    ...video,
+    ...native,
     sources: [{ src: '/__fixtures/video.webm', type: 'video/webm' }],
-    captions: video.captions.map((track) => ({ ...track, src: '/__fixtures/captions.vtt' })),
-    audioDescription: video.audioDescription && {
-      ...video.audioDescription,
+    captions: native.captions.map((track) => ({ ...track, src: '/__fixtures/captions.vtt' })),
+    audioDescription: native.audioDescription && {
+      ...native.audioDescription,
       src: '/__fixtures/ad.webm',
     },
-    signLanguage: video.signLanguage && { ...video.signLanguage, src: '/__fixtures/sign.webm' },
+    signLanguage: native.signLanguage && { ...native.signLanguage, src: '/__fixtures/sign.webm' },
   };
 }

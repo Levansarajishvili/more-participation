@@ -143,6 +143,8 @@ import { normalizeError } from '@/content/errors.js';
  *   create(type: ContentType, data: object): Promise<ContentRecord>,
  *   update(id: string, data: object, o: { version: number, autosave?: boolean }): Promise<ContentRecord>,
  *   checkSlug(type: ContentType, slug: string, id?: string | null): Promise<{ available: boolean }>,
+ *   checkYouTube(youtubeId: string, id?: string | null): Promise<{ available: boolean, usedBy: { id: string, title: string } | null }>,
+ *     F10: id სხვა ვიდეოში (მთავარი ან აუდიოაღწერის ვერსია) უკვე არის? `id` — მიმდინარე მასალა (გამორიცხულია)
  *   remove(id: string): Promise<{ ok: true }>,   სამუდამო წაშლა (ვერსიების ჩათვლით)
  *   publish(id: string, o: { version: number, data?: object }): Promise<ContentRecord>,
  *   schedule(id: string, at: string, o: { version: number, data?: object }): Promise<ContentRecord>,
@@ -249,6 +251,7 @@ export const content = {
   create: (type, data) => call('content', 'create', type, data),
   update: (id, data, o) => call('content', 'update', id, data, o),
   checkSlug: (type, slug, id) => call('content', 'checkSlug', type, slug, id),
+  checkYouTube: (youtubeId, id) => call('content', 'checkYouTube', youtubeId, id),
   remove: (id) => call('content', 'remove', id),
   publish: (id, o) => call('content', 'publish', id, o),
   schedule: (id, at, o) => call('content', 'schedule', id, at, o),

@@ -109,6 +109,9 @@ export function createHttpAdminAdapter({
       update: (itemId, data, { version, autosave }) =>
         patch(`/items/${id(itemId)}`, { data, version, autosave }),
       checkSlug: (type, slug, itemId) => get(`/content/${id(type)}/slug`, { slug, id: itemId }),
+      // F10: GET /content/videos/youtube?youtubeId=…&id=… → { available, usedBy }
+      checkYouTube: (youtubeId, itemId) =>
+        get('/content/videos/youtube', { youtubeId, id: itemId }),
       remove: (itemId) => del(`/items/${id(itemId)}`),
       publish: (itemId, { version, data }) =>
         post(`/items/${id(itemId)}/publish`, { version, data }),

@@ -9,7 +9,7 @@ import videos from './videos.js';
  * ველების კონფიგი თითო ტიპზე (F8) — ერთი `EntityEditor` ყველა ტიპს ხატავს.
  *
  * @typedef {'text' | 'slug' | 'textarea' | 'select' | 'radio' | 'richtext' | 'image' | 'file'
- *   | 'repeater' | 'datetime' | 'checkbox' | 'duration'} FieldKind
+ *   | 'repeater' | 'datetime' | 'checkbox' | 'duration' | 'youtube' | 'captions'} FieldKind
  *
  * @typedef {object} FieldSchema
  * @property {string} name              ველის გზა მოდელში (`person.name`, `accessibility.format`)
@@ -34,6 +34,10 @@ import videos from './videos.js';
  * @property {boolean} [importVtt]
  * @property {string} [inputType]
  * @property {string} [lang]
+ * @property {boolean} [preview]        youtube: კადრის გადახედვა (`<img>`) და დუბლიკატის შემოწმება
+ * @property {string} [differentFrom]   youtube: ველი, რომლის id-ს ეს არ უნდა ემთხვეოდეს (აუდიოაღწერა ≠ მთავარი)
+ * @property {'ka' | 'en'} [srclang]    captions: ბილიკის ენა
+ * @property {false | 'track'} [translate]  F9: false — არ ითარგმნება; 'track' — English ჩანართში ინგლისური ბილიკი
  *
  * @typedef {object} SectionSchema
  * @property {string} id

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { t } from '@/i18n/index.js';
 
 import { cx } from './utils.js';
@@ -27,6 +29,9 @@ const unbracket = (text = '') => text.replace(/^\[([\s\S]*)\]$/, '$1');
  *                                            წარწერა არ ეტევა (ხანგრძლივობის ნიშანს ეფარება): მხოლოდ
  *                                            წყვეტილი ჩარჩო; აღწერა alt-ში რჩება
  * @param {'lazy' | 'eager'} [props.loading='lazy']
+ * @param {string | null} [props.fallbackSrc]  F10: სათადარიგო ფაილი — YouTube-ის `maxresdefault` ყველა
+ *                                            ვიდეოს არ აქვს (404 ან 120px-იანი ნაცრისფერი ჩანაცვლება)
+ *                                            → `hqdefault`; ორივე ვერ ჩაიტვირთა → ჩანაცვლების ჩარჩო
  * @param {string} [props.className]
  */
 export default function Media({
@@ -38,8 +43,17 @@ export default function Media({
   round = false,
   compact = false,
   loading = 'lazy',
+  fallbackSrc = null,
   className,
 }) {
+  // ჩავარდნილი მისამართები (src → fallbackSrc → ჩარჩო); სხვა სურათზე გადასვლისას თავიდან
+  const [failed, setFailed] = useState(/** @type {string[]} */ ([]));
+  const candidates = [image?.src, fallbackSrc].filter(
+    (src) => typeof src === 'string' && src.length > 0,
+  );
+  const src = candidates.find((candidate) => !failed.includes(/** @type {string} */ (candidate)));
+  /** @param {string} bad */
+  const fail = (bad) => setFailed((list) => (list.includes(bad) ? list : [...list, bad]));
   const value = ratio ?? image?.ratio ?? '3:2';
   const style = { aspectRatio: value.replace(':', ' / ') };
   const alt = decorative ? '' : (image?.alt ?? '');
@@ -50,7 +64,7 @@ export default function Media({
     className,
   );
 
-  if (!image?.src) {
+  if (!src) {
     const kindLabel = t(`media.${kind}`);
     const description = unbracket(image?.alt) || t('common.assetPending');
     // „[ვიდეოს კადრი: ვიდეოს კადრი: …]“ არ მეორდება; პატარა წრეში მხოლოდ ტიპი ჩანს
@@ -69,12 +83,20 @@ export default function Media({
   return (
     <div className={classes} style={style}>
       <img
-        src={image.src}
+        key={src}
+        src={src}
         alt={alt}
-        width={image.width}
-        height={image.height}
+        width={image?.width}
+        height={image?.height}
         loading={loading}
         decoding="async"
+        onError={() => fail(/** @type {string} */ (src))}
+        onLoad={(event) => {
+          // YouTube-ის „კადრი არ არის“ — 120 × 90 ნაცრისფერი სურათი 404 სტატუსით
+          if (fallbackSrc && src !== fallbackSrc && event.currentTarget.naturalWidth <= 120) {
+            fail(/** @type {string} */ (src));
+          }
+        }}
         className={cx('mc-media__img', fit === 'contain' && 'mc-media__img--contain')}
       />
     </div>

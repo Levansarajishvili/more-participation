@@ -1082,41 +1082,9 @@ frontend-ის guard (`RequireAuth`, `RequireRole`) მხოლოდ UX-ი�
 
 **ღია:** ინგლისურ პანელში ბილიკის (breadcrumb) ბოლო ელემენტი — მასალის ქართული სათაური — `lang`-ის გარეშეა (Breadcrumbs-ის `label` სტრიქონია); mock-ში ენის გადართვა მასალის შეუნახავ ცვლილებებს მაინც კარგავს (მეხსიერების საცავი გადატვირთვაზე თავიდან იქმნება).
 
-## F10 — ვიდეო YouTube-ის ბმულით (დაგეგმილი, ჯერ არ არის აწყობილი; 2026-10-28, განახლდა B0-სა და B0.1-ში, 2026-11-04)
+## F10 — ვიდეო YouTube-ის ბმულით (გეგმა, 2026-10-28; განახლდა B0-სა და B0.1-ში)
 
-**მოთხოვნა:** ადმინიდან ვიდეო ემატება YouTube-ის ბმულის ჩასმით. **სათაური და აღწერა YouTube-იდან არ მოდის** — რედაქტორი წერს ადმინში. **გადაწყვეტილება (მომხმარებელი, B0 / B0.1):** სუბტიტრი და აუდიოაღწერა კეთდება, ჟესტური ენის ვერსია — არა; პოსტერი — YouTube-ის კადრი. ვიდეოს წყარო მხოლოდ YouTube-ია (ფაილი საიტზე არ იტვირთება). წესები — project-context §10 „ვიდეო YouTube-დან“, შედეგი WCAG-ზე — §9 #25.
-
-### რა იცვლება (გეგმა)
-
-| სად | ცვლილება |
-|---|---|
-| მოდელი (`model.js`) | `Video.youtube: { id: string, adId?: string }` — `id` სავალდებულოა, `adId` — აუდიოაღწერის ვერსია; ინახება მხოლოდ id. `captions: CaptionTrack[]` რჩება (ჩვენი VTT; ka ნაგულისხმევი — სავალდებულო, en — არასავალდებულო). ამოიღება `sources`, `signLanguage`, `audioDescription` (ფაილი), `poster`; `VideoSummary`-დან — `hasSignLanguage` (+ `youtubeId`; `hasCaptions`, `hasAudioDescription` რჩება). რჩება: slug, title, excerpt, category, person, duration, language, status, publishedAt, featured, transcript, `visualInAudio`, `translations.en` |
-| ბმული და კადრი (`src/content/youtube.js`, ახალი) | `parseYouTube(url) → id \| null`: `watch?v=`, `youtu.be/`, `shorts/`, `embed/`, `youtube-nocookie.com/embed/`; `t=`, `list=` და სხვა პარამეტრი იშლება; id — 11 სიმბოლო `[A-Za-z0-9_-]`; ტესტი ≥ 10 ფორმით (მათ შორის არასწორი). `youtubeThumbnail(id, size)` → `https://i.ytimg.com/vi/{id}/maxresdefault.jpg` / `hqdefault.jpg` |
-| VTT (`src/components/media/vtt.js`, ახალი) | WebVTT-ის პარსერი (`WEBVTT` თავსართი, cue-ს დრო, ტეგების მოშორება — F7-ის `stripCueTags`), `cueAt(cues, t)`; ტესტი: სწორი, დაზიანებული, გადაფარული cue-ები, ცარიელი ფაილი |
-| ადმინის სქემა (`schemas/videos.js`) | ველი `youtube` — „YouTube-ის ბმული“ (სავალდებულო), მინიშნება „ჩასვი ვიდეოს მისამართი — სათაური და აღწერა აქ იწერება“; „აუდიოაღწერის ვერსია — YouTube-ის ბმული“ (სავალდებულო, თუ `visualInAudio` არ არის მონიშნული; მინიშნება — ვერსია მთავარის სიგრძისაა); სუბტიტრი — VTT-ის ატვირთვა (ქართული სავალდებულო, English ჩანართში — ინგლისური); კადრის გადახედვა `<img>`-ით. ამოიღება: ვიდეო ფაილი, ჟესტური ენა, აუდიოაღწერის ფაილი, პოსტერი + alt. **`title` და `excerpt` ხელითაა** — ბმულის ჩასმა მათ არ ავსებს და არ ცვლის; YouTube-ის oEmbed / Data API არ გამოიძახება |
-| შეცდომა / გაფრთხილება | არასწორი ბმული — ველის შეცდომა ტექსტით და ხატულით; `adId` = მთავარი id — შეცდომა; სხვა ვიდეოში უკვე გამოყენებული id — გაფრთხილება ბმულით იმ მასალაზე; VTT-ის დაზიანება — შეცდომა სტრიქონის ნომრით |
-| ჩეკლისტი (`validate.js`, `checklist.js`) | ბლოკავს: YouTube-ის id; ქართული VTT (ფაილი არის, ნაგულისხმევია, cue-ები დალაგებულია, ბოლო cue ≤ ხანგრძლივობა); აუდიოაღწერა — `adId` ან `visualInAudio`; ტრანსკრიპტი (უცვლელად). ამოიღება: ჟესტური ენის გაფრთხილება, პოსტერის alt |
-| საჯარო ფლეიერი | `VideoSourceAdapter`-ის YouTube-adapter. facade: კადრი (`alt=""`, `object-fit: cover` 16:9-ში, maxres → hq) + ღილაკი „ვიდეოს ჩართვა“ (სახელში სათაური). დაჭერის შემდეგ — IFrame API + `youtube-nocookie.com/embed/{id}` (`enablejsapi=1`, `controls=0`, `disablekb=1`, `fs=0`, `rel=0`, `playsinline=1`, `iv_load_policy=3`, `origin`), `title` = „ვიდეო: {ჩვენი სათაური}“, შემდეგ `playVideo()` (თუ ბრაუზერი არ უშვებს — ფოკუსი ჩვენს „დაკვრაზე“ + სტატუსი; ავტოდაკვრა არა). მართვა — F7-ის UI: დაკვრა, პროგრესი (`seekTo`), დრო, ხმა, CC, აუდიოაღწერა, სიჩქარე (`getAvailablePlaybackRates`), სრული ეკრანი ჩვენს wrapper-ზე, ტრანსკრიპტი (`getCurrentTime()` ~250 ms, „გადასვლა: 01:23“); ჟესტური ენის ჩიპი არ არის. **სუბტიტრი** — ზოლში კადრის ქვეშ (iframe-ზე არა), Noto Sans Georgian, rem (მენიუს მასშტაბს მიჰყვება), #0A1D38 / #FFFFFF 16.86:1 (კონტრასტში #000000 / #FFFFFF + 2px კონტური), ნაგულისხმევად ჩართული; `/en`-ზე en VTT ან ქართული `lang="ka"`-ით. **აუდიოაღწერა** — `loadVideoById({ videoId: adId, startSeconds: currentTime })`, `aria-pressed`, `role="status"`; ნაგულისხმევად გამორთული. `mc-player`: `captions`, `audioDescription`, `rate` (`sign` იგნორდება). iframe-ზე არაფერი დევს (YouTube RMF); კადრის მინ. სიმაღლე 200px (390 / 320-ზე letterbox). `onError` 2 / 5 / 100 / 101 / 150 → „ვიდეო მიუწვდომელია“ + ტრანსკრიპტი. ხანგრძლივობა: ბარათზე — ველიდან, ფლეიერში — `getDuration()` |
-| ბარათი (`VideoCard`) | კადრი YouTube-იდან (`alt=""`, `loading="lazy"`); CC და ხანგრძლივობის ნიშანი რჩება, ჟესტური ენისა — ამოიღება |
-| ინგლისური ვერსია (F9) | სათაური / აღწერა / ტრანსკრიპტი / en VTT — რედაქტორის English ჩანართში; YouTube-ის id (მთავარი და აუდიოაღწერის) საერთოა |
-| ჰოსტინგი (B7) | CSP `frame-src https://www.youtube-nocookie.com`; `script-src 'self' https://www.youtube.com`; `img-src 'self' https://i.ytimg.com`; `Referrer-Policy: strict-origin-when-cross-origin`. VTT — `/media/*`-დან (same-origin) |
-| mock | ვიდეოები `youtube.id`-ით — `[YouTube-ის id]` placeholder (არავალიდური → ჩანაცვლების ჩარჩო, ჩართვა `aria-disabled` + მიზეზი); VTT — სინთეზური `[სუბტიტრი]` cue-ებით (`src` data-URL ან fixture); რეალური id არ ვიცით |
-| `CLAUDE.md` (რეპოში) | ვიდეოს წესი B0.1-ის მიხედვით (project-context §9 #25) |
-
-native adapter (F7) კოდში რჩება (`/__kit`, ტესტები); კონტენტის ვიდეოს `resolveSource()` YouTube-adapter-ს აძლევს.
-
-### მიღების კრიტერიუმები
-
-- ბმულის ჩასმის შემდეგ სათაურისა და აღწერის ველი უცვლელია (ტესტი); ადმინში YouTube-ის API-ს (oEmbed / Data API) fetch არ ხდება (ტესტი fetch-ის spy-ით); კადრი — მხოლოდ `<img>`.
-- iframe და IFrame API გვერდზე დაჭერამდე არ არის (facade); ავტოდაკვრა არ ხდება.
-- iframe-ზე overlay არ არის (სუბტიტრის ზოლიც მის გარეთაა); ფლეიერის კადრი ≥ 200 × 200 px 320 / 390 / 1440-ზე.
-- სუბტიტრი ჩანს ნაგულისხმევად, მიჰყვება დროს (fake IFrame API-ით, ±250 ms), გადაირთვება CC-ით და `C`-თი, 200%-იან შრიფტზე არ იჭრება; აუდიოაღწერის გადართვა დროს ინარჩუნებს და ცხადდება.
-- ჩეკლისტი ბლოკავს: id-ის გარეშე, ქართული VTT-ის გარეშე, აუდიოაღწერის ვერსიის / `visualInAudio`-ს გარეშე, ტრანსკრიპტის გარეშე.
-- axe 0 სამ თემაში × 1440 / 390; ფლეიერი კლავიატურით იმართება; Tab iframe-ში არ იჭედება (fake IFrame API-ით ტესტში, Chromium-ში — რეალურით).
-
-### ღია საკითხები
-
-F10-ის ძველი 7 საკითხი დახურულია B0 / B0.1-ში. დარჩა: VTT-ის რეალური ატვირთვა — B5 (R2); ხელმისაწვდომობის განცხადებისა და კონფიდენციალურობის პოლიტიკის ტექსტი (project-context §9 #25); გაფართოებული აუდიოაღწერა (პაუზებით) v1-ში არ არის.
+გეგმა შესრულდა — შედეგი, გადახვევები და ღია საკითხები: „F10 ✅“ ფაილის ბოლოს.
 
 ## Backend — გეგმა დამტკიცდა (2026-10-28)
 
@@ -1196,7 +1164,7 @@ F10-ის ძველი 7 საკითხი დახურულია B
 
 ### შემდეგი: F10 — YouTube ვიდეო (frontend, B1-მდე)
 
-ზემოთ, „F10 — რა იცვლება“: მოდელი, `youtube.js`, `vtt.js`, ადმინის სქემა, ჩეკლისტი, YouTube-adapter (სუბტიტრის ზოლი, აუდიოაღწერის ვერსია), ბარათები, mock, i18n (ka / en), რეპოს `CLAUDE.md`. Gate — F10-ის მიღების კრიტერიუმები. შემდეგ B1 (OpenAPI + `server/`-ის ჩონჩხი); B1-მდე — `fastdl.mongodb.org` network settings-ში.
+შესრულდა — „F10 ✅“ ფაილის ბოლოს: მოდელი, `youtube.js`, `vtt.js`, ადმინის სქემა, ჩეკლისტი, YouTube-adapter (სუბტიტრის ზოლი, აუდიოაღწერის ვერსია), ბარათები, mock, i18n (ka / en), რეპოს `CLAUDE.md`. Gate — F10-ის მიღების კრიტერიუმები. შემდეგ B1 (OpenAPI + `server/`-ის ჩონჩხი); B1-მდე — `fastdl.mongodb.org` network settings-ში.
 
 ## B0.1 — სუბტიტრი და აუდიოაღწერა (2026-11-04)
 
@@ -1211,4 +1179,100 @@ F10-ის ძველი 7 საკითხი დახურულია B
 - **Project-ის ინსტრუქცია** — ვიდეოს სტრიქონი შესაცვლელია (მომხმარებელი):
   `- ვიდეო: YouTube-ის ბმულით (ფაილი საიტზე არ იტვირთება); სუბტიტრები ნაგულისხმევად — ჩვენი VTT (ქართული სავალდებულო), კადრის ქვეშ და არა ფლეიერზე; აუდიოაღწერა — ცალკე YouTube-ვერსია ან დადასტურება, რომ ვიზუალური ინფორმაცია აუდიოშია; ტრანსკრიპტი დროის ნიშნულებით. ჟესტური ენის ვერსია არ კეთდება. ავტოდაკვრა არასოდეს.`
 
-**შემდეგი:** F10 (B1-მდე), ზემოთ „F10 — რა იცვლება“.
+**შემდეგი:** F10 (B1-მდე) — შესრულდა, „F10 ✅“ ქვემოთ.
+
+## F10 — ვიდეო YouTube-ის ბმულით ✅ (2026-11-04)
+
+**Gate:** lint ✓ (ESLint 0, Prettier ✓) · test ✓ **722 / 722** (42 ფაილი; F9-ის შემდეგ 482) · build ✓ (check-dist: საჯარო 31 chunk-ში ადმინი / TipTap / validate-ის ანგარიში არ არის) · Chromium 153 + axe-core 4.14: **`--only youtube` — 36 მდგომარეობა, 0 დარღვევა** (`/videos`, `/en/videos`, ვიდეოს რედაქტორი ცარიელი და ბმულით + VTT, საჯარო facade, ჩართული ფლეიერი × 3 თემა × 1440 / 390; ერთადერთი incomplete — `frame-tested` ჩართულ ფლეიერზე: iframe-ის შიგთავსი გარეა, axe `iframes: false`); **`--only axe,en` — 74 + 102 მდგომარეობა, 0 / 0** (რეგრესია არ არის); ჰორიზ. სქროლი 0 ყველგან. YouTube-ის ქსელი sandbox-ში მიუწვდომელია — IFrame API ტესტში `installFakeYouTube()`-ით, Chromium-ში `page.route`-ით ყალბდება.
+
+Chromium-ში შემოწმდა: facade-ზე iframe 0, `iframe_api` სკრიპტი არ არის, YouTube-ის მოთხოვნა 0; რედაქტორში ბმულის ჩასმის შემდეგ სათაური უცვლელია, YouTube-ის მოთხოვნა 0; Enter facade-ზე → iframe (`title` „ვიდეო: …“, `tabindex="-1"`, `referrerpolicy`), ფოკუსი „პაუზაზე“, სუბტიტრის ზოლი კადრის გარეთ, K — პაუზა, C — ზოლის გამორთვა / ჩართვა; კადრი 1440-ზე 823 × 463, 390-ზე 346 × 200 (RMF ≥ 200 × 200).
+
+Zip-ის Context-ის ფაილები `docs/progress (1).md` / `docs/project-context (2).md` სახელით მოვიდა — `tokens.test.js` და `components.test.jsx` `docs/project-context.md`-ს კითხულობს (2 ტესტი წითელი იყო); სახელები გასწორდა.
+
+### მოდელის ცვლილება
+
+| ველი | იყო (F7) | F10 |
+|---|---|---|
+| `youtube` | — | `{ id: string, adId?: string }` — სავალდებულო; ინახება id (11 სიმბოლო), არა URL; mock — `[YouTube-ის id]` / `[YouTube-ის id: აუდიოაღწერის ვერსია]` |
+| `sources` | `VideoSource[]` | ამოღებულია (წყარო მხოლოდ YouTube-ია) |
+| `poster` | `Image` 16:9 + alt | ამოღებულია — კადრი `youtubePoster(id)`-ით ითვლება (`i.ytimg.com`, maxres → hq, `alt=""`) |
+| `audioDescription` | `AudioTrack \| null` (ფაილი) | ამოღებულია → `youtube.adId` ან `visualInAudio` |
+| `signLanguage` | `SignLanguageTrack \| null` | ამოღებულია (B0: არ კეთდება) |
+| `captions[]` | `CaptionTrack` | რჩება + `cues?`, `end?` (ატვირთვისას `summarizeCues`); ka — `captions`, `default: true`; en — `subtitles`, `default: false` |
+| `VideoSummary` | `hasCaptions`, `hasSignLanguage`, `hasAudioDescription` | `youtubeId`, `hasCaptions` (ka ბილიკი), `hasAudioDescription` (`adId`); `hasSignLanguage` ამოღებულია |
+| `title`, `excerpt`, `duration`, `transcript`, `visualInAudio`, `translations.en` | | უცვლელი — რედაქტორი წერს; YouTube-იდან არაფერი მოდის |
+
+F7-ის native ველები (`NativeVideo`, `components/media/sources.js`) მხოლოდ `/__kit`-სა და ტესტებშია.
+
+### ჩეკლისტის წესი → ბლოკავს / აფრთხილებს → სად მოწმდება
+
+| წესი (`checklist.js`) | კოდები (`validate.js`) | დონე | სად |
+|---|---|---|---|
+| `videoSource` — „ვიდეოს წყარო — YouTube-ის ბმული“ (ახალი) | `youtubeMissing`, `youtubeInvalid` (ჩანაცვლება `[…]` დასაშვებია) | ბლოკავს | `validateVideo` (რედაქტორი, mock-ის ანგარიში; B4 — სერვერი); ველის შეცდომა — `YouTubeField` |
+| `captionsMissing` — „ქართული სუბტიტრი (VTT): ნაგულისხმევი, ვიდეოს სიგრძის“ | `captionsMissing`, `captionsDefault` (გაფრთხილებიდან ბლოკერად), `captionsEmpty`, `captionsLength` (`end` > `duration` + 1 წმ) | ბლოკავს | `validateVideo`; დაზიანებული / დაულაგებელი / ცარიელი VTT ატვირთვისას — `CaptionsField` (`parseCaptions`, სტრიქონის ნომრით, არ ინახება) |
+| `transcriptMissing` | `transcriptMissing`, `transcriptOrder` | ბლოკავს | უცვლელი |
+| `audioDescriptionMissing` — „აუდიოაღწერის ვერსია — ან „ვიზუალური ინფორმაცია აუდიოშიცაა““ | `audioDescriptionMissing`, `audioDescriptionSame` (`adId` = `id`) | ბლოკავს | `validateVideo`; `adId` = `id` — ველის შეცდომაც (`differentFrom`) |
+| ერთი YouTube-ის id ორ მასალაში | `youtubeDuplicate` | აფრთხილებს | `validateContent` (ნაკრები) + რედაქტორის ველი (`content.checkYouTube`, ბმული იმ მასალაზე) |
+| `signLanguageMissing` | — | ამოღებულია (B0) | — |
+
+### facade-ის მდგომარეობები
+
+| მდგომარეობა | კადრი | მართვა | რეგიონის აღწერა / სტატუსი | ქსელი |
+|---|---|---|---|---|
+| id არ არის / ჩანაცვლებაა (mock) | წყვეტილი ჩარჩო | „ჩართვა“ `aria-disabled` + „ვიდეოს ბმული მზადდება…“, ტრანსკრიპტი ღიაა | მიზეზი | არაფერი |
+| facade (id ვალიდურია) | `<img>` maxres → hq (≤ 120px → hq), `alt=""` | „ვიდეოს ჩართვა: {სათაური}“ (კადრის ცენტრში; ≥ 34rem — ოქროსფერი წრე + წარწერა, ვიწროზე — წარწერა 44px), ტრანსკრიპტი; Space / K რეგიონზე რთავს | „ჩართვისას ვიდეო YouTube-იდან (youtube-nocookie.com) ჩაიტვირთება.“ | მხოლოდ `i.ytimg.com` (კადრი) |
+| იტვირთება | კადრი iframe-ის ქვეშ | სრული მართვა; ფოკუსი „ჩართვაზე“; შენიშვნა „ვიდეო იტვირთება…“ | „ვიდეო იტვირთება“ | `www.youtube.com/iframe_api` + `youtube-nocookie.com/embed/{id}` |
+| მზადაა, დაკვრა დაიწყო | iframe | „პაუზა“; პროგრესი, დრო, ხმა, CC, აუდიოაღწერა, სიჩქარე, სრული ეკრანი, ტრანსკრიპტი; სუბტიტრის ზოლი | „ვიდეო ჩაირთო“ | ჩვენი VTT (same-origin) |
+| ბრაუზერმა `playVideo()` არ დაუშვა (2.5 წმ) | iframe | „ჩართვა“ (ფოკუსშია) | „ვიდეო მზადაა — დააჭირე „ჩართვას“.“ | — |
+| მიუწვდომელი (`onError` 2 / 5 / 100 / 101 / 150, API ვერ ჩაიტვირთა / 15 წმ) | კადრი, iframe იხსნება | „ჩართვა“ `aria-disabled` + „ვიდეო ამჟამად მიუწვდომელია…“, ტრანსკრიპტი ღიაა | `role="alert"` | — |
+
+### შექმნილი ფაილები
+
+`src/content/youtube.js`, `youtube.test.js` (35 ტესტი: 16 სწორი + 16 არასწორი ფორმა, კადრი, CSP), `src/content/vtt.js`, `vtt.test.js` (19), `src/components/media/youtube-api.js`, `youtube-controller.js`, `YouTubeMedia.jsx`, `__tests__/fake-youtube.js`, `__tests__/youtube.test.jsx` (16), `src/admin/__tests__/youtube-editor.test.jsx` (7).
+
+**შეცვლილი:** `model.js`, `validate.js`, `query.js`, `mock/videos.js`, `mock/translations.js`, `components/media/{sources.js, VideoPlayer.jsx, NativeMedia.jsx, native-controller.js, player-prefs.js, index.js, media.css}`, `components/ui/{Media.jsx, cards/VideoCard.jsx}`, `features/videos/VideoStage.jsx`, `i18n/{ka,en}.js`, `admin/schemas/{videos.js, index.js}`, `admin/editor/{checklist.js, translation.js, TranslationFields.jsx, EntityEditor.jsx, editor.css, fields/FieldRenderer.jsx}`, `admin/api/{adminAdapter.js, http.js, mock.js}`, `admin/i18n/{ka,en}.js`, `scripts/audit.py` (`--only youtube`), რეპოს `CLAUDE.md` (ვიდეოს სტრიქონი B0.1-ით + „კოდის კონვენციები (F10)“), ტესტები (content, media, admin). **წაშლილი:** `src/admin/editor/vtt.js` (→ `src/content/vtt.js`).
+
+### საჯარო API (+)
+
+- `@/content/youtube.js`: `YOUTUBE_ID`, `YOUTUBE_EMBED_ORIGIN`, `YOUTUBE_API_SRC`, `YOUTUBE_THUMB_ORIGIN`, `YOUTUBE_CSP`, `isYouTubeId(v)`, `isPlaceholder(v)`, `parseYouTube(url) → id | null`, `youtubeThumbnail(id, 'maxres' | 'hq')`, `youtubePoster(id) → { src, fallbackSrc, alt: '', ratio: '16:9' }`, `youtubeEmbedUrl(id)`.
+- `@/content/vtt.js`: `VTT_MAX_BYTES` (1 MB), `parseCaptions(text) → { ok: true, cues } | { ok: false, code: 'header' | 'timing' | 'order' | 'empty', line }`, `parseCueTime`, `parseTimestamp`, `stripCueTags`, `summarizeCues(cues) → { cues, end }`, `cueAt(cues, t)`, `parseVtt(text)` (ტრანსკრიპტის იმპორტი). `native-controller.js` `stripCueTags`-ს აქედან ხელახლა აექსპორტებს.
+- `@/components/media`: `youtubeSource`, `nativeSource`, `resolveSource(video)` (`youtube` → YouTube, `sources` → native), `describeSource(adapter, video, locale)`, `pickCaptionTrack(captions, locale)`, `loadYouTubeApi({ timeout })`, `resetYouTubeApi()`, `YOUTUBE_API_TIMEOUT` (15 000), `createYouTubeController({ mount, videoId, adId, audioDescription, frameTitle, origin, fallbackDuration, autoStart, captionSrc, fetchText })` (+ `attach(YT)`, `fail()`, `setCues()`), `POLL_MS` (250), `AUTOPLAY_GRACE_MS` (2500), `UNAVAILABLE_CODES`. `VideoSourceAdapter` += `facade`, `captionPlacement: 'overlay' | 'band'`, `poster(video)`, `features(video, locale) → { captions, sign: boolean | null, audioDescription, adReason: 'missing' | 'inAudio', captionLang, captionTrack }`, `pendingText(video)`. `PlaybackState` += `loading?`, `unavailable?`, `blocked?`, `captionsFailed?`. ტესტი: `nativeVideo(video)`, `withFiles(video)`, `installFakeYouTube({ duration, blockAutoplay })`.
+- `Media` += `fallbackSrc` (404 / ≤ 120px → სათადარიგო, შემდეგ ჩარჩო).
+- ადმინის სქემა: ველის სახეები `youtube` (`preview`, `differentFrom`) და `captions` (`srclang`, `translate: 'track'`); `FieldContext.checkYouTube(id)`.
+- `adminAdapter.content.checkYouTube(youtubeId, id?) → { available, usedBy: { id, title } | null }`; HTTP — `GET /content/videos/youtube?youtubeId=…&id=…` (B1-ის OpenAPI-ში შევა).
+- i18n (საიტი): `player.startFor`, `facadeNote`, `loading`, `pendingLink`, `unavailable`, `adVersionMissing`, `adInAudio`, `captionsFailed`, `player.announce.{loading, ready, adOn, adOff}`, `videos.languageEn`, `checks.{captionsEmpty, captionsLength, youtubeMissing, youtubeInvalid, youtubeDuplicate, audioDescriptionSame}`; ამოღებულია `videos.cardLabel`, `badgeSign`, `languages`, `checks.signLanguageMissing`. ადმინი: `editor.fields.{youtube, youtubeAd, captionsEn}`, `editor.hints.{youtube, youtubeAd, captions, captionsEn}`, `editor.youtube.*`, `editor.captions.*`, `editor.checklist.rules.videoSource`, `a11y.rules.*` (6 ახალი კოდი); ამოღებულია `poster`, `videoFile`, `audioDescription`, `signLanguage` ველები და `library.fields.poster`.
+
+### CSP (B7, project-context §10)
+
+`frame-src https://www.youtube-nocookie.com` · `script-src 'self' https://www.youtube.com` (IFrame API და მისი `/s/player/…`) · `img-src 'self' https://i.ytimg.com` · `Referrer-Policy: strict-origin-when-cross-origin`. VTT — `/media/*` (same-origin, `connect-src 'self'`). კოდში — `YOUTUBE_CSP`.
+
+### დიზაინიდან და prompt-იდან გადახვევები
+
+1. prompt-ის „`sources[]`-ის ალტერნატივა, ფაილის ველი რჩება“ → B0 / B0.1 (წყარო მხოლოდ YouTube-ია): `sources`, `poster`, `signLanguage`, `audioDescription` (ფაილი) მოდელიდან და ადმინიდან ამოიღო; F7-ის native adapter `/__kit`-სა და ტესტებშია.
+2. prompt-ის `cc_load_policy=1`, `cc_lang_pref` → არ გადაეცემა (B0 #1): სუბტიტრი ჩვენი VTT-ია ზოლში; YouTube-ის საკუთარი ბილიკი არ ირთვება, რომ ორმაგი არ იყოს.
+3. დაულაგებელი / დაზიანებული VTT ატვირთვისას იბლოკება (ფაილი არ ინახება) — ჩეკლისტი ცარიელსა და ხანგრძლივობას `cues` / `end`-ით ამოწმებს, ფაილს თავიდან არ კითხულობს.
+4. mock-ის VTT `src: null` რჩება (mock-ის წესი, ტესტით) — გეგმის „data-URL ან fixture“-ის ნაცვლად; `cues` / `end` mock-ში არ არის (უცნობია) და ჩეკლისტი მათ ამ შემთხვევაში არ ამოწმებს.
+5. `[YouTube-ის id]` ჩანაცვლებას `validate.js` შეცდომად არ თვლის (როგორც `[…]` ტექსტს) — mock-ზე 0 შენიშვნა რჩება; ფლეიერი მას „ბმული მზადდება“-დ ხატავს.
+6. iframe — `tabindex="-1"`: მართვა სრულად ჩვენია, Tab iframe-ში არ შედის (Chromium-ში შემოწმდა).
+7. YouTube-ის კადრი ≥ 200px სიმაღლის (RMF): 390-ზე 16:9 — 195px, ამიტომ `min-height: 200px` (px — პლატფორმის ზღვარი).
+8. ვიწრო ფლეიერზე (< 34rem) facade-ის ოქროსფერი წრე იმალება, რჩება წარწერა-ღილაკი (#FFFFFF / #0A1D38 16.86:1) — 200%-იან შრიფტზე 16:9-ში ეტევა.
+9. ინგლისური VTT English ჩანართშია, მაგრამ `captions`-ში ინახება (`srclang: 'en'`) და არა `translations.en`-ში — ფაილი თარგმანის ტექსტი არ არის.
+10. კონტრაქტს დაემატა `content.checkYouTube` (mock + `http.js`) — B1-მდე, ორივე მხარე ერთად.
+11. mock-ში ატვირთული VTT მედია-ბიბლიოთეკაში არ ჩანს (სხვაგვარად alt-ის გარეშე „ფოტოდ“ ჩაითვლებოდა); რეალური საცავი — B5.
+12. `auth.test.jsx`-ის პირველი ტესტი: ფოკუსის `waitFor` 3 → 8 წმ, ტესტის ვადა 5 → 20 წმ — 42 ფაილის პარალელურ გაშვებაზე ცივი lazy chunk-ები ნელა იტვირთება (ცალკე გაშვებაზე მწვანე იყო; კოდი არ შეცვლილა).
+13. ვიდეოს დაფების „ჟესტური ენის“ ჩიპი, „ჟესტ.“ ნიშანი ბარათზე და „ქართული + ჟესტური“ — ამოღებულია; `/videos`-ის შესავალი ჟესტურ ენას აღარ ჰპირდება.
+
+### ღია საკითხები
+
+1. **VTT-ის რეალური ატვირთვა** — B5 (R2, `text/vtt`, `WEBVTT`, ზომის ზღვარი, `parseCaptions` სერვერზე იგივე მოდულით); B4 — `validate.js` სერვერზე (`youtubeInvalid`-ის placeholder-ის გამონაკლისი seed-ს ეხება — B2-ში გადასაწყვეტი, წარმოებაში ჩანაცვლება არ უნდა გავიდეს).
+2. **რეალური YouTube-ის შემოწმება** (sandbox-ის გარეთ): IFrame API Chromium / Safari / Firefox-ში, `playVideo()` iOS Safari-ზე facade-ის შემდეგ (თუ არ დაუშვა — სტატუსი უკვე არის), `getAvailablePlaybackRates`, YouTube-ის საკუთარი სუბტიტრი ხომ არ ირთვება (თუ ავტორმა YouTube-ზე „ნაგულისხმევი“ დააყენა — `unloadModule('captions')` დოკუმენტირებული არ არის, არ გამოიყენება).
+3. **ეკრანის მკითხველი რეალურ მოწყობილობაზე** — facade → ფოკუსი „ჩართვაზე“, `role="status"` „ვიდეო ჩაირთო“ (NVDA, VoiceOver iOS).
+4. **YouTube-ზე ჩაშენების აკრძალვა (101 / 150)** — ახლა „მიუწვდომელია“ + ტრანსკრიპტი; „YouTube-ზე გახსნის“ ბმული — UX-ის გადაწყვეტილება.
+5. **კონფიდენციალურობის პოლიტიკა და ხელმისაწვდომობის განცხადება** — `i.ytimg.com` (კადრი დაჭერამდე), `youtube-nocookie.com` (დაჭერის შემდეგ); ვიდეოზე AA, ჟესტური ენა (1.2.6, AAA) — არა (project-context §9 #25).
+6. **კადრი YouTube Studio-ში** — ფოტოს წესები (თვალის დონე, მოქმედება, თანხმობა, მრავალფეროვნება) იქაც; mock-ის კადრის აღწერები (`[ვიდეოს კადრი: …]`) მოდელიდან წავიდა — დაფებში რჩება.
+7. **დაფების გასწორება:** VideosPage / ContentKit — ჟესტური ენის PiP და ჩიპი, სუბტიტრი კადრზე (ახლა ზოლი ქვემოთ), facade-ის მდგომარეობები.
+8. გაფართოებული აუდიოაღწერა (პაუზებით) v1-ში არ არის; აუდიოაღწერის ვერსიის სიგრძე (± 1 წმ) ავტომატურად არ მოწმდება — `getDuration()` მხოლოდ დაკვრისას ჩანს.
+
+### შემდეგი: B1 — API-ის სპეციფიკაცია + `server/`-ის ჩონჩხი
+
+OpenAPI 3.1 adapter-ებიდან (`Video.youtube`, `CaptionTrack.cues` / `end`, `GET /content/videos/youtube`), საერთო მოდულები — `youtube.js`, `vtt.js`, `validate.js`. B1-მდე — `fastdl.mongodb.org` network settings-ში.

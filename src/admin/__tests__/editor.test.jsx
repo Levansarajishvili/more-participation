@@ -53,19 +53,21 @@ describe('რედაქტორი: გამოქვეყნება დ�
       .getByRole('heading', { name: 'ხელმისაწვდომობის ჩეკლისტი' })
       .closest('section');
     const items = () => within(/** @type {HTMLElement} */ (checklist)).getAllByRole('listitem');
-    expect(items().find((li) => li.textContent?.includes('აუდიოაღწერა'))?.className).toContain(
-      'mc-rule--fail',
-    );
+    expect(
+      items().find((li) => li.textContent?.includes('აუდიოაღწერის ვერსია'))?.className,
+    ).toContain('mc-rule--fail');
     await user.click(screen.getByRole('button', { name: 'გამოქვეყნება' }));
     const summary = await screen.findByRole('alert');
     expect(summary).toHaveTextContent(/სუბტიტრები/);
     await user.click(screen.getByRole('checkbox', { name: /ვიზუალური ინფორმაცია აუდიოშიცაა/ }));
-    expect(items().find((li) => li.textContent?.includes('აუდიოაღწერა'))?.className).toContain(
-      'mc-rule--ok',
+    expect(
+      items().find((li) => li.textContent?.includes('აუდიოაღწერის ვერსია'))?.className,
+    ).toContain('mc-rule--ok');
+    // F10: ვიდეოს წყარო ბლოკავს; ჟესტური ენის პუნქტი აღარ არის (B0)
+    expect(items().find((li) => li.textContent?.includes('ვიდეოს წყარო'))?.className).toContain(
+      'mc-rule--fail',
     );
-    expect(items().find((li) => li.textContent?.includes('ჟესტური'))?.className).toContain(
-      'mc-rule--warn',
-    );
+    expect(items().some((li) => li.textContent?.includes('ჟესტური'))).toBe(false);
     expect(store.find('videos', id)?.item).toMatchObject({ status: 'draft' });
   });
 

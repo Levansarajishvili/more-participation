@@ -6,7 +6,20 @@ export { default as VideoPlayer } from './VideoPlayer.jsx';
 export { default as Transcript } from './Transcript.jsx';
 export { currentLineIndex, durationAttribute } from './transcript-utils.js';
 export { default as ProgressSlider } from './ProgressSlider.jsx';
-export { nativeSource, resolveSource } from './sources.js';
+export {
+  describeSource,
+  nativeSource,
+  pickCaptionTrack,
+  resolveSource,
+  youtubeSource,
+} from './sources.js';
+export { YOUTUBE_API_TIMEOUT, loadYouTubeApi, resetYouTubeApi } from './youtube-api.js';
+export {
+  AUTOPLAY_GRACE_MS,
+  POLL_MS,
+  UNAVAILABLE_CODES,
+  createYouTubeController,
+} from './youtube-controller.js';
 export {
   createNativeController,
   cueText,

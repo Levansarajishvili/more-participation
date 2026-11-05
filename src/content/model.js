@@ -227,32 +227,36 @@ export const MEDIA_RATIO = Object.freeze({
 /* ─── ვიდეო ──────────────────────────────────────────────────────────────── */
 
 /**
- * @typedef {object} VideoSource
- * @property {string | null} src
- * @property {string} type             MIME, მაგ. `video/mp4`; პლატფორმა ჯერ გადაუწყვეტელია (§9.4)
+ * F10: ვიდეოს წყარო მხოლოდ YouTube-ია (B0) — ინახება id, არა URL (`youtube.js`-ის `parseYouTube`).
+ * `adId` — აუდიოაღწერის ვერსია: ცალკე YouTube-ვიდეო, სრული მიქსი (ორიგინალის ხმა + აღწერა),
+ * მთავარის სიგრძის (± 1 წმ), რომ ერთი VTT და ერთი ტრანსკრიპტი ორივეს მოერგოს. სათაური და აღწერა
+ * YouTube-იდან არ მოდის — რედაქტორი წერს (`title`, `excerpt`). კადრი id-იდან ითვლება
+ * (`youtubePoster(id)`), ამიტომ `poster` მოდელში აღარ არის.
+ * @typedef {object} VideoYouTube
+ * @property {string} id          11 სიმბოლო; mock-ში — `[YouTube-ის id]`
+ * @property {string} [adId]      აუდიოაღწერის ვერსია; ≠ id
  */
 
 /**
- * WebVTT ბილიკი `<track>`-ისთვის.
+ * ჩვენი WebVTT ბილიკი (B0.1): ფლეიერი ფაილს თავად კითხულობს და ტექსტს ზოლში აჩვენებს — YouTube-ის
+ * საკუთარი სუბტიტრი არ ირთვება. ქართული (`ka`, `default: true`) სავალდებულოა, ინგლისური —
+ * არასავალდებულო (`/en`-ზე; თუ არ არის — ქართული `lang="ka"`-ით).
+ * `cues` და `end` ატვირთვისას ითვლება (`vtt.js`-ის `summarizeCues`) — ჩეკლისტი ფაილს თავიდან არ
+ * კითხულობს; ფაილი, რომელიც პარსერს ვერ გაივლის, საერთოდ არ ინახება.
  * @typedef {object} CaptionTrack
  * @property {'captions' | 'subtitles'} kind
  * @property {Lang} srclang
  * @property {string} label
- * @property {string | null} src
+ * @property {string | null} src       null — ფაილი ატვირთვის მოლოდინშია (mock)
  * @property {boolean} default         ქართული სუბტიტრი ნაგულისხმევად ჩართულია
- */
-
-/**
- * ჟესტური ენის თარჯიმნის ცალკე ვიდეო (PiP, ქვედა მარჯვენა კუთხე, კადრის 25%).
- * @typedef {object} SignLanguageTrack
- * @property {string | null} src
- * @property {string} label
+ * @property {number} [cues]           cue-ების რაოდენობა
+ * @property {number} [end]            ბოლო cue-ს დასრულება, წამი
  */
 
 /**
  * @typedef {object} TranscriptLine
  * @property {number} start            წამებში
- * @property {'speech' | 'description'} kind  description — აუდიოაღწერის სტრიქონი
+ * @property {'speech' | 'description'} kind  description — ვიზუალური ინფორმაციის სტრიქონი
  * @property {string} text
  * @property {string} [speaker]
  */
@@ -264,29 +268,29 @@ export const MEDIA_RATIO = Object.freeze({
  */
 
 /**
+ * ჟესტური ენის ვერსია B0-დან არ კეთდება (1.2.6, AAA). F7-ის native ფლეიერის ველები (`sources`,
+ * `poster`, `signLanguage`, `audioDescription` ფაილი) კონტენტის მოდელში აღარ არის — native
+ * adapter-ი მათ თავისი ტიპით (`NativeVideo`, `components/media/sources.js`) იღებს.
  * @typedef {object} Video
  * @property {string} slug
- * @property {string} title
- * @property {string} excerpt
+ * @property {string} title            რედაქტორი წერს (YouTube-იდან არ მოდის)
+ * @property {string} excerpt          რედაქტორი წერს, ≤ EXCERPT_MAX
  * @property {VideoCategory} category
  * @property {VideoPerson} person
- * @property {Image} poster            16:9
- * @property {number} duration         წამებში
+ * @property {number} duration         წამებში, ხელით (ბარათი, `<time>`); ფლეიერი — `getDuration()`
  * @property {Lang} language           სასაუბრო ენა
  * @property {Status} status
  * @property {string} publishedAt
  * @property {boolean} featured        „კვირის ვიდეო“
- * @property {VideoSource[]} sources
+ * @property {VideoYouTube} youtube
  * @property {CaptionTrack[]} captions
- * @property {AudioTrack | null} audioDescription  ცალკე ხმოვანი ბილიკი
- * @property {SignLanguageTrack | null} signLanguage
  * @property {TranscriptLine[]} transcript
- * @property {boolean} [visualInAudio]  F8: „ვიზუალური ინფორმაცია აუდიოშიცაა“ — აუდიოაღწერა არ სჭირდება
+ * @property {boolean} [visualInAudio]  „ვიზუალური ინფორმაცია აუდიოშიცაა“ — აუდიოაღწერის ვერსია არ სჭირდება
  */
 
 /**
- * @typedef {Omit<Video, 'sources' | 'captions' | 'audioDescription' | 'signLanguage' | 'transcript'> & {
- *   hasCaptions: boolean, hasSignLanguage: boolean, hasAudioDescription: boolean
+ * @typedef {Omit<Video, 'youtube' | 'captions' | 'transcript'> & {
+ *   youtubeId: string | null, hasCaptions: boolean, hasAudioDescription: boolean
  * }} VideoSummary
  */
 

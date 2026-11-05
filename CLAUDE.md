@@ -26,7 +26,7 @@
 - სამიზნე სტანდარტი: **WCAG 2.2 AA**, ძირითად ტექსტზე AAA კონტრასტი.
 - მესამე მხარის overlay-ვიჯეტი (accessiBe და მსგავსი) აკრძალულია. თავსებადობის მენიუ საკუთარი, მსუბუქი კომპონენტია და საიტის ნატიური ხელმისაწვდომობის შემცვლელი არ არის.
 - სემანტიკური HTML: landmark-ები, სათაურების იერარქია, `lang="ka"` და `lang="en"` ფრაგმენტებზე, `aria-live` სტატუსებზე, `aria-current` აქტიურ ნავიგაციაზე, `aria-expanded` ყველა გასაშლელზე.
-- ვიდეო: სუბტიტრები ნაგულისხმევად, ჟესტური ენის PiP, აუდიოაღწერა, ტრანსკრიპტი დროის ნიშნულებით. ავტოდაკვრა არასოდეს.
+- ვიდეო: YouTube-ის ბმულით (ფაილი საიტზე არ იტვირთება); სუბტიტრები ნაგულისხმევად — ჩვენი VTT (ქართული სავალდებულო), კადრის ქვეშ და არა ფლეიერზე; აუდიოაღწერა — ცალკე YouTube-ვერსია ან დადასტურება, რომ ვიზუალური ინფორმაცია აუდიოშია; ტრანსკრიპტი დროის ნიშნულებით. ჟესტური ენის ვერსია არ კეთდება. ავტოდაკვრა არასოდეს.
 - სლაიდები ცოცხალი ტექსტია და არა სურათი.
 - ფორმები: ლეიბლი ველის ზემოთ (placeholder ლეიბლს არ ცვლის), შეცდომა ტექსტით და ხატულით, CAPTCHA არ არის, დროის ლიმიტი არ არის. მხარდაჭერის საჭიროებას ვეკითხებით, დიაგნოზს — არასოდეს.
 - მოძრაობა: მხოლოდ მდგომარეობის ცვლილების ასახსნელად, 5 წამზე მეტხანს არაფერი მოძრაობს თავისით, `prefers-reduced-motion` ყოველთვის გათვალისწინებულია.
@@ -348,10 +348,11 @@ src/
   root-ზე, `useEffectEvent`); ბოლოებში `aria-disabled`; მრიცხველი — `LiveRegion` („სლაიდი 3 / 6: …“);
   სხვა სერია = `key={series.slug}`. ყდა `tone`-ის ფიქსირებული წყვილია (თემით არ იცვლება); ზომები
   `cqi` × `--mc-font-scale`-ით rem-ის ფარგლებში, `aspect-ratio` მინიმუმია (დიდ შრიფტზე იზრდება).
-- ფლეიერი მედიას პირდაპირ არ ეხება: `VideoSourceAdapter { id, canPlay(video), Media }` → `Media`
-  `onController`-ით `PlaybackController`-ს აბრუნებს (play / pause / seek / setVolume / setMuted / setRate /
-  setCaptions / setSignLanguage / setAudioDescription / subscribe / onCaption). ახალი პლატფორმა (YouTube) —
-  ახალი adapter `sources.js`-ში, UI უცვლელია. ტესტში — `createFakeSource()`.
+- ფლეიერი მედიას პირდაპირ არ ეხება: `VideoSourceAdapter { id, canPlay(video), Media, facade?,
+  captionPlacement?, poster?, features?, pendingText? }` → `Media` `onController`-ით `PlaybackController`-ს
+  აბრუნებს (play / pause / seek / setVolume / setMuted / setRate / setCaptions / setSignLanguage /
+  setAudioDescription / subscribe / onCaption). კონტენტის ვიდეო — `youtubeSource` (F10), native — `/__kit`
+  და ტესტები. ტესტში — `createFakeSource()` (native) და `installFakeYouTube()` (ყალბი IFrame API).
 - ფლეიერის მალსახმობები `KeyboardEvent.code`-ით (ქართულ განლაგებაზეც), მხოლოდ ფლეიერის შიგნით; Space
   — მხოლოდ რეგიონზე / კადრზე (ღილაკზე ღილაკისაა); ველსა და ჩამოსაშლელში — არაფერი.
 - განლაგება, რომელიც DOM-ს ცვლის (ფლეიერის „მეტი“), — JS-ით რეალური სიგანიდან და rem-იდან
@@ -406,3 +407,24 @@ src/
   UI-ის ტექსტი (ღილაკები, მეტა) `lang`-ს არ იღებს.
 - ახალი თარგმნადი ველი რედაქტორში — სქემის ტექსტური ველი თავისით ითარგმნება (`isTranslatable`);
   არა-თარგმნადი ტექსტი (ნომერი, სახელი-ანგარიში) — `translate: false`.
+
+## კოდის კონვენციები (F10 — YouTube ვიდეო)
+
+- ვიდეოს წყარო მხოლოდ YouTube-ია: მოდელში `youtube: { id, adId? }` — ინახება id, არა URL. ბმული → id
+  მხოლოდ `parseYouTube()`-ით (`@/content/youtube.js`); id-ის შემოწმება — `isYouTubeId()`, ჩანაცვლება
+  (`[YouTube-ის id]`) — `isPlaceholder()`. კადრი — `youtubePoster(id)` (`<img>`, maxres → hq,
+  `Media fallbackSrc`), `poster` ველი არ არსებობს.
+- სათაური და აღწერა YouTube-იდან არ მოდის: oEmbed / Data API-ს და YouTube-თან სხვა მოთხოვნას ადმინი არ
+  აგზავნის (ტესტი fetch-ის spy-ით). დუბლიკატი — `content.checkYouTube(id, itemId)` ჩვენს საცავში.
+- facade: iframe და `iframe_api` მხოლოდ „ვიდეოს ჩართვა“-ს შემდეგ (`loadYouTubeApi()`), iframe —
+  `youtube-nocookie.com`, `title` = „ვიდეო: {სათაური}“, `tabindex="-1"`, `referrerpolicy`
+  `strict-origin-when-cross-origin`; `controls=0` — მართვა ჩვენია. iframe-ზე არაფერი დევს (RMF):
+  სუბტიტრი — `.mc-player__band` კადრის ქვეშ; YouTube-ის კადრი ≥ 200px სიმაღლის.
+- სუბტიტრი — ჩვენი VTT, ერთი პარსერი `@/content/vtt.js` (`parseCaptions` — მკაცრი, შეცდომა სტრიქონის
+  ნომრით; `cueAt`; `parseVtt` — ტრანსკრიპტის იმპორტი). ატვირთვისას ბილიკს ემატება `cues` / `end`;
+  დაზიანებული ფაილი არ ინახება. ქართული — `default: true`; ინგლისური — English ჩანართში, `captions`-ში.
+- აუდიოაღწერა — ცალკე YouTube-ვერსია (`adId` ≠ `id`, მთავარის სიგრძის) ან `visualInAudio`; გადართვა
+  იმავე წამზე (`loadVideoById` / `cueVideoById`). YouTube-ის ხმის ჩაჩუმება და საკუთარი აუდიო — არა (ToS).
+- ჟესტური ენის ვერსია არ კეთდება (B0): YouTube-ის ფლეიერში ჩიპი არ არის, ჩეკლისტში წესი არ არის.
+- Chromium: `npm run audit -- --only youtube` — YouTube-ის ქსელი `page.route`-ით ყალბდება; axe
+  `iframes: false` (iframe-ის შიგთავსი გარეა, `frame-tested` incomplete მოსალოდნელია).
