@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
@@ -15,7 +16,9 @@ import YAML from 'yaml';
  * draft-07-ის ნაცვლად). `removeAdditional: false` — უცნობი ველი უარყოფილია და ჩუმად არ იშლება (B0 #5).
  */
 
-export const SPEC_PATH = new URL('../openapi.yaml', import.meta.url);
+// `String(import.meta.url)`: Vite-ის `new URL(…, import.meta.url)` asset-ის გარდაქმნა jsdom-ის ტესტში
+// (B4, რედაქტორი HTTP-ზე) ფაილის გზას `http://localhost`-ად აქცევდა
+export const SPEC_PATH = new URL('../openapi.yaml', String(import.meta.url));
 /** `components.schemas` ajv-ში ერთ სქემად: `urn:mc:components#/$defs/<Name>`. */
 export const COMPONENTS_ID = 'urn:mc:components';
 export const HTTP_METHODS = Object.freeze(['get', 'put', 'post', 'patch', 'delete']);

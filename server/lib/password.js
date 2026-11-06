@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { URL } from 'node:url';
 
 import argon2 from 'argon2';
 
@@ -32,7 +33,10 @@ export const ARGON2_OPTIONS = Object.freeze({
  * 48c951a3c3af): რიგით პირველი 3000 უნიკალური (პატარა ასოებით) პაროლი, რომელიც ≥ 12 სიმბოლოა —
  * ანუ ჩვენს პოლიტიკას აკმაყოფილებს (ASVS 6.2.4: „top 3000 passwords which match the policy“).
  */
-export const COMMON_PASSWORDS_URL = new URL('../data/common-passwords.txt', import.meta.url);
+export const COMMON_PASSWORDS_URL = new URL(
+  '../data/common-passwords.txt',
+  String(import.meta.url), // Vite-ის asset-ის გარდაქმნის გარეშე (jsdom-ის ტესტი)
+);
 
 /** @type {Set<string> | null} */
 let common = null;

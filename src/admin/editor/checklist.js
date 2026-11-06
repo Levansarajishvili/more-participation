@@ -1,13 +1,3 @@
-import {
-  validateArticle,
-  validateEvent,
-  validateNews,
-  validateSeries,
-  validateVideo,
-} from '@/content/validate.js';
-import { isTranslated, localize } from '@/content/localize.js';
-import { t } from '@/i18n/index.js';
-
 /**
  * ხელმისაწვდომობის ჩეკლისტი (ATAG 2.0 Part B) — `validate.js`-ის წესებზე, ცოცხლად.
  * - ბლოკავს: სავალდებულო ველები, alt, სათაურების იერარქია, აღწერითი ბმული, ვიდეოს წყარო
@@ -16,7 +6,13 @@ import { t } from '@/i18n/index.js';
  *   ენა, ღონისძიების ხელმისაწვდომობა;
  * - აფრთხილებს: PDF/UA (ჟესტური ენის ვერსია B0-დან არ კეთდება — წესი ამოღებულია);
  * - ინფორმაციული: კონტრასტი ≥ 7:1 (ფერის არჩევა რედაქტორში არ არსებობს), ხმოვანი ვერსია.
+ *
+ * B4: შემოწმების ფუნქციები (`validateEntity`, `validatePage`, `validateTranslation`, `EN_CODES`)
+ * საერთო `src/content/checks.js`-შია — იმავე მოდულით ამოწმებს გამოქვეყნებას ადმინის mock და სერვერი.
+ * აქ — მხოლოდ ჩეკლისტის წესები (UI) და re-export.
  */
+
+export { EN_CODES, validateEntity, validatePage, validateTranslation } from '@/content/checks.js';
 
 /** @typedef {import('@/content/validate.js').Issue} Issue */
 /** @typedef {'block' | 'warn' | 'info'} RuleLevel */
@@ -65,80 +61,6 @@ export const RULES = Object.freeze({
   voice: { id: 'voice', level: 'info', codes: [] },
 });
 
-/** @param {string} entity @param {string} id @param {string} field @param {string} code @param {Record<string, string>} [vars] @returns {Issue} */
-function issue(entity, id, field, code, vars) {
-  return {
-    severity: 'error',
-    entity: /** @type {any} */ (entity),
-    id,
-    field,
-    code,
-    message: t(`checks.${code}`, vars),
-  };
-}
-
-/**
- * გვერდების შემოწმება (validate.js-ში გვერდის ტიპი არ არის): სახელი; „ჩვენ შესახებ“ — გუნდის
- * ფოტოს და პარტნიორის ლოგოს alt, სახელი, როლი.
- * @param {Record<string, any>} page
- * @returns {Issue[]}
- */
-export function validatePage(page) {
-  /** @type {Issue[]} */
-  const out = [];
-  const id = page.slug ?? 'page';
-  if (!page.title?.trim()) out.push(issue('page', id, 'title', 'required', { field: 'title' }));
-  if ((page.fields?.description ?? '').length > 160) {
-    out.push(
-      issue('page', id, 'fields.description', 'excerptLength', {
-        length: String(page.fields.description.length),
-        max: '160',
-      }),
-    );
-  }
-  (page.team ?? []).forEach((/** @type {any} */ member, /** @type {number} */ i) => {
-    if (!member.name?.trim())
-      out.push(issue('team', id, `team[${i}].name`, 'required', { field: `team[${i}].name` }));
-    if (!member.role?.trim())
-      out.push(issue('team', id, `team[${i}].role`, 'required', { field: `team[${i}].role` }));
-    if (!member.photo?.alt?.trim())
-      out.push(issue('team', id, `team[${i}].photo.alt`, 'altMissing'));
-  });
-  (page.partners ?? []).forEach((/** @type {any} */ partner, /** @type {number} */ i) => {
-    if (!partner.name?.trim())
-      out.push(
-        issue('partner', id, `partners[${i}].name`, 'required', { field: `partners[${i}].name` }),
-      );
-    if (!partner.logo?.alt?.trim())
-      out.push(issue('partner', id, `partners[${i}].logo.alt`, 'altMissing'));
-  });
-  return out;
-}
-
-/**
- * @param {import('../content-types.js').ContentType} type
- * @param {Record<string, any>} values
- * @param {Set<string>} articleSlugs  საჯარო სტატიები (ბმულის შემოწმება)
- * @returns {Issue[]}
- */
-export function validateEntity(type, values, articleSlugs) {
-  const item = /** @type {any} */ (values);
-  switch (type) {
-    case 'articles':
-      return validateArticle(item, articleSlugs, []);
-    case 'news':
-      return validateNews(item, articleSlugs, []);
-    case 'series':
-      return validateSeries(item, []);
-    case 'videos':
-      return validateVideo(item, []);
-    case 'events':
-      return validateEvent(item, []);
-    default:
-      return validatePage(item);
-  }
-}
-
 /**
  * @typedef {object} ChecklistItem
  * @property {string} id
@@ -171,34 +93,4 @@ export function buildChecklist(ruleIds, issues) {
     // ბლოკერი = ყოველი error-შენიშვნა (ჩეკლისტის გარეთა ფორმატის შეცდომებიც)
     blocking: issues.filter((i) => i.severity === 'error'),
   };
-}
-
-/** F9: ინგლისურ ვერსიაში ცალკე მოწმდება — ტექსტთან დაკავშირებული წესები. */
-export const EN_CODES = Object.freeze([
-  'altMissing',
-  'headingOrder',
-  'linkText',
-  'linkBroken',
-  'excerptLength',
-  'plainMissing',
-]);
-
-/**
- * ინგლისური ვერსიის შემოწმება (თუ თარგმანი არის): ქართულზე ზემოდან დადებული თარგმანი →
- * იგივე წესები; შენიშვნის ველი — `translations.en.<გზა>` (შეცდომების ჯამი ინგლისურ ველზე მიდის).
- * @param {import('../content-types.js').ContentType} type
- * @param {Record<string, any>} values
- * @param {Set<string>} articleSlugs
- * @returns {Issue[]}
- */
-export function validateTranslation(type, values, articleSlugs) {
-  if (!isTranslated(values, 'en')) return [];
-  const merged = localize(values, 'en');
-  return validateEntity(type, merged, articleSlugs)
-    .filter((issue) => EN_CODES.includes(issue.code))
-    .map((issue) => ({
-      ...issue,
-      field: `translations.en.${issue.field}`,
-      message: `${issue.message} (English)`,
-    }));
 }

@@ -1708,3 +1708,109 @@ argon2id, cookie-სესია (`sessions`: token-ის hash, `csrfHash`, უ
 ### შემდეგი: B4 — კონტენტი (ადმინი)
 
 CRUD, ავტოშენახვის სამუშაო ასლი, გამოქვეყნება / დაგეგმვა (სერვერზე `validate.js`, ka + en; `[…]` YouTube-ის id-ში — შეცდომა), ვერსიები / აღდგენა, 409, წაშლა, ძიება, stats, a11yReport, პარამეტრები + რჩეული (`setFeatured`; `update` `featured`-ს არ იღებს), API-ის `Translations` ↔ ბაზის `partialTextSchema`. route-ები — `route(app, spec, operationId, handler)`: guard (`security`, `x-permission`) ავტომატურად ედება; `updatedBy` — `request.auth.user._id`. Gate — frontend-ის ადმინის ტესტები HTTP adapter-ით.
+
+## B4 — კონტენტის API (ადმინი) ✅ (2026-11-06)
+
+**Gate:**
+- frontend — `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓, `server/`-იც) · `npm test` ✓ (42 ფაილი, **735 / 735**; B3 — 722; გაშვებულია სამ ნაწილად: `src/admin` + `src/content` 233, `src/features` 151, დანარჩენი 351) · `npm run build` ✓ + check-dist ✓ (44 JS chunk: საჯარო 31, ადმინის 13; საჯარო chunk-ებში ადმინი / TipTap / validate არ არის).
+- `dist/` B3-ის build-ს შევადარე (სახელი hash-ის გარეშე): საჯარო `index` +9 B — მხოლოდ export-ის სია (ადმინის chunk საჯაროდან ერთ ბმას მეტს იღებს), კოდი არ შეცვლილა; `AboutPage` +1, `ArticlePage` +5, `DevelopmentPage` −5, `routes` −4 — minifier-ის სახელები; ადმინი: `checklist` chunk → `checks` (8735 → 7759 B), ადმინის `mock` 15 984 → 16 476 B (+ `records.js`), `EditorPage` +1483 B, `editor` +10 B.
+- server — `npm run server:lint` ✓ · `npm run server:test` ✓ (**26 ფაილი, 271 ტესტი**; B3 — 22 / 231), ~116 წმ. zip-ის სუფთა ასლზე `npm ci` (573 პაკეტი) → `server:lint` ✓ · `server:test` ✓ (26 / 271).
+- **parity-ნაკრები ორივე adapter-ზე მწვანეა:** `src/admin/__tests__/api.test.js`-ის სცენარები საერთო `scenarios/admin-scenarios.js`-შია (22: B3 — 2, B4a — 8, B4b — 11, B5 — 1). frontend-ი ყველას mock-ზე უშვებს; `server/test/content/parity.test.js` — 21-ს (B5-ის გარდა) mock-სა და HTTP-ზე (რეალური სერვერი `listen`-ით + memory-server, frontend-ის `createHttpAdminAdapter` cookie jar-ით) იმავე საწყისი მონაცემით და საათით: ორივე გარემოში სცენარის `expect`-ები გადის და **კვალი (`notes`) იდენტურია**; HTTP-ის ყოველი პასუხი spec-ს აკმაყოფილებს (0 დარღვევა).
+- **რედაქტორი HTTP adapter-ით** (`server/test/ui/editor-http.test.jsx`, jsdom + რეალური სერვერი, 5 / 5): alt-ის გარეშე გამოქვეყნება ვერ ხერხდება (ჯამი, ფოკუსი, ბმული alt-ზე; ბაზაში — მონახაზი); სერვერის ბლოკერი (422) რედაქტორში ჩანს (`[ჩანაცვლება]` YouTube-ის id: ჩეკლისტი უშვებს, სერვერი — არა; ვერსია უცვლელია); 409 → „მასალა სხვამ შეცვალა“ → „მათი ვერსიის ჩატვირთვა“; ავტოშენახვა — მონახაზი ბაზაში იწერება („ავტომატურად შეინახა … · ავტორი“), გამოქვეყნებული — სამუშაო ასლი (საიტი უცვლელია), „გამოქვეყნება“ მას ამტკიცებს.
+- **alt-ის ან სუბტიტრის გარეშე გამოქვეყნება სერვერზე → 422** (`server/test/content/publish.test.js`): `cover.alt` (+ `translations.en.cover.alt`, თარგმანში alt არ არის), `captions: captionsMissing`; მასალა, ვერსია და ისტორია უცვლელია; სუბტიტრით — ქვეყნდება.
+- ქსელი: ახალი დომენი არ დასჭირდა.
+
+### შექმნილი ფაილები
+
+`src/content/checks.js`, `src/admin/api/records.js`, `src/admin/__tests__/scenarios/admin-scenarios.js`, `server/routes/content.js`, `server/routes/settings.js`, `server/test/browser.js`, `server/test/content/http-env.js`, `server/test/content/parity.test.js`, `server/test/content/content.test.js`, `server/test/content/publish.test.js`, `server/test/ui/editor-http.test.jsx`.
+
+### შეცვლილი ფაილები (ერთი წინადადებით)
+
+- `src/admin/editor/checklist.js` — შემოწმების ფუნქციები `checks.js`-ში გადავიდა; აქ — `RULES`, `buildChecklist` და re-export (რედაქტორის import-ები უცვლელია).
+- `src/admin/editor/translation.js` — `EN_PREFIX` — `checks.js`-იდან (ერთი წყარო).
+- `src/admin/api/mock.js` — ფორმა, სია, ძიება, ვერსიები, ბიბლიოთეკა, stats, a11y, რჩეული და გამოქვეყნების ბლოკერი — `records.js` / `checks.js`-იდან; სერვერის წესები (ქვემოთ, „გადახვევები“ 1).
+- `src/admin/__tests__/api.test.js` — საერთო სცენარებს უშვებს (+ mock-ის B4-ის წესის ცალკე ტესტი); რეგისტრაციის პაროლი — ცნობილ სიაში არ არის.
+- `server/app.js` — `registerContentRoutes`, `registerSettingsRoutes` spec-ის რიგით.
+- `server/db/errors.js` — 121-ის გზა სამუშაო ასლზეც item-ის მიმართ (`working.item.` იჭრება); `null | ობიექტი` განშტოების ტიპის შეუსაბამობა „საუკეთესო“ აღარ არის.
+- `server/db/content.js` — დოკუმენტაცია (B2-ის ორი გადახვევა დაიხურა).
+- `server/lib/openapi.js`, `server/lib/password.js` — `new URL(…, String(import.meta.url))` + `URL` `node:url`-იდან: Vite-ის asset-ის გარდაქმნა jsdom-ის ტესტში ფაილის გზას `http://localhost`-ად აქცევდა.
+- `server/vitest.config.js` — `react()` + `svgr()`, `test/**/*.test.{js,jsx}`.
+- `server/test/openapi.test.js` — რეგისტრირებული route-ები = `x-step: B1 | B3 | B4`, spec-ის რიგით.
+- `server/test/db/parity.test.js` — `restore` და უცნობი რჩეული ორივე მხარეს ერთნაირია.
+- `CLAUDE.md` — ფოლდერების რუკა, „კოდის კონვენციები (B4)“.
+
+### endpoint → mock-ის ფუნქცია → როლი → შეცდომები
+
+| endpoint | mock | როლი (`x-permission`) | შეცდომები |
+|---|---|---|---|
+| `GET /content/:type` (`status`, `q`, `page`, `limit`, `check`; `all`) | `content.list` | ადმ., რედ. (`content.read`) | 400 (ტიპი, query), 401, 403 |
+| `POST /content/:type` | `content.create` | `content.write` + CSRF | 400 (`pages`, უცნობი ველი, ტიპი), 401, 403, 422 (`slugDuplicate`, სიგრძე) |
+| `GET /content/:type/slug` | `content.checkSlug` | `content.read` | 400, 401, 403 |
+| `GET /content/videos/youtube` | `content.checkYouTube` | `content.read` | 400 (id-ის ფორმატი), 401, 403 |
+| `GET /items/:id` (+ `working`) | `content.get` | `content.read` | 400 (id), 401, 403, 404 |
+| `PATCH /items/:id` (`{ data, version, autosave }`) | `content.update` | `content.write` + CSRF | 400, 401, 403, 404, 409, 422 (`status`, ველი, `translations.en.*`) |
+| `DELETE /items/:id` | `content.remove` | `content.write` + CSRF | 400 (7 გვერდი), 401, 403, 404 |
+| `POST /items/:id/publish` (`{ version, data? }`) | `content.publish` | `content.publish` + CSRF | 400, 401, 403, 404, 409, 422 (ბლოკერი) |
+| `POST /items/:id/schedule` (`{ at, version, data? }`) | `content.schedule` | `content.publish` + CSRF | 400 (`at`), 401, 403, 404, 409, 422 (`publishedAt`, ბლოკერი) |
+| `GET /items/:id/versions` | `content.versions` | `content.read` | 400, 401, 403, 404 |
+| `POST /items/:id/versions/:v/restore` | `content.restoreVersion` | `content.write` + CSRF | 400, 401, 403, 404 |
+| `GET /search?q=` | `content.search` | `content.read` | 400, 401, 403 |
+| `GET /reports/stats` | `reports.stats` | `content.read` | 401, 403 |
+| `GET /reports/a11y` | `reports.a11yReport` | `a11y.read` | 401, 403 |
+| `GET /settings` | `settings.get` | ადმინისტრატორი (`settings.manage`) | 401, 403 |
+| `PATCH /settings` (`{ site?, featured? }`) | `settings.update` | `settings.manage` + CSRF | 400, 401, 403, 404 (რჩეული), 422 (`site`, `translations.en`) |
+
+უფლებების ტესტი spec-ის ყველა B4 ოპერაციას გადის: ანონიმური → 401 ყველგან; რედაქტორი → 403 ზუსტად `getAdminSettings` / `updateAdminSettings`-ზე (`ROLE_PERMISSIONS`-ის ცხრილით); ადმინისტრატორი → 403 არსად.
+
+### ჩეკლისტის წესი → ბლოკავს / აფრთხილებს → სად მოწმდება
+
+| წესი (კოდები) | დონე | frontend (UX) | mock | სერვერი |
+|---|---|---|---|---|
+| სავალდებულო, slug, მოკლე აღწერა, თარიღი, ვარიანტი, ფოტოს პროპორცია, ღონისძიების დრო, სლაიდები | ბლოკავს | ✓ | ✓ | ✓ |
+| `altMissing` (ფოტო; გუნდის ფოტო, პარტნიორის ლოგო — `validatePage`) | ბლოკავს | ✓ | ✓ (B4-მდე გვერდებზე — არა) | ✓ |
+| `headingOrder`, `linkText`, `linkBroken` | ბლოკავს | ✓ | ✓ | ✓ |
+| ვიდეო: `youtubeMissing` / `youtubeInvalid`, `captions*`, `transcript*`, `audioDescription*` | ბლოკავს | ✓ | ✓ | ✓ |
+| `plainMissing`, `eventAccess` | ბლოკავს | ✓ | ✓ | ✓ |
+| ინგლისური ვერსია (`EN_CODES`, თუ თარგმანი არის) → `translations.en.*` | ბლოკავს | ✓ | ✓ | ✓ |
+| `[ჩანაცვლება]` YouTube-ის id-ში (`youtubeInvalid`) | ბლოკავს | — | — (dev / seed) | ✓ |
+| დაგეგმვა — მხოლოდ მომავალი თარიღი (`publishedAt: date`) | ბლოკავს | ✓ | ✓ | ✓ |
+| შენახული ტიპის `*Draft`; `translations.en` — მხოლოდ ტექსტი | ბლოკავს (შენახვასაც) | — | — | ✓ |
+| `pdfUntagged` | აფრთხილებს | ✓ | ✓ | ✓ (არ ბლოკავს) |
+| კონტრასტი, ხმოვანი ვერსია | ინფორმაციული | ✓ | — | — |
+
+ერთი ფუნქცია სამ ადგილას: `publishBlockers(type, item, slugs, { placeholders })` (`src/content/checks.js`); რედაქტორი — `validateEntity` + `validateTranslation` (`checklist.blocking`), mock — `publishBlockers`, სერვერი — `publishBlockers(…, { placeholders: false })`.
+
+### საჯარო API
+
+**`src/content/checks.js`:** `validatePage(page)`, `validateEntity(type, values, slugs)`, `EN_CODES`, `EN_PREFIX`, `validateTranslation(type, values, slugs)` (ველი `translations.en.<გზა>`, ტექსტი + „(English)“), `placeholderIssues(type, item)`, `publishBlockers(type, item, slugs, { placeholders = true })`, `blockerFields(issues)` (ველი → პირველი `{ code, message }`), `issueCounts(issues)`.
+
+**`src/admin/api/records.js`:** `DEFAULT_LIMIT` (10), `MAX_LIMIT` (50), `SEARCH_LIMIT` (50); `publicSlugs(articles, at)`, `issuesOf`, `typesFor(type | 'all')`, `toRow(type, record, { slugs, editor })`, `toRecord(type, record, { slugs, editor, working })`, `listRows(rows, params)`, `searchRows(rows, q)`, `versionList(record, historyNewestFirst, editor)`, `newDraft(data)`, `mergeUpdate(current, data)`, `keepFeatured(current, next)`, `publishItem(current, working, data, { status, publishedAt })`, `assertFuture(at, now, message)`, `imagesOf(item)`, `embeddedMedia(type, record)`, `buildStats(rowsByType, { now, library })`, `buildA11yReport(recordsByType, slugs)`, `FEATURED`, `featuredIds(recordsByType)`, `featuredChanges(patch, exists)`. ჩანაწერის ფორმა — `{ id, item, meta }` (mock-ის `StoreRecord` = repository-ის `ContentRecord`).
+
+**server:** `routes/content.js` — `registerContentRoutes(app)`, `createDraftValidator(spec)`, `viewContext(app)` (`{ slugs, editor }`), `recordResponse`, `requireRecord`, `rowsOf(app, types)`, `assertPublishable(type, item, slugs)`, `draftValidationError(request, '' | '/data')`, `actorId(request)`; `routes/settings.js` — `registerSettingsRoutes(app)`. env ცვლადი არ დამატებულა.
+
+**ტესტის helper-ები:** `scenarios/admin-scenarios.js` — `SCENARIOS` (`{ name, step, run(env) }`), `mockEnv({ start })`, `normalized(adapter)`, `code`, `failure`, `plain`, `ADMIN_EMAIL`, `EDITOR_EMAIL`, `NEW_PASSWORD`; `server/test/content/http-env.js` — `httpEnv(label, { start, env })` → `{ admin, adapter, pub, login, item, bySlug, ids, now, advance, repos, app, problems, notes, note, close }`; `server/test/browser.js` — `createBrowser({ base, matcher })`, `installDocument(active)`.
+
+### გადახვევები prompt-იდან, mock-იდან და spec-იდან
+
+1. **mock სერვერის წესს გაუთანაბრდა** (ეტალონი რჩება, parity — ზუსტი): `create` — სტატუსი ყოველთვის `draft`; `update` — `data.status` მხოლოდ `draft` ან უცვლელი (422 `fields.status: option`); `featured` შენახვით / გამოქვეყნებით / აღდგენით არ იცვლება (B2-ის `restore`-ის გადახვევა დაიხურა); უცნობი ან სხვა ტიპის რჩეული → 404 ჩაწერამდე (B2-ში mock ყველას ხსნიდა — დაიხურა); გვერდებზე ჩეკლისტი — `validatePage` (seed-ზე შედეგი იგივეა); ინგლისური ბლოკერის ტექსტს „(English)“ ერთვის — რედაქტორის იგივე.
+2. **`ItemDraft` (`anyOf`) და 422 / 400:** ექვსი ტიპის შეცდომა ერთად (სტატიის სრულ item-ზე `PageDraft`-ის „უცნობი ველები“) კლასიფიკაციას არღვევდა — route-ებზე `attachValidation`, handler-ი შენახული ტიპის `*Draft`-ით აზუსტებს (გრძელი სათაური → 422 `title: tooLong`; `fields` სტატიაში → 400). spec უცვლელია.
+3. **`Translations` spec-ში თავისუფალი რჩება** (B2-ის ღია #1): სერვერზე მას ბაზის `partialTextSchema` ამოწმებს — 121 → 422 `translations.en.*` (სამუშაო ასლზეც); ajv-ის ტიპური სქემა spec-ში 6 ახალ სქემას მოითხოვდა იმავე შედეგისთვის.
+4. **`checkYouTube`** — prompt-ის სიაში არ იყო, spec-ში `x-step: B4`-ია — აწყობილია (mock-ის სემანტიკა: მთავარი, აუდიოაღწერა, სამუშაო ასლი).
+5. **ადმინის სია / ძიება / stats — მეხსიერებაში** (mock-ის იგივე: `q` — სათაური + slug, `check` — ვალიდაცია); ინდექსიანი `searchText` — B6-ის საჯარო ძიებისთვის.
+6. **`PATCH /settings`:** ჯერ ყველა რჩეულის id მოწმდება (404 — არაფერი იწერება), მერე `site` (მთლიანად, მიმდინარეზე ზემოდან), მერე თითო ტიპის `setFeatured` (ტრანზაქცია, ტიპზე ერთი). ერთი ტრანზაქცია ყველაფერზე არ არის — repository-ის ტრანზაქციები ჩადგმას არ უჭერენ მხარს.
+7. **stats-ის `library`:** ჩადგმული ფოტო / PDF (`embeddedMedia`, mock-ის იგივე) + `media` კოლექცია (B5-მდე 0).
+8. **„ჩვენ შესახებ“ (#3):** სერვერზე ცალკე `setOrg` არ არის — საჯარო წყარო (`snapshot()`) გვერდის item-ს კითხულობს: შენახვა / გამოქვეყნება საიტზე აისახება, ავტოშენახვა — არა (ტესტით, mock-ის `setOrg`-ის სემანტიკა).
+9. **ტესტის ინფრასტრუქტურა:** `server/vitest.config.js` — `react()` + `svgr()` (UI-ის ტესტი); `http-env.js`-ის `close()` კავშირებს იძულებით ხურავს (Fastify-ის `keepAliveTimeout` 72 წმ close-ს აყოვნებდა).
+
+### ღია საკითხები
+
+1. **გამოქვეყნებული მასალის slug:** რედაქტორი სათაურის შეცვლისას slug-საც აახლებს (F8-ის ავტომატიკა), ამიტომ გამოქვეყნებულის საჯარო მისამართი ჩუმად იცვლება (UI ტესტმა აჩვენა) — გამოქვეყნებულზე ავტომატიკის გათიშვა ან ძველი მისამართის გადამისამართება (frontend + B6).
+2. სერვერის ველის / ბლოკერის ტექსტი მხოლოდ ქართულია (გლობალური `t`) — `/en/admin` — B6.
+3. ადმინის სია / ძიება / stats ყოველ მოთხოვნაზე ყველა მასალას კითხულობს — NGO-ს მასშტაბზე (ასობით) საკმარისია; ათასობით მასალაზე — `issues`-ის შენახვა ბაზაში ან ქეში.
+4. გუნდის თარგმანი ორ ადგილას (გვერდის `translations.en.team[i]` ↔ წევრის `translations`) — B6.
+5. მედია: ბიბლიოთეკა / alt / წაშლის ბლოკი HTTP-ზე — B5 (სცენარი `step: 'B5'` უკვე წერია; `stats.library`-ს ატვირთვები ემატება).
+6. B2 / B3-ის დანარჩენი ღია საკითხები (პაროლის შეცვლა / აღდგენა, `?invite=` URL-ში, ვერსიის ვადა, deploy-ის მიგრაცია) — უცვლელია.
+
+### შემდეგი: B5 — მედია და დოკუმენტები
+
+ატვირთვა (ზომის / ტიპის ზღვარი, MIME-ის შემოწმება; VTT — `WEBVTT` თავსართი), R2, alt, გამოყენება (`mediaKeys` — ძველი ვერსიების ჩათვლით), წაშლის ბლოკი, PDF-ის ენა / tagged; `media.*` route-ები spec-იდან; parity — `SCENARIOS`-ის `step: 'B5'` HTTP-ზე (`http-env.js`-ის `media: true`), `stats.library` — ატვირთვებით.

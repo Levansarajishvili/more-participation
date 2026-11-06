@@ -23,9 +23,10 @@ import { mapWriteError } from './errors.js';
  * | `versions` / `restore` | `state.versions` / `restoreVersion` | `not-found` |
  * | `setFeatured` | admin `setFeatured` (settings) | `not-found`, `bad-request` (ტიპს რჩეული არ აქვს) |
  *
- * გადახვევები (დოკუმენტირებული, ტესტით): `restore` მიმდინარე `featured`-ს ინახავს (რჩეული
- * პარამეტრებიდან იმართება); `setFeatured` არარსებულ id-ზე `not-found`-ს აბრუნებს (mock ყველას
- * ხსნიდა); ვერსია ბოლო `keepVersions` ინახება (B0 #10); ცარიელი slug-ით `findBySlug` → null.
+ * `restore` მიმდინარე `featured`-ს ინახავს (რჩეული პარამეტრებიდან იმართება); `setFeatured`
+ * არარსებულ id-ზე → `not-found` — B4-დან mock-იც (`records.js`: `keepFeatured`, `featuredChanges`).
+ * გადახვევა (დოკუმენტირებული): ვერსია ბოლო `keepVersions` ინახება (B0 #10); ცარიელი slug-ით
+ * `findBySlug` → null.
  *
  * ჩაწერა, რომელიც ისტორიასაც ცვლის, ტრანზაქციაშია (replica set; `withTransaction` WriteConflict-ზე
  * თავიდან ცდის). 409: `updateOne({ _id, version }, …)` → `matchedCount: 0` → `conflict`.

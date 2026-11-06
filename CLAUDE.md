@@ -179,7 +179,9 @@ src/
     routes.jsx            createAdminRoutes(); handle.admin = { title, crumbs, root, editor }
     AdminRoot.jsx         PreferencesProvider + AuthProvider + noindex meta; admin.css
     api/                  adminAdapter.js (ერთადერთი შესასვლელი), mock.js (საერთო საცავზე; სატესტო
-                          ანგარიშები), http.js (VITE_ADMIN_API, cookie + CSRF), permissions.js (როლები)
+                          ანგარიშები), http.js (VITE_ADMIN_API, cookie + CSRF), permissions.js (როლები);
+                          B4: records.js — პასუხის ფორმა და წესი ორივე მხარეს (სტრიქონი, ჩანაწერი,
+                          სია / ძიება, ვერსიები, შენახვა / გამოქვეყნება, stats, a11y, რჩეული)
     auth/                 AuthProvider (სესია, alertdialog, ავტოშენახვის flush), auth-context.js
                           (useAuth, useSessionFlush), auth-forms.js, RequireAuth, RequireRole
     shell/                AdminShell (sidebar + header + compact-მენიუ), AdminNav, admin-nav.js,
@@ -188,16 +190,20 @@ src/
     pages/                Login, Dashboard, List, A11yReport, Search, Media, Documents, Users, Settings,
                           Forbidden, AdminNotFound, AdminRouteError, AdminRootError
     editor/               EditorPage (lazy) → EntityEditor; RichTextEditor (TipTap, lazy chunk) +
-                          extensions.js; serialize.js (JSON ↔ ბლოკები), checklist.js (validate.js-ზე),
+                          extensions.js; serialize.js (JSON ↔ ბლოკები), checklist.js (RULES + re-export
+                          src/content/checks.js-იდან, B4),
                           fields/FieldRenderer.jsx (ყველა ველის სახე), path.js, datetime.js (Tbilisi),
                           vtt.js, autosave.js, PreviewPage; editor.css
     schemas/              ველების კონფიგი თითო ტიპზე (articles, news, events, series, videos, pages)
     i18n/                 ადმინის ლექსიკონი (ka.js + en.js) + ta() (მიმდინარე ენით)
     content-types.js      ტიპები, სვეტი „კატეგორია“, საჯარო გზა, creatable / deletable
-    __tests__/            admin-helpers.jsx (setupAdmin, signInDirect, renderAdmin, fillLogin), ტესტები
+    __tests__/            admin-helpers.jsx (setupAdmin, signInDirect, renderAdmin, fillLogin), ტესტები;
+                          B4: scenarios/admin-scenarios.js — სცენარები mock-ისა და HTTP-ის adapter-ზე
   content/
     adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk
     model.js              JSDoc typedef-ები + EXCERPT_MAX, MEDIA_RATIO, READING_WPM
+    checks.js             B4: validateEntity / validatePage / validateTranslation / EN_CODES,
+                          publishBlockers, blockerFields — რედაქტორი, ადმინის mock და სერვერი
     taxonomy.js           კატეგორიები, თემები, ტიპები (id ლათინურად), label(), options()
     query.js              სუფთა ფუნქციები: isPublic, ფილტრი, ძიება, cursor
     errors.js             ContentError { code, message, fields }, normalizeError
@@ -253,6 +259,9 @@ server/                   B1: API — ცალკე package (npm workspace), N
   routes/health.js        GET /api/health — 200 / 503
   routes/auth.js          B3: login, register, logout, me, extendSession
   routes/users.js         B3: listUsers, createInvite, setUserRole, deactivateUser (users.manage)
+  routes/content.js       B4: content / items — სია, შექმნა, slug / YouTube, მიღება, შენახვა, წაშლა,
+                          გამოქვეყნება, დაგეგმვა, ვერსიები, აღდგენა, ძიება
+  routes/settings.js      B4: პარამეტრები (settings.manage, რჩეული), stats, a11y
   data/common-passwords.txt  B3: top-3000 ცნობილი პაროლი (≥ 12, SecLists) — ASVS 6.2.4
   db/                     B2: ბაზის ფენა
     schema.js             OpenAPI `*Draft` → `$jsonSchema` (toBsonSchema, partialTextSchema — translations.en)
@@ -272,7 +281,8 @@ server/                   B1: API — ცალკე package (npm workspace), N
   scripts/seed.js         B2: `npm run server:seed [-- --reset]`
   scripts/create-admin.js B3: `npm run server:create-admin` (env ან ტერმინალი, ფარული პაროლი)
   scripts/db-cli.js       CLI-ების საერთო: config, კავშირი, შეცდომის ტექსტი საიდუმლოს გარეშე
-  vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server)
+  vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server); B4: react() + svgr(),
+                          `*.test.jsx` (jsdom — ფაილის `@vitest-environment`)
   test/                   config, app, db, openapi, shared-modules, boot (`node server/index.js`);
     contract/             spec-match.js, public-plan.js (B6-ის გეგმა), requests / responses / constants
     db/                   B2: schema, collections (მიგრაცია, validator-ები, TTL), content, seed (+ CLI),
@@ -280,6 +290,11 @@ server/                   B1: API — ცალკე package (npm workspace), N
     auth/                 B3: units, session (შესვლა, CSRF, Fetch Metadata, header-ები), users (როლები,
                           მოწვევა, რეგისტრაცია), limits (429, ლოგი), http-adapter (createHttpAdminAdapter
                           რეალურ სერვერზე), create-admin (CLI)
+    browser.js            B4: cookie jar + spec-ის შემოწმება (createBrowser), installDocument (Node / jsdom)
+    content/              B4: http-env.js (mock-ის მონაცემი ბაზაში, HTTP adapter, საჯარო ხედი snapshot-იდან),
+                          parity (საერთო სცენარები mock ↔ HTTP), content (ნაწილი ა-ს წესები),
+                          publish (ბლოკერი 422, უფლებები, პარამეტრები)
+    ui/                   B4: editor-http.test.jsx — რედაქტორი (jsdom) რეალურ სერვერზე
 ```
 
 ## კოდის კონვენციები (F1)
@@ -526,3 +541,14 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **დრო:** `buildApp({ now })` → repository, rate limit, cookie-ს `Max-Age`; ტესტში საათი რეალური დროიდან იწყება (`test/auth/helpers.js`) — წარსულის `expiresAt`-ს ბაზის TTL monitor ტესტის შუაში წაშლიდა.
 - **ლოგი:** `request.log.info({ event: 'auth.login' }, 'auth')` — მხოლოდ მოვლენის სახელი; user id, ელფოსტა, IP, token, კოდი — არასოდეს (`test/auth/limits.test.js` ამოწმებს).
 - **ტესტი:** `test/auth/helpers.js` — `authApp(label, { env, extend, logStream })`, `agent(app, { ip })` (cookie jar + `X-CSRF-Token`, როგორც `http.js`), `addUser`; frontend-ის adapter-ი რეალურ სერვერზე — `http-adapter.test.js`.
+
+## კოდის კონვენციები (B4 — კონტენტის API)
+
+- **ერთი წესი ორ მხარეს:** ადმინის პასუხის ფორმა და წესი (`toRow`, `toRecord`, `listRows`, `searchRows`, `versionList`, `mergeUpdate`, `keepFeatured`, `newDraft`, `publishItem`, `assertFuture`, `buildStats`, `buildA11yReport`, `featuredIds`, `featuredChanges`) — `src/admin/api/records.js`; გამოქვეყნების ბლოკერი — `src/content/checks.js` (`publishBlockers`, `blockerFields`). mock და `server/routes/*.js` მათ იძახებენ — ასლი არ იწერება. სერვერის საკუთარი წესი მხოლოდ ის არის, რისი შემოწმებაც mock-ს არ შეუძლია: ტიპის `*Draft` სქემა, `translations.en` (ბაზის `$jsonSchema`), `[ჩანაცვლება]` YouTube-ის id-ში (`placeholders: false`).
+- **mock = ეტალონი, სერვერის წესით:** სერვერის წესი, რომელიც ქცევას ცვლის (სტატუსი მხოლოდ `/publish`-ით, `featured` მხოლოდ პარამეტრებიდან, უცნობი რჩეული → 404), mock-შიც იმავე ფუნქციით ედება — parity არ ირღვევა.
+- **`ItemDraft`-იანი route:** `attachValidation: true` + `draftValidationError(request, '' | '/data')` — სქემის შეცდომა მონახაზის გარეთ → მაშინვე; მონახაზში — ჯერ შენახული ტიპის `*Draft` (`createDraftValidator`, ზუსტი ველი და კოდი), მერე თავდაპირველი შეცდომა. handler ყოველთვის ჯერ ამოწმებს `request.validationError`-ს.
+- **ადმინის სია / ძიება მეხსიერებაში:** `check` ფილტრს ვალიდაცია სჭირდება, `q` — სათაური + slug (mock-ის იგივე); `searchText` / ინდექსი — B6-ის საჯარო ძიებისთვის.
+- **რიგი mock-ისაა:** გამოქვეყნება — (დაგეგმვის თარიღი) → item → სქემა → ბლოკერი → `replace` (ვერსია → 409); შენახვა — 404 → 409 → სტატუსი → სქემა → ჩაწერა.
+- **parity-ტესტი:** ახალი ადმინის ქცევა — სცენარი `src/admin/__tests__/scenarios/admin-scenarios.js`-ში (`step`, `env.note()` — მხოლოდ ის, რაც ორივე მხარეს ერთნაირია: კოდი, ველის გზა, seed-ის id, სათაური, ვერსია, ავტორი; არა — ახალი id და დროის სტრიქონი). frontend-ი მას mock-ზე უშვებს (`api.test.js`), სერვერი — ორივეზე (`test/content/parity.test.js`) და კვალს ადარებს; HTTP-ის ყოველი პასუხი spec-ით მოწმდება (`problems`).
+- **HTTP-ის გარემო:** `test/content/http-env.js` — `httpEnv(label, { start })`: mock-ის საცავი `adminState`-ით → ბაზა იმავე id-ებით / მეტათი, მომხმარებლები `u-001` / `u-002`, საათი `start`-იდან (`advance`), საჯარო ხედი — `snapshot()` → mock-ის საჯარო adapter-ი (B6-მდე). `close()` კავშირებს იძულებით ხურავს (Fastify-ის keep-alive 72 წმ).
+- **UI რეალურ სერვერზე:** `server/test/ui/*.test.jsx` — `// @vitest-environment jsdom` + `import '@/test/setup.js'`; `setAdminAdapter(env.adapter)`; afterEach — `cleanup()` env-ის დახურვამდე. სერვერის კოდში `new URL(…, String(import.meta.url))` — Vite-ის asset-ის გარდაქმნა jsdom-ში ფაილის გზას `http://`-ად აქცევდა.

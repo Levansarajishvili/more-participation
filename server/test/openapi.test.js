@@ -156,10 +156,10 @@ describe('server/openapi.yaml', () => {
     }
   });
 
-  it('სერვერზე რეგისტრირებულია ზუსტად `x-step: B1 | B3` ოპერაციები, spec-ის გზით', async () => {
+  it('სერვერზე რეგისტრირებულია ზუსტად `x-step: B1 | B3 | B4` ოპერაციები, spec-ის რიგით', async () => {
     const app = await makeApp();
     const expected = operations
-      .filter((op) => ['B1', 'B3'].includes(op.operation['x-step']))
+      .filter((op) => ['B1', 'B3', 'B4'].includes(op.operation['x-step']))
       .map((op) => ({ method: op.method, url: fastifyPath(op.path), operationId: op.operationId }));
     expect(/** @type {any} */ (app).apiRoutes).toEqual(expected);
     await app.close();

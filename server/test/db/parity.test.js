@@ -297,15 +297,24 @@ describe('parity: repository ↔ mock', () => {
     ).toBe(0);
   });
 
-  it('დოკუმენტირებული გადახვევები: restore featured-ს ინახავს; setFeatured უცნობ id-ზე → not-found', async () => {
-    // a-003 ახლა რჩეულია; ვერსია 1-ში — არა
+  it('B4: restore მიმდინარე featured-ს ინახავს და setFeatured უცნობ id-ზე not-found-ს აბრუნებს — ორივე მხარეს (B2-ის გადახვევები დაიხურა)', async () => {
+    // a-003 ახლა რჩეულია; ვერსია 1-ში — არა. B2-ში mock ძველ `featured`-ს აღადგენდა — B4-ში
+    // `records.js`-ის `keepFeatured` ორივე მხარეს ერთი წესია
     clk.advance();
     const mock = await admin.content.restoreVersion('a-003', 1);
     const db = await repos.content.restore('a-003', 1, { by: BY });
-    expect(mock.item.featured).toBe(false);
+    expect(mock.item.featured).toBe(true);
     expect(db.item.featured).toBe(true);
-    await admin.settings.update({ featured: { featuredSeries: 's-404' } });
-    expect(store.records('series').some((r) => /** @type {any} */ (r.item).featured)).toBe(false);
+    // B4: უცნობი id-ზე mock-იც `not-found`-ს აბრუნებს ჩაწერამდე (`records.js`, `featuredChanges`)
+    const featuredBefore = store
+      .records('series')
+      .filter((r) => /** @type {any} */ (r.item).featured);
+    expect(
+      (await caught(admin.settings.update({ featured: { featuredSeries: 's-404' } }))).code,
+    ).toBe('not-found');
+    expect(store.records('series').filter((r) => /** @type {any} */ (r.item).featured)).toEqual(
+      featuredBefore,
+    );
     expect((await caught(repos.content.setFeatured('series', 's-404'))).code).toBe('not-found');
   });
 });

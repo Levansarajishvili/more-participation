@@ -1,25 +1,36 @@
+import { blockerFields, publishBlockers } from '@/content/checks.js';
 import { ContentError } from '@/content/errors.js';
 import { normalizeEmail } from '@/content/forms.js';
-import { isTranslated, localize } from '@/content/localize.js';
 import { tbilisi } from '@/content/mock/helpers.js';
 import { ID_PREFIX, getSharedMockStore } from '@/content/mock/store.js';
-import { isPublic } from '@/content/query.js';
-import { matchesQuery, normalizeSearch } from '@/content/text.js';
 import { isYouTubeId } from '@/content/youtube.js';
-import {
-  validateArticle,
-  validateEvent,
-  validateNews,
-  validateSeries,
-  validateVideo,
-} from '@/content/validate.js';
 
 import { validateLogin, validateRegister } from '../auth/auth-forms.js';
-import { EN_CODES } from '../editor/checklist.js';
 import { CONTENT_TYPES, TYPE_CONFIG } from '../content-types.js';
 import { adminDictionary, adminDictionaryEn, ta } from '../i18n/index.js';
 
 import { ROLES, can } from './permissions.js';
+import {
+  assertFuture,
+  buildA11yReport,
+  buildStats,
+  embeddedMedia,
+  featuredChanges,
+  featuredIds,
+  keepFeatured,
+  listRows,
+  mergeUpdate,
+  newDraft,
+  publicSlugs,
+  publishItem,
+  searchRows,
+  toRecord as recordView,
+  toRow,
+  typesFor,
+  versionList,
+} from './records.js';
+
+export { DEFAULT_LIMIT } from './records.js';
 
 /**
  * mock adminAdapter (F8): იგივე კონტრაქტი, რაც backend-ს ექნება. კონტენტი — საჯარო საიტის
@@ -46,7 +57,6 @@ export const MOCK_PASSWORD = 'mc-dev-password';
 export const MOCK_INVITE = 'MC-INVITE-0001';
 /** სესიის ხანგრძლივობა (mock). რეალური მნიშვნელობა სერვერის პოლიტიკაა — [ვადა]. */
 export const SESSION_TTL_MS = 30 * 60_000;
-export const DEFAULT_LIMIT = 10;
 /** მხოლოდ mock: სესიის ჩანაწერი ენის გადართვისთვის (იხ. `persistSession`). */
 export const MOCK_SESSION_KEY = 'mc-admin-mock-session';
 
@@ -321,99 +331,30 @@ export function createMockAdminAdapter(options = {}) {
 
   /** საჯარო სტატიების slug-ები — ბმულის შემოწმება მხოლოდ საიტზე ხილულ მასალას ადარებს. */
   function publicArticleSlugs() {
-    const at = now();
-    return new Set(
-      store
-        .records('articles')
-        .filter((r) => isPublic(/** @type {any} */ (r.item), at))
-        .map((r) => /** @type {{ slug: string }} */ (r.item).slug),
-    );
+    return publicSlugs(/** @type {any[]} */ (store.records('articles')), now());
   }
 
   /**
-   * @param {ContentType} type
-   * @param {Record<string, any>} item
-   * @param {Set<string>} [slugs]
-   * @returns {Issue[]}
+   * ჩანაწერი რედაქტორისთვის — საერთო `records.js` (სერვერის იგივე ფორმა).
+   * @param {ContentType} type @param {StoreRecord} record @returns {ContentRecord}
    */
-  function issuesOf(type, item, slugs = publicArticleSlugs()) {
-    /** @type {Issue[]} */
-    const sink = [];
-    const any = /** @type {any} */ (item);
-    switch (type) {
-      case 'articles':
-        return validateArticle(any, slugs, sink);
-      case 'series':
-        return validateSeries(any, sink);
-      case 'videos':
-        return validateVideo(any, sink);
-      case 'news':
-        return validateNews(any, slugs, sink);
-      case 'events':
-        return validateEvent(any, sink);
-      default:
-        return sink;
-    }
-  }
-
-  /** @param {Issue[]} issues */
-  function counts(issues) {
-    return {
-      errors: issues.filter((i) => i.severity === 'error').length,
-      warnings: issues.filter((i) => i.severity === 'warning').length,
-      codes: [...new Set(issues.map((i) => i.code))],
-    };
-  }
-
-  /** @param {ContentType} type @param {StoreRecord} record @param {Set<string>} slugs @returns {ContentRow} */
-  function toRow(type, record, slugs) {
-    const item = /** @type {Record<string, any>} */ (record.item);
-    return {
-      id: record.id,
-      type,
-      title: item.title ?? '',
-      titleEn: item.translations?.en?.title?.trim() || null,
-      slug: item.slug ?? '',
-      status: item.status,
-      publishedAt: item.publishedAt,
-      category: TYPE_CONFIG[type].category(item),
-      version: record.meta.version,
-      updatedAt: record.meta.updatedAt,
-      updatedBy: editor(record.meta.updatedBy),
-      issues: counts(issuesOf(type, item, slugs)),
-    };
-  }
-
-  /** @param {ContentType} type @param {StoreRecord} record @returns {ContentRecord} */
   function toRecord(type, record) {
-    const working = state.working.get(record.id) ?? null;
-    return {
-      working: working && {
-        item: /** @type {Record<string, any>} */ (working.item),
-        at: working.at,
-        by: editor(working.by),
-      },
-      id: record.id,
-      type,
-      item: /** @type {Record<string, any>} */ (record.item),
-      version: record.meta.version,
-      createdAt: record.meta.createdAt,
-      updatedAt: record.meta.updatedAt,
-      updatedBy: editor(record.meta.updatedBy),
-      issues: issuesOf(type, /** @type {Record<string, any>} */ (record.item)),
-    };
+    return recordView(type, /** @type {any} */ (record), {
+      slugs: publicArticleSlugs(),
+      editor,
+      working: state.working.get(record.id) ?? null,
+    });
   }
 
-  /** @param {(ContentType)[]} types */
+  /** @param {ContentType[]} types @returns {ContentRow[]} */
   function allRows(types) {
     const slugs = publicArticleSlugs();
     return types.flatMap((type) =>
-      store.records(TYPE_CONFIG[type].collection).map((r) => toRow(type, r, slugs)),
+      store
+        .records(TYPE_CONFIG[type].collection)
+        .map((r) => toRow(type, /** @type {any} */ (r), { slugs, editor })),
     );
   }
-
-  /** @param {ContentRow} row */
-  const haystack = (row) => normalizeSearch(`${row.title} ${row.slug}`);
 
   /**
    * ვერსიის შენახვა ჩანაცვლებამდე + ჩანაცვლება.
@@ -440,87 +381,31 @@ export function createMockAdminAdapter(options = {}) {
   }
 
   /**
-   * გამოქვეყნების ბლოკერი → `validation` + `fields` (ველის გზა → შეცდომა).
+   * გამოქვეყნების ბლოკერი → `validation` + `fields` (ველის გზა → შეცდომა). B4: საერთო `checks.js`
+   * (`publishBlockers` — ქართული + ინგლისური ვერსია; სერვერის იგივე წესი).
    * @param {ContentType} type @param {Record<string, any>} item
    */
   function assertPublishable(type, item) {
-    const blocking = issuesOf(type, item).filter((i) => i.severity === 'error');
-    // F9: ინგლისური ვერსია (თუ თარგმნილია) — იგივე ტექსტური წესები, ველი `translations.en.*`
-    if (isTranslated(item, 'en')) {
-      for (const issue of issuesOf(type, localize(item, 'en'))) {
-        if (issue.severity === 'error' && EN_CODES.includes(issue.code)) {
-          blocking.push({ ...issue, field: `translations.en.${issue.field}` });
-        }
-      }
-    }
+    const blocking = publishBlockers(type, item, publicArticleSlugs());
     if (!blocking.length) return;
-    /** @type {Record<string, { code: any, message: string }>} */
-    const fields = {};
-    for (const issue of blocking) {
-      fields[issue.field] ??= { code: issue.code, message: issue.message };
-    }
-    throw new ContentError('validation', { fields, detail: `${blocking.length} blocker(s)` });
+    throw new ContentError('validation', {
+      fields: blockerFields(blocking),
+      detail: `${blocking.length} blocker(s)`,
+    });
   }
 
   /* ─── მედია (კონტენტში ჩადგმული სურათები + ატვირთვები) ───────────────── */
 
-  /**
-   * @param {Record<string, any>} item
-   * @returns {{ field: string, image: Record<string, any> }[]}
-   */
-  function imagesOf(item) {
-    /** @type {{ field: string, image: Record<string, any> }[]} */
-    const out = [];
-    for (const field of ['cover', 'photo']) {
-      if (item[field] && typeof item[field] === 'object' && 'alt' in item[field]) {
-        out.push({ field, image: item[field] });
-      }
-    }
-    (item.body ?? []).forEach((/** @type {any} */ block, /** @type {number} */ i) => {
-      if (block.type === 'image' && block.image)
-        out.push({ field: `body[${i}].image`, image: block.image });
-    });
-    return out;
-  }
-
-  /** @returns {MediaItem[]} */
+  /** ბიბლიოთეკა: მასალაში ჩადგმული ფოტო / PDF (`records.js`) + ატვირთვები. @returns {MediaItem[]} */
   function libraryItems() {
-    /** @type {MediaItem[]} */
-    const items = [];
-    for (const type of CONTENT_TYPES) {
-      for (const record of store.records(TYPE_CONFIG[type].collection)) {
-        const item = /** @type {Record<string, any>} */ (record.item);
-        for (const { field, image } of imagesOf(item)) {
-          items.push({
-            id: `img:${record.id}:${field}`,
-            kind: 'image',
-            src: image.src ?? null,
-            alt: image.alt ?? '',
-            title: image.credit ?? '',
-            ratio: image.ratio ?? null,
-            size: null,
-            lang: null,
-            tagged: null,
-            usage: [{ type, id: record.id, title: item.title ?? '', field }],
-          });
-        }
-        if (item.pdf) {
-          items.push({
-            id: `doc:${record.id}:pdf`,
-            kind: 'document',
-            src: item.pdf.src ?? null,
-            alt: '',
-            title: item.pdf.label ?? '',
-            ratio: null,
-            size: item.pdf.size ?? null,
-            lang: item.pdf.lang ?? 'ka',
-            tagged: item.pdf.tagged ?? false,
-            usage: [{ type, id: record.id, title: item.title ?? '', field: 'pdf' }],
-          });
-        }
-      }
-    }
-    return [...items, ...state.uploads];
+    return [
+      ...CONTENT_TYPES.flatMap((type) =>
+        store
+          .records(TYPE_CONFIG[type].collection)
+          .flatMap((record) => embeddedMedia(type, /** @type {any} */ (record))),
+      ),
+      ...state.uploads,
+    ];
   }
 
   /** @param {string} id */
@@ -621,27 +506,8 @@ export function createMockAdminAdapter(options = {}) {
       list: (params) =>
         respond(() => {
           requireUser('content.read');
-          const { type = 'all', status = null, q = '', check = null } = params ?? {};
-          const limit = Math.max(1, Math.min(50, Number(params?.limit) || DEFAULT_LIMIT));
-          const types = type === 'all' ? [...CONTENT_TYPES] : [type];
-          if (!types.every((t) => CONTENT_TYPES.includes(t))) {
-            throw new ContentError('bad-request', { detail: `type ${type}` });
-          }
-          let rows = allRows(types);
-          if (status) rows = rows.filter((row) => row.status === status);
-          if (check) rows = rows.filter((row) => row.issues.codes.includes(check));
-          if (q.trim()) rows = rows.filter((row) => matchesQuery(haystack(row), q));
-          rows.sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt));
-          const total = rows.length;
-          const pages = Math.max(1, Math.ceil(total / limit));
-          const page = Math.min(Math.max(1, Math.floor(Number(params?.page) || 1)), pages);
-          return {
-            items: rows.slice((page - 1) * limit, page * limit),
-            total,
-            page,
-            pages,
-            limit,
-          };
+          const { type = 'all', ...query } = params ?? {};
+          return listRows(allRows(typesFor(type)), query);
         }),
 
       get: (id) =>
@@ -663,13 +529,10 @@ export function createMockAdminAdapter(options = {}) {
               fields: { slug: { code: 'slugDuplicate', message: ta('fieldErrors.slugTaken') } },
             });
           }
-          const record = store.insert(
-            TYPE_CONFIG[type].collection,
-            { status: 'draft', ...data },
-            {
-              by: user.id,
-            },
-          );
+          // ახალი მასალა ყოველთვის მონახაზია (B4, სერვერის იგივე წესი — `records.js`)
+          const record = store.insert(TYPE_CONFIG[type].collection, newDraft(data), {
+            by: user.id,
+          });
           return toRecord(type, record);
         }),
 
@@ -683,7 +546,8 @@ export function createMockAdminAdapter(options = {}) {
             });
           }
           const status = /** @type {{ status?: string }} */ (record.item).status;
-          const merged = { ...record.item, ...data };
+          // B4: სტატუსი — მხოლოდ `draft` ან იგივე; `featured` — მხოლოდ პარამეტრებიდან (`records.js`)
+          const merged = mergeUpdate(/** @type {Record<string, any>} */ (record.item), data);
           // გამოქვეყნებულის / დაგეგმილის ავტოშენახვა საიტს არ ცვლის — სამუშაო ასლად ინახება,
           // „გამოქვეყნება“ მას ამტკიცებს; მონახაზი პირდაპირ ინახება
           if (autosave && status !== 'draft') {
@@ -740,8 +604,12 @@ export function createMockAdminAdapter(options = {}) {
         respond(() => {
           const user = requireUser('content.publish');
           const { type, record } = recordOf(id);
-          const base = data ?? state.working.get(record.id)?.item ?? record.item;
-          const item = { ...record.item, ...base, status: 'published', publishedAt: iso(now()) };
+          const item = publishItem(
+            /** @type {Record<string, any>} */ (record.item),
+            /** @type {any} */ (state.working.get(record.id)?.item),
+            data,
+            { status: 'published', publishedAt: iso(now()) },
+          );
           assertPublishable(type, item);
           return toRecord(type, save(type, record, item, user.id, version));
         }),
@@ -750,13 +618,13 @@ export function createMockAdminAdapter(options = {}) {
         respond(() => {
           const user = requireUser('content.publish');
           const { type, record } = recordOf(id);
-          if (!at || Number.isNaN(Date.parse(at)) || Date.parse(at) <= now()) {
-            throw new ContentError('validation', {
-              fields: { publishedAt: { code: 'date', message: ta('fieldErrors.scheduleFuture') } },
-            });
-          }
-          const base = data ?? state.working.get(record.id)?.item ?? record.item;
-          const item = { ...record.item, ...base, status: 'scheduled', publishedAt: at };
+          assertFuture(at, now(), ta('fieldErrors.scheduleFuture'));
+          const item = publishItem(
+            /** @type {Record<string, any>} */ (record.item),
+            /** @type {any} */ (state.working.get(record.id)?.item),
+            data,
+            { status: 'scheduled', publishedAt: at },
+          );
           assertPublishable(type, item);
           return toRecord(type, save(type, record, item, user.id, version));
         }),
@@ -765,26 +633,8 @@ export function createMockAdminAdapter(options = {}) {
         respond(() => {
           requireUser('content.read');
           const { record } = recordOf(id);
-          const history = state.versions.get(record.id) ?? [];
-          const item = /** @type {{ title?: string }} */ (record.item);
-          return [
-            {
-              version: record.meta.version,
-              at: record.meta.updatedAt,
-              by: editor(record.meta.updatedBy),
-              title: item.title ?? '',
-              current: true,
-            },
-            ...history
-              .map((v) => ({
-                version: v.version,
-                at: v.at,
-                by: editor(v.by),
-                title: /** @type {{ title?: string }} */ (v.item).title ?? '',
-                current: false,
-              }))
-              .reverse(),
-          ];
+          const history = /** @type {any[]} */ ([...(state.versions.get(record.id) ?? [])]);
+          return versionList(/** @type {any} */ (record), history.reverse(), editor);
         }),
 
       restoreVersion: (id, version) =>
@@ -793,17 +643,18 @@ export function createMockAdminAdapter(options = {}) {
           const { type, record } = recordOf(id);
           const old = (state.versions.get(record.id) ?? []).find((v) => v.version === version);
           if (!old) throw new ContentError('not-found', { detail: `version ${version}` });
-          return toRecord(type, save(type, record, structuredClone(old.item), user.id));
+          // B4: რჩეული პარამეტრებიდან იმართება — აღდგენა მიმდინარე `featured`-ს ინახავს (სერვერის იგივე)
+          const item = keepFeatured(
+            /** @type {Record<string, any>} */ (record.item),
+            structuredClone(/** @type {Record<string, any>} */ (old.item)),
+          );
+          return toRecord(type, save(type, record, item, user.id));
         }),
 
       search: (q) =>
         respond(() => {
           requireUser('content.read');
-          if (!q?.trim()) return [];
-          return allRows([...CONTENT_TYPES])
-            .filter((row) => matchesQuery(haystack(row), q))
-            .sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
-            .slice(0, 50);
+          return searchRows(allRows([...CONTENT_TYPES]), q);
         }),
     },
 
@@ -954,15 +805,13 @@ export function createMockAdminAdapter(options = {}) {
       update: (patch = {}) =>
         respond(() => {
           const user = requireUser('settings.manage');
+          // B4: უცნობი / სხვა ტიპის id → not-found ჩაწერამდე (სერვერის იგივე; `records.js`)
+          const changes = featuredChanges(
+            patch.featured,
+            (type, id) => store.find(TYPE_CONFIG[type].collection, id) !== null,
+          );
           if (patch.site) store.setSettings({ ...store.snapshot().settings, ...patch.site });
-          if (patch.featured) {
-            /** @type {[keyof typeof FEATURED, string | null][]} */
-            const entries = /** @type {any} */ (Object.entries(patch.featured));
-            for (const [key, id] of entries) {
-              if (id === undefined) continue;
-              setFeatured(FEATURED[key], id, user.id);
-            }
-          }
+          for (const [type, id] of changes) setFeatured(type, id, user.id);
           return settingsBundle();
         }),
     },
@@ -971,77 +820,20 @@ export function createMockAdminAdapter(options = {}) {
       stats: () =>
         respond(() => {
           requireUser('content.read');
-          const rows = allRows(CONTENT_TYPES.filter((t) => t !== 'pages'));
-          const scheduled = rows
-            .filter((r) => r.status === 'scheduled' && Date.parse(r.publishedAt) > now())
-            .map((r) => r.publishedAt)
-            .sort((a, b) => Date.parse(a) - Date.parse(b));
-          /** @type {Record<string, number>} */
-          const byType = {};
-          for (const type of CONTENT_TYPES) byType[type] = allRows([type]).length;
-          return {
-            published: rows.filter((r) => r.status === 'published').length,
-            draft: rows.filter((r) => r.status === 'draft').length,
-            scheduled: rows.filter((r) => r.status === 'scheduled').length,
-            nextScheduledAt: scheduled[0] ?? null,
-            a11yIssues: rows.filter((r) => r.issues.errors > 0).length,
-            counts: /** @type {any} */ (byType),
+          const library = libraryItems();
+          return buildStats(rowsByType(), {
+            now: now(),
             library: {
-              images: libraryItems().filter((m) => m.kind === 'image').length,
-              documents: libraryItems().filter((m) => m.kind === 'document').length,
+              images: library.filter((m) => m.kind === 'image').length,
+              documents: library.filter((m) => m.kind === 'document').length,
             },
-          };
+          });
         }),
 
       a11yReport: () =>
         respond(() => {
           requireUser('a11y.read');
-          const slugs = publicArticleSlugs();
-          /** @type {import('./adminAdapter.js').A11yReport['items']} */
-          const items = [];
-          for (const type of CONTENT_TYPES) {
-            for (const record of store.records(TYPE_CONFIG[type].collection)) {
-              const item = /** @type {Record<string, any>} */ (record.item);
-              const issues = issuesOf(type, item, slugs);
-              if (issues.length) {
-                items.push({
-                  id: record.id,
-                  type,
-                  title: item.title ?? '',
-                  titleEn: item.translations?.en?.title?.trim() || null,
-                  status: item.status,
-                  issues,
-                });
-              }
-            }
-          }
-          /** @type {Map<string, import('./adminAdapter.js').A11yGroup>} */
-          const groups = new Map();
-          for (const entry of items) {
-            for (const code of new Set(entry.issues.map((i) => i.code))) {
-              const severity = entry.issues.find((i) => i.code === code)?.severity ?? 'error';
-              const group = groups.get(code) ?? { code, severity, count: 0, types: [] };
-              group.count += 1;
-              const bucket = group.types.find((b) => b.type === entry.type);
-              if (bucket) bucket.count += 1;
-              else group.types.push({ type: entry.type, count: 1 });
-              groups.set(code, group);
-            }
-          }
-          const all = items.flatMap((i) => i.issues);
-          return {
-            totals: {
-              errors: all.filter((i) => i.severity === 'error').length,
-              warnings: all.filter((i) => i.severity === 'warning').length,
-              items: items.length,
-            },
-            groups: [...groups.values()].sort(
-              (a, b) =>
-                Number(a.severity === 'warning') - Number(b.severity === 'warning') ||
-                b.count - a.count,
-            ),
-            items,
-          };
+          return buildA11yReport(recordsByType(), publicArticleSlugs());
         }),
     },
   };
@@ -1059,26 +851,30 @@ export function createMockAdminAdapter(options = {}) {
   }
 
   function settingsBundle() {
-    /** @param {ContentType} type */
-    const featuredId = (type) =>
-      store.records(TYPE_CONFIG[type].collection).find((r) => /** @type {any} */ (r.item).featured)
-        ?.id ?? null;
-    return {
-      site: store.snapshot().settings,
-      featured: {
-        weeklyVideo: featuredId('videos'),
-        featuredArticle: featuredId('articles'),
-        featuredSeries: featuredId('series'),
-        featuredNews: featuredId('news'),
-      },
-    };
+    return { site: store.snapshot().settings, featured: featuredIds(recordsByType()) };
+  }
+
+  /** @returns {Record<ContentType, StoreRecord[]>} */
+  function recordsByType() {
+    return /** @type {any} */ (
+      Object.fromEntries(
+        CONTENT_TYPES.map((type) => [type, store.records(TYPE_CONFIG[type].collection)]),
+      )
+    );
+  }
+
+  /** @returns {Record<ContentType, ContentRow[]>} */
+  function rowsByType() {
+    const slugs = publicArticleSlugs();
+    return /** @type {any} */ (
+      Object.fromEntries(
+        CONTENT_TYPES.map((type) => [
+          type,
+          store
+            .records(TYPE_CONFIG[type].collection)
+            .map((r) => toRow(type, /** @type {any} */ (r), { slugs, editor })),
+        ]),
+      )
+    );
   }
 }
-
-/** რჩეულის გასაღები → ტიპი. */
-const FEATURED = /** @type {const} */ ({
-  weeklyVideo: 'videos',
-  featuredArticle: 'articles',
-  featuredSeries: 'series',
-  featuredNews: 'news',
-});

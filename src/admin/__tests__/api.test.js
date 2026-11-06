@@ -1,14 +1,13 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { ContentError } from '@/content/errors.js';
-import { createMockAdapter, createMockStore } from '@/content/mock/index.js';
+import { createMockStore } from '@/content/mock/index.js';
 import { ADMIN_PATH, createRouterOptions } from '@/routes.jsx';
 
 import { CSRF_COOKIE, CSRF_HEADER, createHttpAdminAdapter, readCsrfToken } from '../api/http.js';
-import { MOCK_INVITE, MOCK_PASSWORD, createMockAdminAdapter } from '../api/mock.js';
+import { MOCK_PASSWORD, createMockAdminAdapter } from '../api/mock.js';
 import { ROLES, ROLE_PERMISSIONS, can } from '../api/permissions.js';
 import {
-  PASSWORD_MIN,
   loginHref,
   passwordStrength,
   safeNext,
@@ -17,12 +16,7 @@ import {
 } from '../auth/auth-forms.js';
 import { initials } from '../shell/initials.js';
 
-function env() {
-  const store = createMockStore();
-  const pub = createMockAdapter({ store });
-  const admin = createMockAdminAdapter({ store });
-  return { store, pub, admin };
-}
+import { SCENARIOS, mockEnv } from './scenarios/admin-scenarios.js';
 
 /** @param {ReturnType<typeof createMockAdminAdapter>} admin @param {string} [email] */
 const login = (admin, email = 'admin@example.org') =>
@@ -38,184 +32,33 @@ async function code(promise) {
   }
 }
 
-describe('mock adminAdapter + საერთო საცავი', () => {
-  it('ადმინში გამოქვეყნებული მასალა იმავე სესიაში საჯარო adapter-ში ჩანს; წაშლილი — ქრება', async () => {
-    const { pub, admin } = env();
-    await login(admin);
-    const draft = (await admin.content.list({ type: 'articles', status: 'draft' })).items.find(
-      (row) => row.issues.errors === 0,
-    );
-    expect(draft).toBeDefined();
-    const id = /** @type {string} */ (draft?.id);
-    const slug = /** @type {string} */ (draft?.slug);
-    expect(await code(pub.getArticle(slug))).toBe('not-found');
-    const record = await admin.content.get(id);
-    await admin.content.publish(id, { version: record.version });
-    expect((await pub.getArticle(slug)).slug).toBe(slug);
-    await admin.content.update(
-      id,
-      { title: '[ვერსია 2]' },
-      { version: (await admin.content.get(id)).version },
-    );
-    await admin.content.remove(id);
-    expect(await code(admin.content.versions(id))).toBe('not-found');
-    expect(await code(pub.getArticle(slug))).toBe('not-found');
-    expect(await code(admin.content.get(id))).toBe('not-found');
-  });
+// B4: სცენარები საერთოა — იგივე ნაკრები HTTP adapter-ზე (`server/test/content/parity.test.js`)
+describe('mock adminAdapter + საერთო საცავი (საერთო სცენარები)', () => {
+  for (const scenario of SCENARIOS) {
+    it(`[${scenario.step}] ${scenario.name}`, async () => {
+      const env = mockEnv();
+      await scenario.run(env);
+      expect(env.notes.length).toBeGreaterThan(0);
+    });
+  }
+});
 
-  it('წაშლა: 7 საჯარო გვერდი არ იშლება; სესიის გარეშე — unauthorized; წაშლილი ფოტო მედიიდანაც ქრება', async () => {
-    const { admin, store } = env();
-    expect(await code(admin.content.remove('a-001'))).toBe('unauthorized');
-    await login(admin);
-    const page = store.records('pages')[0];
-    expect(await code(admin.content.remove(page.id))).toBe('bad-request');
-    const before = (await admin.media.list({ kind: 'image' })).filter(
-      (m) => m.usage[0]?.id === 'a-001',
-    );
-    expect(before.length).toBeGreaterThan(0);
-    await admin.content.remove('a-001');
-    expect(
-      (await admin.media.list({ kind: 'image' })).some((m) => m.usage[0]?.id === 'a-001'),
-    ).toBe(false);
-    expect(await code(admin.content.remove('a-001'))).toBe('not-found');
-  });
-
-  it('ძველი ვერსიით შენახვა → conflict (409); ვერსიების ისტორია და აღდგენა', async () => {
-    const { admin } = env();
-    await login(admin);
-    const [row] = (await admin.content.list({ type: 'news' })).items;
-    const first = await admin.content.update(
+describe('mock adminAdapter: სერვერის იგივე წესები (B4)', () => {
+  it('შექმნა სტატუსს არ იღებს (მონახაზი); შენახვა `featured`-ს და `published`-ს არ ცვლის', async () => {
+    const env = mockEnv();
+    await env.login();
+    const row = (await env.admin.content.list({ type: 'articles', status: 'draft' })).items[0];
+    const error = await env.admin.content
+      .update(row.id, { status: 'scheduled' }, { version: row.version })
+      .catch((e) => e);
+    expect(error).toBeInstanceOf(ContentError);
+    expect(error.fields.status.code).toBe('option');
+    const record = await env.admin.content.update(
       row.id,
-      { title: '[ახალი სათაური]' },
+      { featured: true },
       { version: row.version },
     );
-    expect(first.version).toBe(row.version + 1);
-    expect(
-      await code(admin.content.update(row.id, { title: '[სხვა]' }, { version: row.version })),
-    ).toBe('conflict');
-    const versions = await admin.content.versions(row.id);
-    expect(versions[0]).toMatchObject({ current: true, title: '[ახალი სათაური]' });
-    const restored = await admin.content.restoreVersion(row.id, row.version);
-    expect(restored.item.title).toBe(row.title);
-  });
-
-  it('გამოქვეყნება ბლოკერით (alt, H3 H2-მდე, „აქ“) → validation + ველის გზები', async () => {
-    const { admin, store } = env();
-    await login(admin);
-    const record = store.findBySlug('articles', 'akhali-statia-monakhazi');
-    const id = /** @type {string} */ (record?.id);
-    const error = await admin.content.publish(id, { version: 1 }).catch((e) => e);
-    expect(error).toBeInstanceOf(ContentError);
-    expect(error.code).toBe('validation');
-    expect(Object.keys(error.fields)).toEqual(
-      expect.arrayContaining(['cover.alt', 'body[0]', 'body[1].content[1]']),
-    );
-    expect(store.find('articles', id)?.item).toMatchObject({ status: 'draft' });
-  });
-
-  it('უფლებები: რედაქტორს მომხმარებლები / პარამეტრები — forbidden; სესიის გარეშე — unauthorized', async () => {
-    const { admin } = env();
-    expect(await code(admin.content.list({ type: 'articles' }))).toBe('unauthorized');
-    await login(admin, 'editor@example.org');
-    expect(await code(admin.users.list())).toBe('forbidden');
-    expect(await code(admin.settings.update({}))).toBe('forbidden');
-    expect(await code(admin.content.list({ type: 'articles' }))).toBe('ok');
-    expect(await code(admin.media.list())).toBe('ok');
-  });
-
-  it('შესვლა: უცნობი ელფოსტა და არასწორი პაროლი ერთნაირ შეცდომას აბრუნებს; დეაქტივირებული — იგივე', async () => {
-    const { admin } = env();
-    const a = await admin.auth
-      .login({ email: 'x@example.org', password: MOCK_PASSWORD })
-      .catch((e) => e);
-    const b = await admin.auth
-      .login({ email: 'admin@example.org', password: 'nope-nope-nope' })
-      .catch((e) => e);
-    expect([a.code, b.code]).toEqual(['unauthorized', 'unauthorized']);
-    expect(a.message).toBe(b.message);
-    await login(admin);
-    await admin.users.deactivate('u-002');
-    const c = await admin.auth
-      .login({ email: 'editor@example.org', password: MOCK_PASSWORD })
-      .catch((e) => e);
-    expect(c.code).toBe('unauthorized');
-  });
-
-  it('მოწვევა → რეგისტრაცია (როლი მოწვევისაა), კოდი ერთჯერადია', async () => {
-    const { admin } = env();
-    await login(admin);
-    const invite = await admin.users.invite({ email: 'new@example.org', role: 'admin' });
-    expect(invite.link).toBe(`/admin/login?tab=register&invite=${invite.code}`);
-    const values = {
-      name: '[სახელი]',
-      email: 'new@example.org',
-      invite: invite.code,
-      password: 'x'.repeat(PASSWORD_MIN),
-    };
-    const session = await admin.auth.register(values);
-    expect(session.user.role).toBe('admin');
-    expect(await code(admin.auth.register({ ...values, email: 'other@example.org' }))).toBe(
-      'validation',
-    );
-    expect(
-      await code(
-        admin.auth.register({
-          ...values,
-          invite: MOCK_INVITE,
-          email: 'third@example.org',
-          password: 'short',
-        }),
-      ),
-    ).toBe('validation');
-  });
-
-  it('რჩეული ერთია: settings.update ახალ რჩეულს ნიშნავს და წინას ხსნის', async () => {
-    const { admin, pub } = env();
-    await login(admin);
-    const before = await admin.settings.get();
-    const other = (await admin.content.list({ type: 'articles', status: 'published' })).items.find(
-      (row) => row.id !== before.featured.featuredArticle,
-    );
-    const after = await admin.settings.update({ featured: { featuredArticle: other?.id ?? null } });
-    expect(after.featured.featuredArticle).toBe(other?.id);
-    const featured = await pub.listArticles({ featured: true, limit: 5 });
-    expect(featured.items.map((a) => a.slug)).toEqual([other?.slug]);
-  });
-
-  it('მედია: alt-ის გარეშე ფაილი ფილტრდება; alt-ის შეცვლა მასალაში აისახება; გამოყენებული არ იშლება', async () => {
-    const { admin, store } = env();
-    await login(admin);
-    const missing = await admin.media.list({ missingAlt: true });
-    expect(missing.length).toBeGreaterThan(0);
-    const item = missing[0];
-    await admin.media.updateAlt(item.id, '[ფოტო: თვალის დონე — ახალი აღწერა]');
-    const [, recordId] = item.id.split(':');
-    expect(store.find('articles', recordId)?.item).toMatchObject({
-      cover: { alt: '[ფოტო: თვალის დონე — ახალი აღწერა]' },
-    });
-    expect(await code(admin.media.remove(item.id))).toBe('conflict');
-  });
-
-  it('stats / a11yReport: საცავიდან ითვლება, ხარვეზი წესების მიხედვით ჯგუფდება', async () => {
-    const { admin } = env();
-    await login(admin);
-    const stats = await admin.reports.stats();
-    expect(stats.a11yIssues).toBe(2);
-    expect(stats.counts.pages).toBe(7);
-    const report = await admin.reports.a11yReport();
-    const codes = report.groups.map((g) => g.code);
-    expect(codes).toEqual(
-      expect.arrayContaining([
-        'altMissing',
-        'headingOrder',
-        'linkText',
-        'captionsMissing',
-        'audioDescriptionMissing',
-        'youtubeMissing',
-      ]),
-    );
-    expect(report.groups.find((g) => g.code === 'youtubeMissing')?.severity).toBe('error');
-    expect(codes).not.toContain('signLanguageMissing');
+    expect(record.item.featured).toBe(false);
   });
 });
 

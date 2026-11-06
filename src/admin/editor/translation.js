@@ -2,7 +2,8 @@
  * F9: ინგლისური ვერსიის ველები. @typedef {import('../schemas/index.js').FieldSchema} TranslatableField
  */
 
-export const EN_PREFIX = 'translations.en';
+// ველის პრეფიქსი — ერთი წყარო რედაქტორსა და სერვერზე (`src/content/checks.js`, B4)
+export { EN_PREFIX } from '@/content/checks.js';
 
 /** ითარგმნება? ტექსტი (არა URL / ელფოსტა / ტელეფონი), ფოტოს alt, repeater-ის ტექსტური ქვეველები. @param {TranslatableField} field */
 export function isTranslatable(field) {

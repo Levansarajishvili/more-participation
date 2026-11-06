@@ -69,8 +69,14 @@ function collect(details, prefix, out) {
         });
         // დისკრიმინატორის (`type: { enum: ['articles'] }`) შეუსაბამო განშტოება — „სხვა ტიპი“
         const own = depth(prefix) + 1;
+        // B4: ტიპის შეუსაბამო განშტოება (`working`: `null` | ობიექტი) — მნიშვნელობა სხვა ტიპისაა,
+        // შეცდომა მეორე განშტოების შიგნითაა
+        const typeOnly = (/** @type {Leaf[]} */ leaves) =>
+          leaves.length > 0 &&
+          leaves.every((leaf) => leaf.op === 'bsonType' && leaf.path === prefix);
         const relevant = branches.filter(
           (/** @type {Leaf[]} */ leaves) =>
+            !typeOnly(leaves) &&
             !leaves.some((leaf) => leaf.op === 'enum' && leaf.single && depth(leaf.path) === own),
         );
         const pool = relevant.length ? relevant : branches;
@@ -92,7 +98,7 @@ function collect(details, prefix, out) {
 }
 
 /**
- * `errInfo` (DocumentValidationFailure) → ველების გზები. `item.` იჭრება (API-ის ველის გზა).
+ * `errInfo` (DocumentValidationFailure) → ველების გზები. `item.` / `working.item.` იჭრება (API-ის ველის გზა).
  * @param {any} errInfo
  * @returns {string[]}
  */
@@ -102,7 +108,8 @@ export function schemaErrorPaths(errInfo) {
   /** @type {Leaf[]} */
   const leaves = [];
   collect(details.schemaRulesNotSatisfied, '', leaves);
-  const paths = leaves.map(({ path }) => path.replace(/^item\./, '') || '(document)');
+  // სამუშაო ასლის ველიც (`working.item.…`, B4) — იგივე API-ის გზა, რაც მასალისა
+  const paths = leaves.map(({ path }) => path.replace(/^(?:working\.)?item\./, '') || '(document)');
   return [...new Set(paths)];
 }
 

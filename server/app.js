@@ -10,14 +10,16 @@ import { createAjv, loadSpec } from './lib/openapi.js';
 import { createRateLimiter } from './lib/rate-limit.js';
 import { registerSecurity } from './lib/security.js';
 import { registerAuthRoutes } from './routes/auth.js';
+import { registerContentRoutes } from './routes/content.js';
 import { registerHealth } from './routes/health.js';
+import { registerSettingsRoutes } from './routes/settings.js';
 import { registerUsersRoutes } from './routes/users.js';
 
 /**
  * Fastify-ის აპი (B1): ვალიდაცია spec-იდან, header-ები, ლოგი, შეცდომის handler, health.
  * B3: cookie, guard-ები spec-იდან (`security`, `x-permission`, `x-rate-limit` — `lib/auth.js`),
- * auth / users. B4–B6-ის route-ები აქ ერთვება `route(app, spec, operationId, handler)`-ით —
- * guard-ს ავტომატურად იღებს.
+ * auth / users. B4: კონტენტი (`routes/content.js`), პარამეტრები და ანგარიშები (`routes/settings.js`). B5–B6-ის route-ები აქ ერთვება
+ * `route(app, spec, operationId, handler)`-ით — guard-ს ავტომატურად იღებს.
  */
 
 /** @typedef {import('./config.js').Config} Config */
@@ -111,7 +113,10 @@ export async function buildApp({
   await registerAuth(app);
   registerHealth(app, { spec });
   registerAuthRoutes(app);
+  // spec-ის რიგით (openapi.test.js): auth → content / items (B4) → users → settings / reports
+  registerContentRoutes(app);
   registerUsersRoutes(app);
+  registerSettingsRoutes(app);
   if (extend) await extend(app);
   return app;
 }
