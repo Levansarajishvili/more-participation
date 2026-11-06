@@ -4,6 +4,8 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, inject, it } from 'vitest';
 
+import { FAKE_R2_ENV } from './helpers.js';
+
 /**
  * რეალური გაშვება: `node server/index.js` (alias hook → config → ბაზა → listen → SIGTERM).
  */
@@ -58,6 +60,7 @@ describe('node server/index.js', () => {
     const uri = inject('mongoUri');
     const server = start({
       NODE_ENV: 'production',
+      ...FAKE_R2_ENV,
       HOST: '127.0.0.1',
       PORT: String(port),
       LOG_LEVEL: 'info',
@@ -120,6 +123,7 @@ describe('node server/index.js', () => {
   it('მიუწვდომელი ბაზა → exit 1; პაროლი გამოსავალში არ ჩანს', async () => {
     const server = start({
       NODE_ENV: 'production',
+      ...FAKE_R2_ENV,
       MONGODB_URI: 'mongodb://mc:s3cret-pass@127.0.0.1:1/x?directConnection=true',
       PORT: String(await freePort()),
     });

@@ -22,6 +22,7 @@
     "i18n:stub": "node scripts/i18n-stub.mjs && prettier --write src/i18n/en.js",
     "placeholders": "node scripts/placeholders.mjs",
     "audit": "python3 scripts/audit.py --out audit.json",
+    "audit:media-api": "python3 scripts/audit_media_api.py --out audit-media-api.json",
     "server:dev": "node --env-file-if-exists=server/.env --watch server/index.js",
     "server:start": "node server/index.js",
     "server:migrate": "node --env-file-if-exists=server/.env server/scripts/migrate.js",
@@ -64,5 +65,9 @@
     "vite-plugin-svgr": "^5.2.0",
     "vitest": "~5.0.4",
     "vitest-axe": "^0.1.0"
+  },
+  "overrides": {
+    "@fastify/busboy": "3.2.4",
+    "semver@7": "7.8.5"
   }
 }

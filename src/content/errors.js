@@ -34,10 +34,11 @@ export const ERROR_CODES = Object.freeze([
 export class ContentError extends Error {
   /**
    * @param {ErrorCode} code
-   * @param {{ fields?: Record<string, FieldError>, detail?: string, cause?: unknown }} [options]
+   * @param {{ fields?: Record<string, FieldError>, detail?: string, cause?: unknown, message?: string }} [options]
+   *   `message` — კონკრეტული ტექსტი კოდის ზოგადის ნაცვლად (B5: „გამოიყენება N მასალაში“)
    */
-  constructor(code, { fields, detail, cause } = {}) {
-    super(t(`errors.${code}`), cause === undefined ? undefined : { cause });
+  constructor(code, { fields, detail, cause, message } = {}) {
+    super(message ?? t(`errors.${code}`), cause === undefined ? undefined : { cause });
     this.name = 'ContentError';
     /** @type {ErrorCode} */
     this.code = code;

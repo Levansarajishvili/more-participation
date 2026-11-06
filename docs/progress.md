@@ -1814,3 +1814,135 @@ CRUD, ავტოშენახვის სამუშაო ასლი, �
 ### შემდეგი: B5 — მედია და დოკუმენტები
 
 ატვირთვა (ზომის / ტიპის ზღვარი, MIME-ის შემოწმება; VTT — `WEBVTT` თავსართი), R2, alt, გამოყენება (`mediaKeys` — ძველი ვერსიების ჩათვლით), წაშლის ბლოკი, PDF-ის ენა / tagged; `media.*` route-ები spec-იდან; parity — `SCENARIOS`-ის `step: 'B5'` HTTP-ზე (`http-env.js`-ის `media: true`), `stats.library` — ატვირთვებით.
+
+## B5 — მედია და დოკუმენტები ✅ (2026-11-06)
+
+**Gate:**
+- frontend — `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (44 ფაილი, **769 / 769**; B4 — 735) · `npm run build` ✓ + check-dist ✓ (46 JS chunk: საჯარო 31-ში ადმინი / TipTap / validate არ არის, ადმინის — 15).
+- server — `npm run server:lint` ✓ · `npm run server:test` ✓ (**31 ფაილი, 327 ტესტი**; B4 — 26 / 271).
+- **zip-ის სუფთა ასლზე** `npm ci` → lint ✓ · server:lint ✓ · build ✓ · test ✓ (44 / 769) · server:test ✓ (31 / 327) — ტესტები ნაწილ-ნაწილ გაეშვა (sandbox-ის ბრძანების დროის ზღვარი), ჯამი სრულ გაშვებას ემთხვევა.
+- **alt-ის გარეშე ფოტოთი გამოქვეყნება სერვერზე → 422** (`server/test/media/publish.test.js`): ატვირთული ფოტო ყდაზე, `alt: ''` → 422 `fields['cover.alt']: altMissing`, ვერსია უცვლელია; alt-ით — 200. ქართული VTT-ის გარეშე ვიდეო → 422 `captions: captionsMissing`; VTT-ით — 200, `cues` / `end` სერვერისაა (კლიენტის 999 / 1 → 2 / 7.25). რეესტრში არარსებული `/media/` ფაილი → 422 `fileMissing`.
+- **ატვირთული სურათის EXIF ცარიელია (ტესტით):** JPEG (ხელით აწყობილი APP1: GPS 41°43′N 44°47′E, Make, Orientation 6 + COM), PNG (`eXIf` + `tEXt`), WebP (EXIF + XMP) → შენახულ ბაიტებში `exif` / `xmp` / `icc` / `orientation` — undefined, `Exif\0\0`, მოწყობილობის სახელი, GPS-ის ტექსტი, `eXIf`, `tEXt` — არ არის; Orientation 6 → 300 × 200 შენახულია 200 × 300-ად (`upload.test.js`, `media-http.test.jsx`, Chromium-ში — ქვემოთ).
+- **მედიის ეკრანის axe 0 რეალურ API-ზე (dev)** — `npm run audit:media-api` (`scripts/audit_media_api.py`: `node server/index.js` development / in-memory MongoDB / `MEDIA_STORAGE=local` + `vite` dev `VITE_ADMIN_API=/api/admin`, proxy `/api` / `/media`). **Chromium 153.0.8010.12 + axe-core 4.14.0** (ფერის კონტრასტით): 6 მდგომარეობა × light / dark / contrast × 1440 / 390 = **36 გაშვება — 0 დარღვევა, 0 incomplete, ჰორიზონტალური სქროლი 0**. მდგომარეობები: `/admin/media` ატვირთვის შემდეგ, ბრაუზერის უარი (SVG `.png`-ად), სერვერის უარი (დაზიანებული JPEG — 400), alt-ის ფორმა, `?filter=missing-alt`, `/admin/documents` PDF-ის ატვირთვის შემდეგ. მიწოდება (proxy-ით): `GET /media/image/2026/….jpg` → 200, `image/jpeg`, `public, max-age=31536000, immutable`, CSP `default-src 'none'; sandbox`, `nosniff`, `inline`, ETag; ბაიტებში `Exif` / `TestCam` — არა; `<img>` ბიბლიოთეკაში იხატება (`naturalWidth` 200 — ორიენტაცია აისახა).
+- **parity mock ↔ HTTP:** 24 / 24 (B5-ის 3 სცენარი — `http-env.js`-ის `media: true`); კვალი იდენტურია, HTTP-ის ყოველი პასუხი spec-ს აკმაყოფილებს (0 შენიშვნა).
+- **მედიის ეკრანი და რედაქტორის ატვირთვა HTTP adapter-ით** (`server/test/ui/media-http.test.jsx`, jsdom + რეალური სერვერი): 4 / 4 — ატვირთვა → ბარათი „ხარვეზით“ → alt → წაშლა საცავიდან; SVG `.png`-ად ბრაუზერში ჩერდება (მოთხოვნა 0), დაზიანებული JPEG — სერვერის უარი ველთან + axe; 409-ის რბოლა → „ფაილი ამასობაში მასალაში ჩაისვა…“, ღილაკი მიზეზით; რედაქტორის ყდა → `/media/…` ბაზაში და ბიბლიოთეკაში გამოყენებით.
+- SigV4: AWS-ის დოკუმენტაციის ორი მაგალითი (GET Object `f0e8bdb8…bdb41`, PUT Object `98ad7217…08bd`) ზუსტად ემთხვევა; R2-ის adapter — S3-ის სატესტო სერვერზე, რომელიც ყოველი მოთხოვნის ხელმოწერას თავიდან ითვლის.
+- ქსელი: ახალი დომენი არ დასჭირდა (npm registry).
+
+### ფაილის ტიპი → დაშვებულია? → ზღვარი → დამუშავება
+
+| ტიპი (შიგთავსით) | დაშვებულია? | ზღვარი | დამუშავება |
+|---|---|---|---|
+| JPEG (`FF D8 FF`) | ✓ ფოტო | `MEDIA_MAX_IMAGE_MB` = `[10]` MB, `MEDIA_MAX_MEGAPIXELS` = `[40]` | `sharp`: `rotate()` (ორიენტაცია) → JPEG q85 mozjpeg; EXIF / GPS / XMP / IPTC / ICC / COM იშლება, ფერი → sRGB; ზომა / პროპორცია ინახება |
+| PNG (`89 PNG …`) | ✓ ფოტო | იგივე | → PNG (compression 9); `eXIf`, `tEXt` / `iTXt` / `zTXt`, APNG-ის კადრები იშლება (პირველი კადრი) |
+| WebP (`RIFF…WEBP`) | ✓ ფოტო | იგივე | → WebP q85; EXIF / XMP იშლება, ანიმაცია → პირველი კადრი (5 წამის წესი) |
+| PDF (`%PDF-n.n` … `%%EOF`) | ✓ დოკუმენტი | `MEDIA_MAX_DOCUMENT_MB` = `[20]` MB | უცვლელად; `%%EOF` ბოლო 1024 ბაიტში (შეწყვეტილი → `fileDamaged`); სათაური / ენა / `tagged` — მეტა-ველებიდან |
+| VTT (`WEBVTT` + ჰარი / ხაზი, BOM-ითაც) | ✓ სუბტიტრი (`track`) | 1 MB (`VTT_MAX_BYTES`, F10) | UTF-8 (მკაცრი) + `parseCaptions` (სტრიქონის ნომრით); `cues` / `end` რეესტრში; ბიბლიოთეკაში არ ჩანს |
+| SVG | ✗ `fileType` | — | სკრიპტი / XSS |
+| GIF, APNG-ის სახით გამოცხადებული ანიმაცია | ✗ `fileType` (GIF) | — | 5 წამის წესი; WebP / PNG-ის ანიმაცია — პირველ კადრამდე |
+| HEIC / AVIF / TIFF / BMP | ✗ `fileType` | — | ბრაუზერის მხარდაჭერა; რედაქტორი JPG / PNG / WebP-ს ირჩევს |
+| აუდიო / ვიდეო (MP3, MP4, WAV…) | ✗ `fileType` | — | ვიდეო მხოლოდ YouTube-ია (B0 / F10); სტატიის აუდიოს ველი ადმინში არ არის |
+| HTML, ZIP / DOCX, სხვა | ✗ `fileType` | — | — |
+| გაფართოება / გამოცხადებული MIME ≠ შიგთავსი | ✗ `fileMismatch` (400) | — | `.png` + JPEG, `.jpg` + PDF, `application/pdf` + JPEG; VTT-ზე `text/plain` დასაშვებია |
+| ცარიელი / დაზიანებული | ✗ `fileEmpty` / `fileDamaged` | — | სურათი libvips-ით ვერ იხსნება, PDF `%%EOF`-ის გარეშე, VTT არა-UTF-8 |
+
+ზღვარს ზემოთ — `fileTooLarge` („მაქსიმუმ {max}“); multipart ფაილს ყველაზე დიდი ზღვრით (`max(image, document)`) კითხულობს, გადაცილებისას ბოლომდე არ იკითხება. სურათი > მეგაპიქსელების ზღვარი → `imageTooLarge` (დეკომპრესიის ბომბი; დამუშავება რიგით, ერთდროულად ერთი).
+
+### endpoint → როლი → შეცდომები
+
+| endpoint | როლი (`x-permission`) | შეცდომები |
+|---|---|---|
+| `GET /api/admin/media` (`kind`, `missingAlt`) | ადმინისტრატორი, რედაქტორი (`media.read`) | 400 (query), 401, 403 |
+| `POST /api/admin/media` (multipart: `file` + `alt`, `title`, `ratio`, `lang`, `tagged`) | `media.write` + CSRF | **400** — `fields.file` (`fileEmpty`, `fileType`, `fileMismatch`, `fileTooLarge`, `imageTooLarge`, `fileDamaged`, `vttHeader` / `vttTiming` / `vttOrder` / `vttEmpty`), არა-multipart, ორი ფაილი, სხვა ველის ფაილი, უცნობი მეტა-ველი; 401; 403 (CSRF, Fetch Metadata); **422** — `file: required`, `alt: tooLong`, `ratio: option`, `lang: option`; 201 — `MediaItem` |
+| `PATCH /api/admin/media/{id}` (`alt` / `title`, `lang`, `tagged`) | `media.write` + CSRF | 400 (სხეული), 401, 403, 404, 409 (მასალა ამასობაში შეიცვალა — ვერსია), **422** (`alt: required` — ცარიელი) |
+| `DELETE /api/admin/media/{id}` | `media.write` + CSRF | 400, 401, 403, 404, **409** — „გამოიყენება N მასალაში — ჯერ იქიდან მოხსენი.“ (გამოყენებული ან ჩადგმული) |
+| `GET /api/admin/media/{id}/usage` | `media.read` | 400, 401, 403, 404 |
+| `GET` / `HEAD /media/{key}` (API-ს გარეთ, spec-ში ოპერაცია არ არის) | საჯარო | 404 (უცნობი / არასწორი გასაღები, წაშლილი); 304 (`If-None-Match`) |
+
+უფლება: `media.*` — ადმინისტრატორი და რედაქტორი (`permissions.js`); ტესტში — ანონიმური 401, CSRF-ის გარეშე 403, `Sec-Fetch-Site: cross-site` 403, რედაქტორი 201.
+
+### შექმნილი ფაილები
+
+- **server:** `storage/{index,keys,s3,sigv4,local,memory}.js`, `lib/media-files.js`, `db/media.js`, `routes/media.js`, `routes/media-check.js`, `migrations/002-version-media-keys.js`; ტესტები — `test/media/{fixtures.js,upload.test.js,library.test.js,storage.test.js,publish.test.js}`, `test/ui/media-http.test.jsx`.
+- **საერთო / frontend:** `src/content/files.js` (+ `files.test.js`), `src/admin/api/library.js` (+ `__tests__/library.test.js`), `src/admin/components/upload-messages.js`.
+- `scripts/audit_media_api.py`.
+
+### შეცვლილი ფაილები (ერთი წინადადებით)
+
+- `server/app.js` — `app.storage` (`createStorage(config.media)`, ტესტში — ჩანაცვლებადი), მედიის route-ები spec-ის რიგით, `apiRoutes` მხოლოდ `/api/*` (`/media/*` spec-ის ოპერაცია არ არის).
+- `server/config.js` — `MEDIA_STORAGE`, `MEDIA_DIR`, `R2_*`, `MEDIA_MAX_IMAGE_MB` / `_DOCUMENT_MB` / `_MEGAPIXELS` → `config.media`; წარმოებაში მხოლოდ `r2` და R2-ის გასაღებები სავალდებულოა.
+- `server/db/collections.js` — `versions.mediaKeys` (სავალდებულო) + ინდექსი, `media.cues` / `end`.
+- `server/db/content.js` — ვერსიაში `mediaKeys`; `replace({ working })` — სამუშაო ასლი რჩება; `usageCount(key)`, `scrubHistory(key)`, `scrubMediaKey`.
+- `server/db/index.js` — `repos.media`; `server/migrations/index.js` — 002.
+- `server/routes/content.js` — გამოქვეყნება / დაგეგმვა: `reconcileFiles` → `assertPublishable(…, extra)`.
+- `server/routes/settings.js` — `stats.library` ბიბლიოთეკიდან (`buildLibrary` + `libraryCounts`).
+- `server/openapi.yaml` — ატვირთვის / PATCH / DELETE-ის აღწერა (ფაილის შეცდომა — 400, მეტა — 422, 409-ის ტექსტი), `MediaItem.kind` + `track`, `/media/{key}`-ის მიწოდება `info`-ში.
+- `server/package.json` — `sharp` 0.35.5, `@fastify/multipart` 10.1.6 (ზუსტად); root `package.json` — `overrides` (`@fastify/busboy` 3.2.4, `semver@7` → 7.8.5), `audit:media-api`; `package-lock.json`.
+- `server/.env.example` — B5-ის ცვლადები placeholder-ებით.
+- `src/content/errors.js` — `ContentError({ message })` (კონკრეტული ტექსტი კოდის ზოგადის ნაცვლად).
+- `src/admin/api/mock.js` — მედია `library.js`-ით (ტიპი შიგთავსით, VTT — `parseCaptions`, `kind: 'track'`, alt ყველა გამოყენებაში, სამუშაო ასლი რჩება, 409 ტექსტით); `save(…, { working })`.
+- `src/admin/api/records.js` — `imagesOf` / `embeddedMedia` ამოღებულია (→ `library.js`).
+- `src/admin/api/adminAdapter.js` — `MediaItem.kind` + `track` (JSDoc).
+- `src/admin/pages/MediaPage.jsx`, `DocumentsPage.jsx` — ბრაუზერის შემოწმება (`checkBlob`), ზუსტი `accept`, ატვირთვის შეცდომა ხილულია (`FieldError`, `role="alert"`, `aria-describedby`), 409 → სია ახლდება, „N მასალაში“ — მასალები; `Link`-ის key ველითაც.
+- `src/admin/editor/fields/FieldRenderer.jsx` — ფოტოს / PDF-ის ველი ფაილს ბრაუზერში ამოწმებს, სერვერის უარი ველთან ჩანს (ადრე უხმოდ იკარგებოდა); VTT-ის ველი სერვერის უარს `problem`-ში აჩვენებს.
+- `src/admin/editor/editor.css` — `.mc-library__problem`, `.mc-upload-problem`.
+- `src/admin/i18n/ka.js`, `en.js` — `fieldErrors.file*` (7), `library.inUseNow`, `uploadFailed`, `fields.{team,partners,slides,captions}`, `documents.wrongType`.
+- `src/admin/__tests__/scenarios/admin-scenarios.js` — B5-ის ორი ახალი სცენარი, `PNG_3X2`, `MINIMAL_PDF`, `CAPTIONS`.
+- `server/test/*` — `openapi` (B5-ის route-ები), `config` (+2), `collections` / `seed` (28 ცვლილება, 002), `boot` / `app` / `limits` / `seed` (production-ში `FAKE_R2_ENV`), `browser.js` (`encodeMultipart` — jsdom-ის FormData-ც), `http-env.js` (`media: true`), `parity` (B5), `contract/responses` (ვალიდური PDF).
+- `vite.config.js` — dev proxy `/api`, `/media` → `VITE_API_PROXY` (ნაგულისხმევი `http://127.0.0.1:3000`).
+- `.gitignore` — `server/.media/`, `audit-media-api.json`, `__pycache__/`; `CLAUDE.md` — რუკა, npm სკრიპტი, „კოდის კონვენციები (B5)“; `docs/project-context.md` — §9 #27, #29, #30, §10 „Backend — მედია და დოკუმენტები (B5)“, §12.
+
+### საჯარო API
+
+**`src/content/files.js`** (სერვერი, mock, UI): `MEDIA_TYPES` (MIME → `{ kind, extensions }`), `FILE_KINDS`, `DEFAULT_FILE_LIMITS` (`image` 10 MB, `document` 20 MB, `track` 1 MB), `DEFAULT_MAX_PIXELS` (40 000 000), `SNIFF_BYTES` (16), `MB`, `sniffType(bytes) → mime | null`, `fileExtension(name)`, `normalizeMime(type)`, `storedExtension(mime)`, `checkFile({ name, type, size, head }, { kinds, limits }) → { ok: true, mime, kind } | { ok: false, code, max? }`, `acceptFor(kinds)`, `readHead(blob)`, `checkBlob(file, options)`.
+
+**`src/admin/api/library.js`** (mock + სერვერი): `FileRecord` (typedef), `nodeKind`, `fileNodes(item) → { path, node, kind }[]`, `recordTitle`, `parseEmbeddedId(id)`, `buildLibrary(recordsByType, files) → MediaItem[]`, `findMediaItem(recordsByType, files, id)`, `filterLibrary(items, { kind, missingAlt })`, `libraryCounts(items)`, `usageCount(usage)`, `patchNode`, `normalizeMediaPatch(kind, patch)` (ცარიელი alt → `validation`), `patchRecord(item, working, target, patch) → { item | null, working | null }`, `fileFieldError(code, vars)`, `fileError(code, vars)` (400 + `fields.file`), `inUseError(usage | count)` (409).
+
+**`src/admin/components/upload-messages.js`:** `checkMessage(check, wrongTypeKey)`, `uploadMessage(error)`. **`src/content/errors.js`:** `new ContentError(code, { message })`.
+
+**server:**
+- `storage/index.js`: `Storage` (typedef: `kind`, `put(key, body, { contentType, cacheControl })`, `get(key) → { body, contentType, size, etag } | null`, `head(key)`, `delete(key)`), `createStorage(config.media, { fetch, now })`; `storage/keys.js`: `MEDIA_KEY_PATTERN`, `MEDIA_CACHE_CONTROL`, `isMediaKey`, `newMediaKey(kind, mime, now)`, `contentTypeOfKey`, `mediaSrc(key)`, `keyOfSrc(src)`, `assertKey`; `storage/s3.js`: `createS3Storage(r2, { fetch, now, timeoutMs })`; `storage/sigv4.js`: `signRequest(…) → { headers, canonicalRequest, stringToSign, signature }`, `sha256Hex`, `uriEncode`, `amzDates`, `EMPTY_SHA256`, `ALGORITHM`; `storage/local.js`: `createLocalStorage({ dir })`; `storage/memory.js`: `createMemoryStorage()` (+ `size`, `keys`).
+- `lib/media-files.js`: `processImage(buffer, { mime, maxPixels }) → { data, width, height }`, `checkPdf(buffer)`, `checkVtt(buffer) → { cues, end }`, `detectRatio(width, height)`.
+- `db/media.js`: `createMediaRepository(database, { now, content })` → `insert`, `find`, `findByKey`, `findByKeys`, `list`, `update`, `remove(id, inUse)` → `{ doc, scrubbed }`; `toFileRecord(doc)`, `newMediaId()` (`m-` + ObjectId), `MediaDoc` (typedef).
+- `db/content.js` (+): `replace(id, item, { by, version, working })`, `usageCount(key)`, `scrubHistory(key, { session })`, `scrubMediaKey(value, key)`.
+- `routes/media.js`: `registerMediaRoutes(app)` (async), `libraryState(app)`, `attachment(title)`; `routes/media-check.js`: `reconcileFiles(app, item) → { item, missing }`; `routes/content.js`: `assertPublishable(type, item, slugs, extra)`.
+- `buildApp({ storage })`, `app.storage`; `migrations/002-version-media-keys.js` (`id`, `up(db)`).
+- ტესტის დამხმარე: `test/media/fixtures.js` — `jpegWithGps`, `pngWithGps`, `webpWithExif`, `exifTiff`, `PDF`, `VTT`, `BAD_VTT`, `CAMERA`, `SECRET_NOTE`, `multipart(file, fields)`; `test/browser.js` — `encodeMultipart(form)`; `test/helpers.js` — `FAKE_R2_ENV`.
+
+**env (+):** `MEDIA_STORAGE` (`r2` | `local` | `memory`; ცარიელი → production `r2`, development `local`, test `memory`), `MEDIA_DIR` (local; ნაგულისხმევი `server/.media/`), `R2_ACCOUNT_ID` (32 hex) ან `R2_ENDPOINT` (S3-თავსებადი), `R2_BUCKET`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `MEDIA_MAX_IMAGE_MB` (1–50, 10), `MEDIA_MAX_DOCUMENT_MB` (1–100, 20), `MEDIA_MAX_MEGAPIXELS` (1–100, 40). frontend dev: `VITE_API_PROXY` (vite.config.js).
+
+**npm:** `npm run audit:media-api` (Python Playwright; სერვერს და vite-ს თავად უშვებს, ადმინისტრატორი — ერთჯერადი შემთხვევითი პაროლით env-ით).
+
+**ბანდლი (gzip, B4-ის build-თან შედარებით):** საჯარო `index` 124.46 → 124.47 kB (+6 B — `ContentError`-ის `message`), სხვა საჯარო chunk-ები ±2 B (minifier); ადმინი — ახალი `library` 3.17 kB, `MediaPage` 1.85 → 2.09, `DocumentsPage` 1.30 → 1.58, ადმინის `i18n` 17.05 → 17.70, `mock` 6.03 → 5.98 kB.
+
+### გადახვევები prompt-იდან, §12-იდან და B4-ის გეგმიდან
+
+1. **R2 — საკუთარი SigV4, `@aws-sdk/client-s3`-ის ნაცვლად** (§12): SDK-ის transitive დამოკიდებულებები (`@smithy/*`, `@aws-sdk/*`) `^`-დიაპაზონითაა და თითქმის ყოველდღე გამოდის — „≥ 14 დღის“ წესით ჩაკეტვა ~90 override-ს მოითხოვდა. საჭიროა ოთხი ოპერაცია; ხელმოწერა AWS-ის ორ საცნობარო მაგალითს ზუსტად ემთხვევა.
+2. **ფაილის შეცდომა → 400 + `fields.file`** (spec-ში B1-იდან ეწერა 422): prompt-ის „გაფართოება ≠ შიგთავსი → 400“, „ზომა → 413 / 400“ — 413 კონტრაქტის სტატუსებში არ არის (B1: Fastify-ის 413 → 400). მეტა-ველი რჩება 422. `http.js` 400 / 422 `fields`-ს ერთნაირად კითხულობს — frontend-ის კონტრაქტი არ შეცვლილა; spec-ის აღწერა გასწორდა.
+3. **ძველი ვერსია წაშლას არ ბლოკავს** (B4-ის გეგმა: „`mediaKeys` — ძველი ვერსიების ჩათვლით“): 30 ძველი ვერსია თანხმობის გაუქმებულ ფოტოს თვეობით შეინახავდა. წაშლისას ისტორიაში `src` → null (alt რჩება), აღდგენა ჩანაცვლების ჩარჩოს აჩვენებს და არა გატეხილ ბმულს.
+4. **ბიბლიოთეკა — ფაილი ერთ ბარათად ყველა გამოყენებით** (F8-ის mock-ში ატვირთვა და მისი გამოყენება ორ ბარათად ჩანდა): `PATCH` ფაილზე alt-ს ყველა გამოყენებაში ცვლის; ჩადგმული (`img:`) — ერთ ველს. ავტორიტეტული alt მასალაშია (B2-ის გადაწყვეტილება უცვლელია).
+5. **ფაილის კვანძი — ნებისმიერი ობიექტი `src`-ით** (F8: მხოლოდ `cover`, `photo`, `body[i].image`, `pdf`): ბიბლიოთეკაში გუნდის ფოტო, პარტნიორის ლოგო, სლაიდის ფოტოც ჩანს (seed-ზე ბიბლიოთეკა 87 ჩანაწერია).
+6. **ბიბლიოთეკის alt-ის შეცვლა სამუშაო ასლს აღარ შლის** — F8-ის mock-ის ხარვეზი (რედაქტორის ავტოშენახული ცვლილება იკარგებოდა); გასწორდა ორივე მხარეს (`replace({ working })`, `save(…, { working })`), ტესტით.
+7. **ცარიელი alt `PATCH`-ით → 422** (prompt-ში არ იყო): ბიბლიოთეკიდან გამოქვეყნებული მასალის alt-ის წაშლა ბლოკერს გვერდს აუვლიდა.
+8. **`MediaItem.kind` + `track`** — VTT-ის ატვირთვის პასუხი (mock `image`-ს აბრუნებდა, spec-ს არ აკმაყოფილებდა); ორივე მხარეს, typedef-ით.
+9. **ზომის ვარიანტები არ კეთდება** — B0-ში არ გადაწყვეტილა (prompt: „თუ გადაწყდა“); ფაილი ორიგინალის ზომით ინახება — რეკომენდაცია §9 #30-ში.
+10. **დამატებით (prompt-ში არ იყო):** `fileMissing` და VTT-ის `cues` / `end` სერვერიდან გამოქვეყნებისას; PDF-ის `%%EOF`-ის შემოწმება; ანიმაციის პირველ კადრამდე დაყვანა; მეგაპიქსელების ზღვარი; `HEAD` ცალკე route-ით (Fastify-ის ავტომატური HEAD ნაკადს ბოლომდე კითხულობს); Vite-ის dev proxy.
+11. **multipart მხოლოდ ატვირთვის route-ის კონტექსტშია** (encapsulated plugin) — სხვა endpoint-ი `multipart/form-data`-ს არ იღებს (B3-ის CSRF-ის წესი უცვლელია).
+12. **`semver` 7.8.6 B1-იდან** (`fastify`, `mongodb-memory-server-core`, 14 დღეზე ახალი იყო) — `overrides`-ით 7.8.5-ზე ჩაიკეტა ახალ `sharp`-თან ერთად; `npm ls` სუფთაა.
+13. prompt-ის „მედიის ეკრანი და რედაქტორის ატვირთვა HTTP adapter-ით (frontend-ის ტესტები)“ — `server/test/ui/media-http.test.jsx`-შია (`npm run server:test`, jsdom), არა `npm test`-ში: რეალურ სერვერს memory-server სჭირდება (B4-ის კონვენცია). mock-ზე იგივე ეკრანი `npm test`-ში მოწმდება (`editor.test.jsx`, `library.test.js`).
+
+### ღია საკითხები
+
+1. **ზღვრები** — ფოტო `[10] MB`, PDF `[20] MB`, `[40]` მეგაპიქსელი — დასადასტურებელი (env).
+2. **ზომის ვარიანტები / `srcset`** — 12–24 MP ფოტო მობილურზე მძიმეა; რეკომენდაცია: 640 / 1280 / 2400px WebP ატვირთვისას (მოდელი + `Media` + სერვერი, ცალკე ნაბიჯი).
+3. **ინგლისური alt ბიბლიოთეკაში** — არ ჩანს / არ რედაქტირდება (English ჩანართით); გამოქვეყნების ბლოკერი ორივე ენას ამოწმებს.
+4. **სერვერის ფაილის შეცდომის ტექსტი მხოლოდ ქართულია** — `/en/admin`-ზე ბრაუზერის შემოწმება ინგლისურია, სერვერის უარი — ქართული (B4-ის #2, B6).
+5. **ობოლი ფაილები** — შეცვლილი VTT და მასალიდან მოხსნილი ფოტო რჩება (VTT ბიბლიოთეკაში არ ჩანს); გასუფთავების სკრიპტი — B7 ან ცალკე.
+6. **ფაილი საჯაროა გასაღებით** (128 ბიტი), მონახაზისაც — კონფიდენციალურობის პოლიტიკაში; PDF-ის შიდა მეტამონაცემი (Author, Creator) არ იშლება, PDF/UA ავტომატურად არ მოწმდება.
+7. **B7:** R2-ის bucket და გასაღები (Object Read & Write მხოლოდ ერთ bucket-ზე), `MEDIA_BASE_URL` (custom domain / CDN — მაშინ `Cross-Origin-Resource-Policy` გადასახედია), R2-ის backup / versioning; საიტის HTML-ის CSP-ში `img-src 'self'` საკმარისია (`/media/*` same-origin).
+8. **წაშლის რბოლა:** ტრანზაქცია გამოყენებას თავიდან ამოწმებს, მაგრამ პარალელური შენახვა, რომელიც ფაილს ამ წამს ჩასვამს, ტრანზაქციას არ ეჯახება (write skew) — ასეთ მასალას გამოქვეყნებისას `fileMissing` დაიჭერს.
+9. B2–B4-ის დანარჩენი ღია საკითხები (პაროლის შეცვლა / აღდგენა, `?invite=`, slug-ის ცვლილება გამოქვეყნებულზე, გუნდის თარგმანი ორ ადგილას) — უცვლელია.
+
+### შემდეგი: B6 — საჯარო API და ფორმები
+
+`ContentAdapter`-ის HTTP ვერსია (სიები, ფილტრები, `localize`, საჯარო ძიება `searchText`-ით), კონტაქტი (honeypot, rate limit `forms`, წერილი — fake transport), გამოწერა — double opt-in (`subscribe` → `{ ok, status: 'pending' }`, `confirmSubscription` — კონტრაქტი ორივე მხარეს), cache-header-ები საჯარო GET-ზე, სერვერის შეცდომის ენა მოთხოვნიდან. ფოტო საჯარო პასუხში — `/media/<key>` უკვე same-origin-ია (B5).

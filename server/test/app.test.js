@@ -6,7 +6,7 @@ import { CONTACT_FIELDS, NAME_MAX } from '@/content/forms.js';
 import { connectDb } from '../lib/db.js';
 import { route } from '../lib/openapi.js';
 
-import { captureLogs, makeApp } from './helpers.js';
+import { FAKE_R2_ENV, captureLogs, makeApp } from './helpers.js';
 
 const VALID_CONTACT = {
   name: 'ტესტი',
@@ -220,7 +220,12 @@ describe('ლოგი — პერსონალური მონაცე�
     const app = await makeApp({
       extend: testRoutes,
       logStream: logs.stream,
-      env: { NODE_ENV: 'production', MONGODB_URI: 'mongodb://127.0.0.1:1/x', LOG_LEVEL: 'info' },
+      env: {
+        NODE_ENV: 'production',
+        MONGODB_URI: 'mongodb://127.0.0.1:1/x',
+        LOG_LEVEL: 'info',
+        ...FAKE_R2_ENV,
+      },
     });
     await app.inject({
       method: 'POST',

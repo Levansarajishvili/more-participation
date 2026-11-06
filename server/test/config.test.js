@@ -1,8 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { ConfigError, ENV_KEYS, loadConfig } from '../config.js';
+import { ConfigError, DEFAULT_MEDIA_DIR, ENV_KEYS, loadConfig } from '../config.js';
 
 const URI = 'mongodb+srv://user:s3cret-pass@cluster0.example.mongodb.net/?retryWrites=true';
+/** B5: წარმოებაში ფაილები მხოლოდ R2-შია — სატესტო (ყალბი) მნიშვნელობები */
+const R2 = {
+  R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+  R2_BUCKET: 'mc-media',
+  R2_ACCESS_KEY_ID: 'AKIAEXAMPLEKEY12345',
+  R2_SECRET_ACCESS_KEY: 'r2-secret-value-for-tests-only',
+};
+const MB = 1024 * 1024;
 
 describe('loadConfig', () => {
   it('development: ნაგულისხმევი მნიშვნელობები, ბაზის გარეშე', () => {
@@ -22,6 +30,13 @@ describe('loadConfig', () => {
         auth: { max: 10, windowMs: 900_000 },
         forms: { max: 10, windowMs: 600_000 },
       },
+      media: {
+        storage: 'local',
+        dir: DEFAULT_MEDIA_DIR,
+        r2: null,
+        limits: { image: 10 * MB, document: 20 * MB, track: MB },
+        maxPixels: 40_000_000,
+      },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.mongo)).toBe(true);
@@ -32,8 +47,13 @@ describe('loadConfig', () => {
   });
 
   it('production: 0.0.0.0, MONGODB_URI სავალდებულოა', () => {
-    expect(() => loadConfig({ NODE_ENV: 'production' })).toThrow(ConfigError);
-    const config = loadConfig({ NODE_ENV: 'production', MONGODB_URI: URI, TRUST_PROXY: '1' });
+    expect(() => loadConfig({ NODE_ENV: 'production', ...R2 })).toThrow(ConfigError);
+    const config = loadConfig({
+      NODE_ENV: 'production',
+      MONGODB_URI: URI,
+      TRUST_PROXY: '1',
+      ...R2,
+    });
     expect(config.host).toBe('0.0.0.0');
     expect(config.trustProxy).toBe(1);
     expect(config.mongo.uri).toBe(URI);
@@ -140,7 +160,62 @@ describe('loadConfig', () => {
       'RATE_LIMIT_AUTH_WINDOW_SECONDS',
       'RATE_LIMIT_FORMS_MAX',
       'RATE_LIMIT_FORMS_WINDOW_SECONDS',
+      'MEDIA_STORAGE',
+      'MEDIA_DIR',
+      'R2_ACCOUNT_ID',
+      'R2_ENDPOINT',
+      'R2_BUCKET',
+      'R2_ACCESS_KEY_ID',
+      'R2_SECRET_ACCESS_KEY',
+      'MEDIA_MAX_IMAGE_MB',
+      'MEDIA_MAX_DOCUMENT_MB',
+      'MEDIA_MAX_MEGAPIXELS',
     ]);
     expect(() => loadConfig({ SOMETHING_ELSE: 'x', PATH: '/bin' })).not.toThrow();
+  });
+
+  it('B5 — საცავი: test → memory; production → მხოლოდ r2, გასაღებები სავალდებულოა', () => {
+    expect(loadConfig({ NODE_ENV: 'test' }).media.storage).toBe('memory');
+    const production = { NODE_ENV: 'production', MONGODB_URI: URI };
+    expect(() => loadConfig(production)).toThrow(/R2_BUCKET/);
+    expect(() => loadConfig({ ...production, ...R2, MEDIA_STORAGE: 'local' })).toThrow(
+      /MEDIA_STORAGE/,
+    );
+    const config = loadConfig({ ...production, ...R2 });
+    expect(config.media.storage).toBe('r2');
+    expect(config.media.r2).toEqual({
+      endpoint: 'https://0123456789abcdef0123456789abcdef.r2.cloudflarestorage.com',
+      region: 'auto',
+      bucket: 'mc-media',
+      accessKeyId: R2.R2_ACCESS_KEY_ID,
+      secretAccessKey: R2.R2_SECRET_ACCESS_KEY,
+    });
+    // S3-თავსებადი მისამართი (MinIO, ტესტი) — ანგარიშის id-ის გარეშე
+    const { R2_ACCOUNT_ID: _id, ...rest } = R2;
+    expect(
+      loadConfig({ MEDIA_STORAGE: 'r2', R2_ENDPOINT: 'http://127.0.0.1:9000/', ...rest }).media.r2
+        ?.endpoint,
+    ).toBe('http://127.0.0.1:9000');
+    expect(() => loadConfig({ MEDIA_STORAGE: 'r2', ...rest })).toThrow(/R2_ACCOUNT_ID/);
+  });
+
+  it('B5 — ზღვრები env-იდან; საიდუმლო შეცდომის ტექსტში არ მეორდება', () => {
+    const { media } = loadConfig({
+      MEDIA_MAX_IMAGE_MB: '5',
+      MEDIA_MAX_DOCUMENT_MB: '8',
+      MEDIA_MAX_MEGAPIXELS: '24',
+      MEDIA_DIR: '/tmp/mc-media',
+    });
+    expect(media.limits).toEqual({ image: 5 * MB, document: 8 * MB, track: MB });
+    expect(media.maxPixels).toBe(24_000_000);
+    expect(media.dir).toBe('/tmp/mc-media');
+    expect(() => loadConfig({ MEDIA_MAX_IMAGE_MB: '500' })).toThrow(/MEDIA_MAX_IMAGE_MB/);
+    try {
+      loadConfig({ MEDIA_STORAGE: 'r2', ...R2, R2_SECRET_ACCESS_KEY: 'has space s3cret' });
+      expect.unreachable();
+    } catch (error) {
+      expect(/** @type {Error} */ (error).message).toMatch(/R2_SECRET_ACCESS_KEY/);
+      expect(/** @type {Error} */ (error).message).not.toContain('s3cret');
+    }
   });
 });

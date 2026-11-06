@@ -329,6 +329,15 @@
   .mc-library__upload .mc-hint {
     margin: 0;
   }
+  /* B5: ატვირთვის შეცდომა — მთელ სიგანეზე, ხატულა + ტექსტი (`FieldError`) */
+  .mc-library__problem,
+  .mc-upload-problem {
+    flex-basis: 100%;
+  }
+  .mc-library__problem .mc-error,
+  .mc-upload-problem .mc-error {
+    margin: 0;
+  }
   .mc-media-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));

@@ -8,18 +8,27 @@ import {
   LiveRegion,
   SkeletonGroup,
 } from '@/components/ui/index.js';
+import { FieldError } from '@/components/ui/fields/Field.jsx';
+import { acceptFor, checkBlob } from '@/content/files.js';
 import { useContent } from '@/hooks/useContent.js';
 import { formatFileSize } from '@/i18n/index.js';
 
 import { media } from '../api/adminAdapter.js';
+import { usageCount } from '../api/library.js';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import { checkMessage, uploadMessage } from '../components/upload-messages.js';
 import { typeLabel } from '../content-types.js';
 import { ta } from '../i18n/index.js';
 
 /**
  * დოკუმენტები (`/admin/documents`): PDF-ები სათაურით, ზომით, ენით და tagged-ის (PDF/UA)
  * დადასტურებით; დაუდასტურებელი — ჩეკლისტის გაფრთხილება სერიაზე.
+ *
+ * B5: მხოლოდ PDF (შიგთავსით, `files.js`); სერვერის უარი ხილულია (ხატულა + ტექსტი, `role="alert"`);
+ * გამოყენებული ფაილის წაშლა → სია ახლდება.
  */
+const PDF_ACCEPT = acceptFor(['document']);
+
 export default function DocumentsPage() {
   const list = useContent(() => media.list({ kind: 'document' }), []);
   const [status, setStatus] = useState('');
@@ -28,6 +37,47 @@ export default function DocumentsPage() {
   );
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const captionId = useId();
+  const problemId = useId();
+  const [problem, setProblem] = useState(/** @type {string | null} */ (null));
+  const [busy, setBusy] = useState(false);
+
+  /** @param {File | undefined} file */
+  async function upload(file) {
+    if (!file) return;
+    setProblem(null);
+    const local = checkMessage(
+      await checkBlob(file, { kinds: ['document'] }),
+      'documents.wrongType',
+    );
+    if (local) {
+      setProblem(local);
+      return;
+    }
+    setBusy(true);
+    try {
+      await media.upload(file, { title: file.name });
+      setStatus(ta('library.uploaded', { name: file.name }));
+      list.reload();
+    } catch (error) {
+      setProblem(ta('library.uploadFailed', { message: uploadMessage(error) }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!removing) return;
+    try {
+      await media.remove(removing.id);
+      setStatus(ta('library.removed'));
+    } catch (error) {
+      const code = /** @type {{ code?: string }} */ (error).code;
+      setStatus(code === 'conflict' ? ta('library.inUseNow') : uploadMessage(error));
+    } finally {
+      setRemoving(null);
+      list.reload();
+    }
+  }
 
   return (
     <div className="mc-library">
@@ -36,26 +86,30 @@ export default function DocumentsPage() {
         <input
           ref={inputRef}
           type="file"
-          accept="application/pdf"
+          accept={PDF_ACCEPT}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
-          onChange={async (event) => {
-            const file = event.target.files?.[0];
-            if (!file) return;
-            await media.upload(file, { title: file.name });
-            setStatus(ta('library.uploaded', { name: file.name }));
-            list.reload();
+          onChange={(event) => {
+            upload(event.target.files?.[0]);
+            event.target.value = '';
           }}
         />
         <Button
           variant="secondary"
           size="sm"
           icon="document"
+          loading={busy}
+          aria-describedby={problem ? problemId : undefined}
           onClick={() => inputRef.current?.click()}
         >
           {ta('documents.upload')}
         </Button>
+        {problem && (
+          <div role="alert" className="mc-library__problem">
+            <FieldError id={problemId}>{problem}</FieldError>
+          </div>
+        )}
       </div>
       <LiveRegion>{status}</LiveRegion>
       <ContentState
@@ -106,10 +160,13 @@ export default function DocumentsPage() {
                         label={ta('documents.tagged', { title: doc.title || doc.id })}
                         checked={Boolean(doc.tagged)}
                         onChange={async (event) => {
-                          await media.update(doc.id, { tagged: event.target.checked });
-                          setStatus(
-                            ta(event.target.checked ? 'documents.taggedOn' : 'documents.taggedOff'),
-                          );
+                          const tagged = event.target.checked;
+                          try {
+                            await media.update(doc.id, { tagged });
+                            setStatus(ta(tagged ? 'documents.taggedOn' : 'documents.taggedOff'));
+                          } catch (error) {
+                            setStatus(uploadMessage(error));
+                          }
                           list.reload();
                         }}
                       />
@@ -118,7 +175,7 @@ export default function DocumentsPage() {
                       {doc.usage.length
                         ? doc.usage.map((u) => (
                             <Link
-                              key={u.id}
+                              key={`${u.id}-${u.field}`}
                               to={`/admin/${u.type}/${u.id}`}
                               className="mc-admin-link"
                             >
@@ -134,7 +191,7 @@ export default function DocumentsPage() {
                         disabled={doc.usage.length > 0}
                         disabledReason={
                           doc.usage.length
-                            ? ta('library.inUse', { count: doc.usage.length })
+                            ? ta('library.inUse', { count: usageCount(doc.usage) })
                             : undefined
                         }
                         onClick={() => setRemoving(doc)}
@@ -156,13 +213,7 @@ export default function DocumentsPage() {
         description={ta('library.removeText', { name: removing?.title ?? '' })}
         confirmLabel={ta('library.remove')}
         cancelLabel={ta('editor.cancel')}
-        onConfirm={async () => {
-          if (!removing) return;
-          await media.remove(removing.id);
-          setRemoving(null);
-          setStatus(ta('library.removed'));
-          list.reload();
-        }}
+        onConfirm={remove}
         onCancel={() => setRemoving(null)}
       />
     </div>

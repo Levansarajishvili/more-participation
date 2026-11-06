@@ -12,14 +12,18 @@ import { registerSecurity } from './lib/security.js';
 import { registerAuthRoutes } from './routes/auth.js';
 import { registerContentRoutes } from './routes/content.js';
 import { registerHealth } from './routes/health.js';
+import { registerMediaRoutes } from './routes/media.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerUsersRoutes } from './routes/users.js';
+import { createStorage } from './storage/index.js';
 
 /**
  * Fastify-ის აპი (B1): ვალიდაცია spec-იდან, header-ები, ლოგი, შეცდომის handler, health.
  * B3: cookie, guard-ები spec-იდან (`security`, `x-permission`, `x-rate-limit` — `lib/auth.js`),
- * auth / users. B4: კონტენტი (`routes/content.js`), პარამეტრები და ანგარიშები (`routes/settings.js`). B5–B6-ის route-ები აქ ერთვება
- * `route(app, spec, operationId, handler)`-ით — guard-ს ავტომატურად იღებს.
+ * auth / users. B4: კონტენტი (`routes/content.js`), პარამეტრები და ანგარიშები (`routes/settings.js`).
+ * B5: მედია (`routes/media.js`) + ფაილის მიწოდება `/media/*`, საცავი — `app.storage`
+ * (`storage/index.js`). B6-ის route-ები აქ ერთვება `route(app, spec, operationId, handler)`-ით —
+ * guard-ს ავტომატურად იღებს.
  */
 
 /** @typedef {import('./config.js').Config} Config */
@@ -33,6 +37,7 @@ import { registerUsersRoutes } from './routes/users.js';
  * @property {(app: import('fastify').FastifyInstance) => void | Promise<void>} [extend]
  *   ტესტი: დამატებითი route-ები შეცდომის handler-ის რეგისტრაციის შემდეგ
  * @property {() => number} [now]  საათი (სესია, მოწვევა, rate limit); ტესტში — მართვადი
+ * @property {import('./storage/index.js').Storage} [storage]  B5: ნაგულისხმევი — `config.media`-დან
  */
 
 /**
@@ -46,6 +51,7 @@ export async function buildApp({
   logStream,
   extend,
   now = Date.now,
+  storage = createStorage(config.media, { now }),
 }) {
   const app = Fastify({
     logger: loggerOptions({
@@ -73,6 +79,8 @@ export async function buildApp({
   /** @type {{ method: string, url: string, operationId: string | null }[]} */
   const apiRoutes = [];
   app.addHook('onRoute', (options) => {
+    // მხოლოდ API (spec-ის ოპერაციები); `/media/*` — ფაილის მიწოდება (B5), spec-ში არ არის
+    if (!options.url.startsWith('/api/')) return;
     for (const method of [options.method].flat()) {
       if (method === 'HEAD') continue;
       apiRoutes.push({
@@ -88,6 +96,7 @@ export async function buildApp({
   app.decorate('spec', spec);
   app.decorate('apiRoutes', apiRoutes);
   app.decorate('now', now);
+  app.decorate('storage', storage);
   app.decorate(
     'repos',
     db
@@ -113,8 +122,9 @@ export async function buildApp({
   await registerAuth(app);
   registerHealth(app, { spec });
   registerAuthRoutes(app);
-  // spec-ის რიგით (openapi.test.js): auth → content / items (B4) → users → settings / reports
+  // spec-ის რიგით (openapi.test.js): auth → content / items (B4) → media (B5) → users → settings / reports
   registerContentRoutes(app);
+  await registerMediaRoutes(app);
   registerUsersRoutes(app);
   registerSettingsRoutes(app);
   if (extend) await extend(app);

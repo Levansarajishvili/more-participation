@@ -11,6 +11,8 @@ import { createRepositories } from '../../db/index.js';
 import { SeedError, seedDatabase, seedSource } from '../../db/seed.js';
 import { createAjv, loadSpec, schemaRef } from '../../lib/openapi.js';
 
+import { FAKE_R2_ENV } from '../helpers.js';
+
 import { T0, caught, freshDatabase, json } from './helpers.js';
 
 /**
@@ -129,7 +131,7 @@ describe('CLI: server:migrate / server:seed', () => {
     const first = await run('migrate.js', [], env);
     expect(first.code, first.stderr).toBe(0);
     expect(first.stdout).toMatch(/001-init · content: შეიქმნა; ინდექსები — 7 შეიქმნა/);
-    expect(first.stdout).toMatch(/ცვლილება: 27/);
+    expect(first.stdout).toMatch(/ცვლილება: 28/);
 
     const second = await run('migrate.js', [], env);
     expect(second.code, second.stderr).toBe(0);
@@ -152,7 +154,11 @@ describe('CLI: server:migrate / server:seed', () => {
     expect(unknown.code).toBe(1);
     expect(unknown.stderr).toMatch(/უცნობი არგუმენტი/);
 
-    const production = await run('seed.js', [], { ...env, NODE_ENV: 'production' });
+    const production = await run('seed.js', [], {
+      ...env,
+      ...FAKE_R2_ENV,
+      NODE_ENV: 'production',
+    });
     expect(production.code).toBe(1);
     expect(production.stderr).toMatch(/წარმოების ბაზაზე არ ეშვება/);
 

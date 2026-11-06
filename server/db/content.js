@@ -5,7 +5,7 @@ import { ContentError } from '@/content/errors.js';
 import { ID_PREFIX } from '@/content/mock/store.js';
 
 import { COLLECTION, DEFAULT_RETENTION } from './collections.js';
-import { derivedFields, plain } from './derive.js';
+import { MEDIA_PATH, derivedFields, mediaKeysOf, plain } from './derive.js';
 import { mapWriteError } from './errors.js';
 
 /**
@@ -185,14 +185,38 @@ export async function inTransaction(client, work) {
  * @property {(type: ContentType, item: object, options?: { by?: string | null, id?: string }) => Promise<ContentRecord>} insert
  * @property {(records: { id: string, type: ContentType, item: object, meta: ContentMeta, working?: WorkingCopy | null }[], options?: { session?: import('mongodb').ClientSession }) => Promise<number>} importRecords
  *   seed / ტესტი: ჩანაწერი id-ით და მეტათი, როგორც არის
- * @property {(id: string, item: object, options?: { by?: string | null, version?: number }) => Promise<ContentRecord>} replace
+ * @property {(id: string, item: object, options?: { by?: string | null, version?: number, working?: object | null }) => Promise<ContentRecord>} replace
+ *   `working` (B5) — სამუშაო ასლი რჩება ამ item-ით (ბიბლიოთეკის alt); ნაგულისხმევად იშლება
  * @property {(id: string, item: object, options?: { by?: string | null, version?: number }) => Promise<ContentRecord>} saveWorking
  * @property {(id: string) => Promise<ContentRecord>} remove   აბრუნებს წაშლილს
  * @property {(id: string) => Promise<VersionEntry[]>} versions   ისტორია, უახლესი პირველი (მიმდინარის გარეშე)
  * @property {(id: string, version: number, options?: { by?: string | null }) => Promise<ContentRecord>} restore
  * @property {(type: ContentType, id: string | null, options?: { by?: string | null }) => Promise<ContentRecord[]>} setFeatured
  *   აბრუნებს შეცვლილ ჩანაწერებს
+ * @property {(key: string, options?: { session?: import('mongodb').ClientSession }) => Promise<number>} usageCount
+ *   B5: რამდენი მასალა იყენებს ფაილს (გამოქვეყნებული ვერსია ან სამუშაო ასლი)
+ * @property {(key: string, options: { session: import('mongodb').ClientSession }) => Promise<number>} scrubHistory
+ *   B5: წაშლილი ფაილის `src` → null ძველ ვერსიებში; აბრუნებს შეცვლილი ვერსიების რაოდენობას
  */
+
+/**
+ * ფაილის მისამართი → null ობიექტში (ყველა კვანძი, რომლის `src` = `/media/<key>`). alt და სხვა ველი
+ * რჩება — აღდგენილ ვერსიაში ფოტოს ადგილას ჩანაცვლების ჩარჩო ჩანს, გატეხილი ბმული — არა.
+ * @param {unknown} value
+ * @param {string} key
+ * @returns {unknown}
+ */
+export function scrubMediaKey(value, key) {
+  const src = `${MEDIA_PATH}${key}`;
+  if (Array.isArray(value)) return value.map((entry) => scrubMediaKey(entry, key));
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value).map(([name, child]) => [
+      name,
+      name === 'src' && child === src ? null : scrubMediaKey(child, key),
+    ]),
+  );
+}
 
 /**
  * @param {{ client: import('mongodb').MongoClient, db: import('mongodb').Db }} database
@@ -247,18 +271,23 @@ export function createContentRepository(
    * @param {Record<string, any>} doc   მიმდინარე დოკუმენტი
    * @param {object} item
    * @param {string | null} by
+   * @param {object | null} [keepWorking]  B5: სამუშაო ასლი რჩება (ახალი item-ით, იგივე დრო / ავტორი)
    */
-  async function writeNext(session, doc, item, by) {
+  async function writeNext(session, doc, item, by, keepWorking = null) {
     const at = new Date(now());
     const value = plain(/** @type {Record<string, any>} */ (item));
-    const derived = derivedFields(value, null);
+    const working =
+      keepWorking && doc.working
+        ? { item: plain(keepWorking), at: doc.working.at, by: doc.working.by ?? null }
+        : null;
+    const derived = derivedFields(value, working?.item ?? null);
     const set = {
       status: derived.status,
       publishedAt: derived.publishedAt,
       item: value,
       updatedAt: at,
       updatedBy: by,
-      working: null,
+      working,
       searchText: derived.searchText,
       mediaKeys: derived.mediaKeys,
     };
@@ -280,6 +309,7 @@ export function createContentRepository(
         item: doc.item,
         at: doc.updatedAt,
         by: doc.updatedBy ?? null,
+        mediaKeys: mediaKeysOf(doc.item),
       },
       { session },
     );
@@ -349,7 +379,7 @@ export function createContentRepository(
       }
     },
 
-    replace(id, item, { by = null, version } = {}) {
+    replace(id, item, { by = null, version, working = null } = {}) {
       return inTransaction(client, async (session) => {
         const doc = await required(id, session);
         if (version !== undefined && version !== doc.version) {
@@ -357,7 +387,7 @@ export function createContentRepository(
             detail: `${id}: version ${version} ≠ ${doc.version}`,
           });
         }
-        return writeNext(session, doc, item, by);
+        return writeNext(session, doc, item, by, working);
       });
     },
 
@@ -449,6 +479,23 @@ export function createContentRepository(
         }
         return changed;
       });
+    },
+
+    usageCount(key, { session } = {}) {
+      return content.countDocuments({ mediaKeys: key }, { session });
+    },
+
+    async scrubHistory(key, { session }) {
+      const docs = await versions.find({ mediaKeys: key }, { session }).toArray();
+      for (const doc of docs) {
+        const item = /** @type {Record<string, any>} */ (scrubMediaKey(doc.item, key));
+        await versions.updateOne(
+          { _id: doc._id },
+          { $set: { item, mediaKeys: mediaKeysOf(item) } },
+          { session },
+        );
+      }
+      return docs.length;
     },
   };
 }

@@ -1,20 +1,32 @@
 import { blockerFields, publishBlockers } from '@/content/checks.js';
 import { ContentError } from '@/content/errors.js';
+import { checkBlob } from '@/content/files.js';
 import { normalizeEmail } from '@/content/forms.js';
 import { tbilisi } from '@/content/mock/helpers.js';
 import { ID_PREFIX, getSharedMockStore } from '@/content/mock/store.js';
+import { parseCaptions, summarizeCues } from '@/content/vtt.js';
 import { isYouTubeId } from '@/content/youtube.js';
 
 import { validateLogin, validateRegister } from '../auth/auth-forms.js';
 import { CONTENT_TYPES, TYPE_CONFIG } from '../content-types.js';
 import { adminDictionary, adminDictionaryEn, ta } from '../i18n/index.js';
 
+import {
+  buildLibrary,
+  fileError,
+  filterLibrary,
+  findMediaItem,
+  inUseError,
+  libraryCounts,
+  normalizeMediaPatch,
+  parseEmbeddedId,
+  patchRecord,
+} from './library.js';
 import { ROLES, can } from './permissions.js';
 import {
   assertFuture,
   buildA11yReport,
   buildStats,
-  embeddedMedia,
   featuredChanges,
   featuredIds,
   keepFeatured,
@@ -91,7 +103,7 @@ export const PAGE_DEFS = Object.freeze([
  * @property {{ code: string, role: import('./permissions.js').Role, email: string | null, expiresAt: number, used: boolean }[]} invites
  * @property {{ userId: string, expiresAt: number } | null} session
  * @property {Map<string, { version: number, at: string, by: string | null, item: object }[]>} versions
- * @property {MediaItem[]} uploads
+ * @property {import('./library.js').FileRecord[]} uploads  ატვირთული ფაილები (`up:001`; VTT-ის ჩათვლით)
  * @property {number} uploadCount
  * @property {Map<string, { item: object, at: string, by: string | null }>} working  გამოქვეყნებულის სამუშაო ასლი (ავტოშენახვა)
  */
@@ -360,11 +372,14 @@ export function createMockAdminAdapter(options = {}) {
    * ვერსიის შენახვა ჩანაცვლებამდე + ჩანაცვლება.
    * @param {ContentType} type @param {StoreRecord} record @param {object} item @param {string} by @param {number} [version]
    */
-  function save(type, record, item, by, version) {
+  function save(type, record, item, by, version, { working } = {}) {
     const key = record.id;
     const history = state.versions.get(key) ?? [];
+    const previous = state.working.get(record.id);
     const next = store.replace(TYPE_CONFIG[type].collection, record.id, item, { by, version });
-    state.working.delete(record.id);
+    // B5: ბიბლიოთეკის ცვლილება (alt) სამუშაო ასლს ინახავს — სხვა შენახვა მას ამტკიცებს / შლის
+    if (working && previous) state.working.set(record.id, { ...previous, item: working });
+    else state.working.delete(record.id);
     // „ჩვენ შესახებ“ გვერდის გუნდი / პარტნიორები საჯარო საიტის საცავშიც იწერება
     const page = /** @type {{ slug?: string, team?: any[], partners?: any[] }} */ (item);
     if (type === 'pages' && page.slug === 'about') {
@@ -394,44 +409,81 @@ export function createMockAdminAdapter(options = {}) {
     });
   }
 
-  /* ─── მედია (კონტენტში ჩადგმული სურათები + ატვირთვები) ───────────────── */
+  /* ─── მედია (B5: საერთო `library.js` — სერვერის იგივე წესი) ─────────────── */
 
-  /** ბიბლიოთეკა: მასალაში ჩადგმული ფოტო / PDF (`records.js`) + ატვირთვები. @returns {MediaItem[]} */
+  /** მასალა სამუშაო ასლით — ბიბლიოთეკის წყარო. */
+  function libraryRecords() {
+    return /** @type {any} */ (
+      Object.fromEntries(
+        CONTENT_TYPES.map((type) => [
+          type,
+          store.records(TYPE_CONFIG[type].collection).map((record) => ({
+            ...record,
+            working: state.working.get(record.id) ?? null,
+          })),
+        ]),
+      )
+    );
+  }
+
+  /** @returns {MediaItem[]} */
   function libraryItems() {
-    return [
-      ...CONTENT_TYPES.flatMap((type) =>
-        store
-          .records(TYPE_CONFIG[type].collection)
-          .flatMap((record) => embeddedMedia(type, /** @type {any} */ (record))),
-      ),
-      ...state.uploads,
-    ];
+    return buildLibrary(libraryRecords(), state.uploads);
   }
 
   /** @param {string} id */
   function mediaItem(id) {
-    const found = libraryItems().find((m) => m.id === id);
-    if (!found) throw new ContentError('not-found', { detail: id });
-    return found;
+    return findMediaItem(libraryRecords(), state.uploads, id);
   }
 
   /**
-   * ჩადგმული ფაილის ველის შეცვლა (alt ყველგან აისახება, სადაც ფაილი გამოიყენება).
-   * @param {MediaItem} found @param {(target: Record<string, any>) => void} mutate @param {string} by
+   * ბიბლიოთეკის ცვლილება მასალაში: გამოქვეყნებული ვერსია (ახალი ვერსია) + სამუშაო ასლი (რჩება).
+   * @param {string} recordId
+   * @param {{ path?: string, src?: string | null, kind: 'image' | 'document' | 'track' }} target
+   * @param {import('./library.js').MediaPatch} patch
+   * @param {string} by
    */
-  function patchEmbedded(found, mutate, by) {
-    const upload = state.uploads.find((u) => u.id === found.id);
-    if (upload) {
-      mutate(upload);
-      return;
-    }
-    const [, recordId, field] = found.id.split(':');
+  function patchContent(recordId, target, patch, by) {
     const { type, record } = recordOf(recordId);
-    const item = structuredClone(/** @type {Record<string, any>} */ (record.item));
-    const match = /^body\[(\d+)\]\.image$/.exec(field);
-    const target = match ? item.body[Number(match[1])].image : item[field];
-    mutate(target);
-    save(type, record, item, by);
+    const working = /** @type {Record<string, any> | null} */ (
+      state.working.get(record.id)?.item ?? null
+    );
+    const next = patchRecord(/** @type {any} */ (record.item), working, target, patch);
+    if (next.item)
+      save(type, record, next.item, by, undefined, { working: next.working ?? working });
+    else if (next.working) {
+      const previous = /** @type {{ item: object, at: string, by: string | null }} */ (
+        state.working.get(record.id)
+      );
+      state.working.set(record.id, { ...previous, item: next.working });
+    }
+  }
+
+  /**
+   * ცვლილება id-ით: ჩადგმული — ერთი ველი; ფაილი — რეესტრი + ყველა გამოყენება.
+   * @param {string} id @param {import('./library.js').MediaPatch} raw @param {string} by
+   */
+  function updateMedia(id, raw, by) {
+    const found = mediaItem(id);
+    const patch = normalizeMediaPatch(found.kind, raw);
+    const embedded = parseEmbeddedId(id);
+    if (embedded) {
+      patchContent(embedded.recordId, { path: embedded.path, kind: found.kind }, patch, by);
+      return mediaItem(id);
+    }
+    const file = /** @type {import('./library.js').FileRecord} */ (
+      state.uploads.find((u) => u.id === id)
+    );
+    if (found.kind === 'image' && patch.alt !== undefined) file.alt = patch.alt;
+    if (found.kind === 'document') {
+      if (patch.title !== undefined) file.title = patch.title;
+      if (patch.lang !== undefined) file.lang = patch.lang;
+      if (patch.tagged !== undefined) file.tagged = patch.tagged;
+    }
+    for (const recordId of new Set(found.usage.map((u) => u.id))) {
+      patchContent(recordId, { src: file.src, kind: found.kind }, patch, by);
+    }
+    return mediaItem(id);
   }
 
   /* ─── adapter ───────────────────────────────────────────────────────── */
@@ -662,73 +714,64 @@ export function createMockAdminAdapter(options = {}) {
       list: (params = {}) =>
         respond(() => {
           requireUser('media.read');
-          let items = libraryItems();
-          if (params.kind) items = items.filter((m) => m.kind === params.kind);
-          if (params.missingAlt) items = items.filter((m) => m.kind === 'image' && !m.alt.trim());
-          return items;
+          return filterLibrary(libraryItems(), params);
         }),
 
-      upload: (file, meta = {}) =>
-        respond(() => {
+      // B5: ტიპი შიგთავსით, გაფართოება ↔ შიგთავსი, ზომა (`files.js`) და VTT (`parseCaptions`) —
+      // სერვერის იგივე წესი; EXIF-ის წაშლა და სურათის დეკოდირება მხოლოდ სერვერზეა
+      upload: async (file, meta = {}) => {
+        const check = file instanceof Blob ? await checkBlob(file) : null;
+        const captions =
+          check?.ok && check.kind === 'track' ? parseCaptions(await file.text()) : null;
+        return respond(() => {
           requireUser('media.write');
+          if (!check) throw fileError('fileEmpty');
+          if (!check.ok) throw fileError(check.code, { max: check.max });
+          if (captions && !captions.ok) {
+            const code = `vtt${captions.code[0].toUpperCase()}${captions.code.slice(1)}`;
+            throw fileError(code, { line: captions.line });
+          }
           state.uploadCount += 1;
-          const isPdf = file?.type === 'application/pdf';
-          // F10: სუბტიტრის VTT ბიბლიოთეკაში არ ჩანს (ფოტო / PDF არ არის) — მხოლოდ მისამართი ბრუნდება;
-          // ფაილების რეალური საცავი და MIME-ის შემოწმება — B5
-          const isTrack = file?.type === 'text/vtt' || /\.vtt$/i.test(file?.name ?? '');
-          /** @type {MediaItem} */
-          const item = {
+          const isDoc = check.kind === 'document';
+          /** @type {import('./library.js').FileRecord} */
+          const record = {
             id: `up:${String(state.uploadCount).padStart(3, '0')}`,
-            kind: isPdf ? 'document' : 'image',
+            kind: check.kind,
             src:
-              typeof URL !== 'undefined' && URL.createObjectURL && file instanceof Blob
+              typeof URL !== 'undefined' && URL.createObjectURL
                 ? URL.createObjectURL(file)
-                : null,
-            alt: meta.alt ?? '',
-            title: meta.title ?? file?.name ?? '',
-            ratio: meta.ratio ?? null,
-            size: file?.size ?? null,
-            lang: isPdf ? (meta.lang ?? 'ka') : null,
-            tagged: isPdf ? (meta.tagged ?? false) : null,
-            usage: [],
+                : `blob:mock/${state.uploadCount}`,
+            size: file.size,
+            title: String(meta.title ?? file.name ?? '').slice(0, 300),
+            alt: check.kind === 'image' ? String(meta.alt ?? '').trim() : '',
+            ratio: check.kind === 'image' ? (meta.ratio ?? null) : null,
+            lang: isDoc ? (meta.lang ?? 'ka') : null,
+            tagged: isDoc ? String(meta.tagged) === 'true' : null,
+            ...(captions?.ok && summarizeCues(captions.cues)),
           };
-          if (!isTrack) state.uploads.push(item);
-          return item;
-        }),
+          state.uploads.push(record);
+          return mediaItem(record.id);
+        });
+      },
 
       updateAlt: (id, alt) =>
         respond(() => {
           const user = requireUser('media.write');
-          const found = mediaItem(id);
-          patchEmbedded(found, (target) => (target.alt = alt), user.id);
-          return mediaItem(id);
+          return updateMedia(id, { alt }, user.id);
         }),
 
       update: (id, patch) =>
         respond(() => {
           const user = requireUser('media.write');
-          const found = mediaItem(id);
-          patchEmbedded(
-            found,
-            (target) => {
-              if (found.kind === 'document') {
-                if (patch.title !== undefined)
-                  target[found.id.startsWith('up:') ? 'title' : 'label'] = patch.title;
-                if (patch.lang !== undefined) target.lang = patch.lang;
-                if (patch.tagged !== undefined) target.tagged = patch.tagged;
-              } else if (patch.alt !== undefined) target.alt = patch.alt;
-            },
-            user.id,
-          );
-          return mediaItem(id);
+          return updateMedia(id, patch ?? {}, user.id);
         }),
 
       remove: (id) =>
         respond(() => {
           requireUser('media.write');
           const found = mediaItem(id);
-          // გამოყენებული ფაილის წაშლა იბლოკება — ჯერ მასალიდან უნდა მოიხსნას
-          if (found.usage.length) throw new ContentError('conflict', { detail: `in use: ${id}` });
+          // გამოყენებული ფაილის წაშლა იბლოკება — ჯერ მასალიდან უნდა მოიხსნას („გამოიყენება N მასალაში“)
+          if (found.usage.length || parseEmbeddedId(id)) throw inUseError(found.usage);
           state.uploads = state.uploads.filter((u) => u.id !== id);
           return /** @type {const} */ ({ ok: true });
         }),
@@ -820,13 +863,9 @@ export function createMockAdminAdapter(options = {}) {
       stats: () =>
         respond(() => {
           requireUser('content.read');
-          const library = libraryItems();
           return buildStats(rowsByType(), {
             now: now(),
-            library: {
-              images: library.filter((m) => m.kind === 'image').length,
-              documents: library.filter((m) => m.kind === 'document').length,
-            },
+            library: libraryCounts(libraryItems()),
           });
         }),
 

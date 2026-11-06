@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { route } from '../../lib/openapi.js';
 import { hashToken } from '../../lib/tokens.js';
-import { captureLogs } from '../helpers.js';
+import { FAKE_R2_ENV, captureLogs } from '../helpers.js';
 import { MINUTE } from '../db/helpers.js';
 
 import { ADMIN, ADMIN_EMAIL, EDITOR_EMAIL, PASSWORD, addUser, agent, authApp } from './helpers.js';
@@ -117,6 +117,7 @@ describe('ლოგი: პაროლი, token, სესიის id, კო
       logStream: logs.stream,
       env: {
         NODE_ENV: 'production',
+        ...FAKE_R2_ENV,
         MONGODB_URI: 'mongodb://127.0.0.1:1/unused',
         LOG_LEVEL: 'info',
         TRUST_PROXY: '1',

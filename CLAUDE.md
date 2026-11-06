@@ -95,7 +95,7 @@
 | ESLint | 9.39.5 + jsx-a11y (strict), react, react-hooks, react-refresh, prettier | 10-ზე jsx-a11y-ის peer ჯერ არ არის |
 | ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, user-event 14.6.7, vitest-axe | `expect.extend(axeMatchers)` setup-ში; კლავიატურა — `userEvent.setup()` |
 
-npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება); B3: `server:create-admin` (პირველი ადმინისტრატორი — `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env-ით ან ტერმინალიდან; ნაგულისხმევი პაროლი არ არსებობს).
+npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება); B3: `server:create-admin` (პირველი ადმინისტრატორი — `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env-ით ან ტერმინალიდან; ნაგულისხმევი პაროლი არ არსებობს); B5: `audit:media-api` (Chromium, რეალური API). dev-ში `vite` `/api` და `/media`-ს `server:dev`-ზე (3000) აგზავნის — `VITE_ADMIN_API=/api/admin`.
 
 ## ფოლდერების რუკა
 
@@ -113,6 +113,8 @@ scripts/
   placeholders.mjs        F7: [placeholder]-ები ტიპების მიხედვით (`npm run placeholders`, `--json`)
   audit.py                F7: Chromium-ის აუდიტი (`npm run build && npm run audit`; Python Playwright,
                           axe-core node_modules-იდან, ffmpeg — fixture-ები `.audit-fixtures/`-ში)
+  audit_media_api.py      B5: `npm run audit:media-api` — მედიის ეკრანები რეალურ API-ზე (server:dev +
+                          vite dev, proxy), ატვირთვის ნაკადი, axe × 3 თემა × 1440 / 390
 src/
   main.jsx                შრიფტები, სტილები, RouterProvider
   routes.jsx              createRoutes() (ყოველ router-ს საკუთარი lazy-ობიექტები), routes, pageRoutes;
@@ -181,12 +183,15 @@ src/
     api/                  adminAdapter.js (ერთადერთი შესასვლელი), mock.js (საერთო საცავზე; სატესტო
                           ანგარიშები), http.js (VITE_ADMIN_API, cookie + CSRF), permissions.js (როლები);
                           B4: records.js — პასუხის ფორმა და წესი ორივე მხარეს (სტრიქონი, ჩანაწერი,
-                          სია / ძიება, ვერსიები, შენახვა / გამოქვეყნება, stats, a11y, რჩეული)
+                          სია / ძიება, ვერსიები, შენახვა / გამოქვეყნება, stats, a11y, რჩეული);
+                          B5: library.js — ბიბლიოთეკა ორივე მხარეს (ფაილი + გამოყენება, ჩადგმული
+                          `img:` / `doc:`, alt ყველა გამოყენებაში, fileError → 400, inUseError → 409)
     auth/                 AuthProvider (სესია, alertdialog, ავტოშენახვის flush), auth-context.js
                           (useAuth, useSessionFlush), auth-forms.js, RequireAuth, RequireRole
     shell/                AdminShell (sidebar + header + compact-მენიუ), AdminNav, admin-nav.js,
                           admin-page.js (useAdminPage), useAdminLayout.js (75rem), initials.js
-    components/           Dialog (ნატიური <dialog>), ConfirmDialog, StatusBadge (+ IssueBadge), PasswordField
+    components/           Dialog (ნატიური <dialog>), ConfirmDialog, StatusBadge (+ IssueBadge), PasswordField;
+                          B5: upload-messages.js (ატვირთვის შეცდომის ტექსტი — ბრაუზერი / სერვერი)
     pages/                Login, Dashboard, List, A11yReport, Search, Media, Documents, Users, Settings,
                           Forbidden, AdminNotFound, AdminRouteError, AdminRootError
     editor/               EditorPage (lazy) → EntityEditor; RichTextEditor (TipTap, lazy chunk) +
@@ -207,6 +212,8 @@ src/
     taxonomy.js           კატეგორიები, თემები, ტიპები (id ლათინურად), label(), options()
     query.js              სუფთა ფუნქციები: isPublic, ფილტრი, ძიება, cursor
     errors.js             ContentError { code, message, fields }, normalizeError
+    files.js              B5: ტიპი შიგთავსით (sniffType), checkFile / checkBlob, ზღვრები, acceptFor —
+                          სერვერი, ადმინის mock და UI (UX) ერთი წესით
     forms.js              validateContact / validateSubscribe (adapter + F6 ფორმა)
     validate.js           validateContent — dev console + F8-ის ჩეკლისტი (dev-only)
     slug.js               ქართული → ლათინური (§10)
@@ -255,6 +262,8 @@ server/                   B1: API — ცალკე package (npm workspace), N
     rate-limit.js         B3: fixed window მეხსიერებაში (IP / ანგარიში), 429 + Retry-After
     first-admin.js        B3: createFirstAdmin (CLI და dev-ის in-memory ბაზა)
     db.js                 connectDb / pingDb / replicaSetName (`mongodb` driver)
+    media-files.js        B5: processImage (sharp: EXIF / GPS / XMP / ICC იშლება, ორიენტაცია, 1 კადრი,
+                          რიგით), checkPdf, checkVtt, detectRatio
     dev-db.js             startMemoryReplicaSet (MongoDB 8.0.34) — dev და ტესტი
   routes/health.js        GET /api/health — 200 / 503
   routes/auth.js          B3: login, register, logout, me, extendSession
@@ -262,6 +271,11 @@ server/                   B1: API — ცალკე package (npm workspace), N
   routes/content.js       B4: content / items — სია, შექმნა, slug / YouTube, მიღება, შენახვა, წაშლა,
                           გამოქვეყნება, დაგეგმვა, ვერსიები, აღდგენა, ძიება
   routes/settings.js      B4: პარამეტრები (settings.manage, რჩეული), stats, a11y
+  routes/media.js         B5: ბიბლიოთეკა, ატვირთვა (multipart მხოლოდ ამ route-ზე), alt / დოკუმენტი,
+                          წაშლა (409; საცავი + ისტორია), გამოყენება; `GET|HEAD /media/*` — მიწოდება
+  routes/media-check.js   B5: reconcileFiles — გამოქვეყნებისას `fileMissing`, VTT-ის cues / end სერვერიდან
+  storage/                B5: index.js (Storage typedef, createStorage), keys.js (გასაღები, src ↔ key),
+                          s3.js (R2, S3 API), sigv4.js (AWS SigV4), local.js (დისკი, dev), memory.js (ტესტი)
   data/common-passwords.txt  B3: top-3000 ცნობილი პაროლი (≥ 12, SecLists) — ASVS 6.2.4
   db/                     B2: ბაზის ფენა
     schema.js             OpenAPI `*Draft` → `$jsonSchema` (toBsonSchema, partialTextSchema — translations.en)
@@ -273,9 +287,12 @@ server/                   B1: API — ცალკე package (npm workspace), N
     users.js              B3: users repository (toAdminUser — hash API-ში არ გადის)
     sessions.js           B3: sessions (token / CSRF — მხოლოდ sha256; create, findActive, extend, remove)
     invites.js            B3: invites (კოდი — sha256; create, claim — ერთჯერადი, ტრანზაქციაში)
-    index.js              createRepositories → { content, settings, users, sessions, invites, snapshot }
+    media.js              B5: ფაილების რეესტრი (insert, list, update, remove — ტრანზაქციაში: 409 +
+                          ისტორიის `src` → null), toFileRecord
+    index.js              createRepositories → { content, settings, users, sessions, invites, media, snapshot }
     seed.js               seedSource / seedDatabase (createMockData + adminState-ის გვერდები)
-  migrations/             B2: ensure.js (იდემპოტენტური DDL), 001-init.js, index.js (migrate, countChanges)
+  migrations/             B2: ensure.js (იდემპოტენტური DDL), 001-init.js, index.js (migrate, countChanges);
+                          B5: 002-version-media-keys.js (`versions.mediaKeys` ძველ ჩანაწერებზე)
   scripts/shared-smoke.js საერთო მოდულები სუფთა Node-ში (Vite-ის გარეშე)
   scripts/migrate.js      B2: `npm run server:migrate`
   scripts/seed.js         B2: `npm run server:seed [-- --reset]`
@@ -294,7 +311,11 @@ server/                   B1: API — ცალკე package (npm workspace), N
     content/              B4: http-env.js (mock-ის მონაცემი ბაზაში, HTTP adapter, საჯარო ხედი snapshot-იდან),
                           parity (საერთო სცენარები mock ↔ HTTP), content (ნაწილი ა-ს წესები),
                           publish (ბლოკერი 422, უფლებები, პარამეტრები)
-    ui/                   B4: editor-http.test.jsx — რედაქტორი (jsdom) რეალურ სერვერზე
+    ui/                   B4: editor-http.test.jsx — რედაქტორი (jsdom) რეალურ სერვერზე;
+                          B5: media-http.test.jsx — მედიის ეკრანი და რედაქტორის ატვირთვა
+    media/                B5: fixtures.js (GPS-იანი JPEG / PNG / WebP, PDF, VTT, multipart), upload,
+                          library (გამოყენება, alt, 409, წაშლა, მიწოდება, მიგრაცია 002), storage
+                          (SigV4-ის AWS მაგალითები, S3-ის სატესტო სერვერი), publish (alt / VTT → 422)
 ```
 
 ## კოდის კონვენციები (F1)
@@ -552,3 +573,16 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **parity-ტესტი:** ახალი ადმინის ქცევა — სცენარი `src/admin/__tests__/scenarios/admin-scenarios.js`-ში (`step`, `env.note()` — მხოლოდ ის, რაც ორივე მხარეს ერთნაირია: კოდი, ველის გზა, seed-ის id, სათაური, ვერსია, ავტორი; არა — ახალი id და დროის სტრიქონი). frontend-ი მას mock-ზე უშვებს (`api.test.js`), სერვერი — ორივეზე (`test/content/parity.test.js`) და კვალს ადარებს; HTTP-ის ყოველი პასუხი spec-ით მოწმდება (`problems`).
 - **HTTP-ის გარემო:** `test/content/http-env.js` — `httpEnv(label, { start })`: mock-ის საცავი `adminState`-ით → ბაზა იმავე id-ებით / მეტათი, მომხმარებლები `u-001` / `u-002`, საათი `start`-იდან (`advance`), საჯარო ხედი — `snapshot()` → mock-ის საჯარო adapter-ი (B6-მდე). `close()` კავშირებს იძულებით ხურავს (Fastify-ის keep-alive 72 წმ).
 - **UI რეალურ სერვერზე:** `server/test/ui/*.test.jsx` — `// @vitest-environment jsdom` + `import '@/test/setup.js'`; `setAdminAdapter(env.adapter)`; afterEach — `cleanup()` env-ის დახურვამდე. სერვერის კოდში `new URL(…, String(import.meta.url))` — Vite-ის asset-ის გარდაქმნა jsdom-ში ფაილის გზას `http://`-ად აქცევდა.
+
+## კოდის კონვენციები (B5 — მედია და დოკუმენტები)
+
+- **ტიპი შიგთავსით:** ატვირთული ფაილის ტიპს `src/content/files.js` ადგენს (magic bytes); გაფართოება და გამოცხადებული MIME მხოლოდ შეუსაბამობისთვისაა. დაშვებულია JPEG / PNG / WebP, PDF, VTT — SVG, GIF, აუდიო / ვიდეო არა. UI-ში იგივე `checkBlob` (UX), `accept` — `acceptFor(kinds)`. ახალი ტიპი — მხოლოდ `MEDIA_TYPES`-ში, ტესტით, ორივე მხარეს.
+- **ფაილის შეცდომა → 400 + `fields.file`** (`fileError(code, vars)`, ტექსტი ველის ტექსტია); მეტა-ველი → 422; გამოყენებულის წაშლა → 409 `inUseError` („გამოიყენება N მასალაში“, N — მასალა, არა ველი). `http.js` 400 / 422 `fields`-ს `validation`-ად კითხულობს — UI ტექსტს `uploadMessage(error)`-ით იღებს და `FieldError`-ით აჩვენებს (`role="alert"`, `aria-describedby` ღილაკზე).
+- **ფოტო ყოველთვის ხელახლა იკოდირდება** (`processImage`): მეტამონაცემის შენარჩუნება (`withMetadata`, `keepMetadata`, `keepExif`) აკრძალულია; ზომა და პროპორცია ინახება, ფაილი არ იჭრება.
+- **ბიბლიოთეკა = `library.js`:** ფაილი ერთ ბარათად ყველა გამოყენებით (ცოცხალი ვერსია + სამუშაო ასლი); ჩადგმული ფოტო, რომლის `src` რეესტრში არ არის — `img:<მასალა>:<ველი>`. ცვლილება ბიბლიოთეკიდან მასალას ახალ ვერსიად ინახავს და სამუშაო ასლს **ტოვებს** (`replace({ working })`, mock-ის `save(…, { working })`). ცარიელი alt → 422.
+- **ფაილის კვანძი** = ნებისმიერი ობიექტი `src`-ით (`fileNodes`) — ველის სია ხელით არ იწერება (გუნდი, პარტნიორები, სლაიდი, სუბტიტრი ავტომატურად შედის).
+- **წაშლა:** ჩანაწერი + ისტორიის `src` → null ერთ ტრანზაქციაში (`media.remove`), საცავიდან — ტრანზაქციის შემდეგ (ჩავარდნა → ობოლი ფაილი, ლოგში მხოლოდ შეცდომის სახე). ძველი ვერსია წაშლას არ ბლოკავს.
+- **საცავის გასაღები** მხოლოდ `newMediaKey`-ით; ყოველი ოპერაცია `assertKey`-ს გადის; საჯარო მისამართი — `/media/<key>` (`mediaSrc`), კონტენტში სხვა ფორმა არ იწერება (`mediaKeysOf` მხოლოდ `/media/`-ს ცნობს).
+- **გამოქვეყნება:** `reconcileFiles` — `/media/` ფაილი რეესტრში უნდა იყოს (`fileMissing`), VTT-ის `cues` / `end` სერვერის მნიშვნელობით.
+- **ტესტი:** სერვერის ფაილის ტესტი — `server/test/media/fixtures.js`-ის ფიქსტურებით (GPS ხელით აწყობილ TIFF-შია; sharp-ის `withExif` GPS-ს არ წერს); multipart — `multipart(file, fields)` (`app.inject`) ან `encodeMultipart` (`browser.js`, jsdom-ის FormData-ც); parity-ში `media: true`.
+- **დამოკიდებულება:** transitive პაკეტი, რომელიც 14 დღეზე ახალია — root `overrides`-ით (`@fastify/busboy`, `semver`), ლოკში შემოწმებით (`npm ls` სუფთა).

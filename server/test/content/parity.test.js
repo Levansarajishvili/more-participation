@@ -10,10 +10,11 @@ import { httpEnv } from './http-env.js';
  * ყოველი სცენარი ორივე გარემოში საკუთარ `expect`-ებს გადის, მისი კვალი (`notes`) კი ერთნაირი უნდა
  * იყოს; HTTP-ის ყოველი პასუხი spec-ს აკმაყოფილებს (`problems`).
  *
- * `B5` (მედია) — HTTP-ზე B5-ში.
+ * B5: მედიის სცენარებიც (ატვირთვა multipart-ით, ბიბლიოთეკა, alt ყველგან, 409, წაშლა) —
+ * `http-env.js`-ის `media: true` (საცავი — მეხსიერება).
  */
 
-const STEPS = ['B3', 'B4a', 'B4b'];
+const STEPS = ['B3', 'B4a', 'B4b', 'B5'];
 
 describe('parity: ადმინის სცენარები — mock ↔ HTTP', () => {
   for (const scenario of SCENARIOS.filter((s) => STEPS.includes(s.step))) {

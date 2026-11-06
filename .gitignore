@@ -7,7 +7,12 @@ coverage
 .vite
 .audit-fixtures
 audit.json
+audit-media-api.json
 # B1: საიდუმლო — მხოლოდ ლოკალურად / ჰოსტინგის env-ში
 .env
 .env.*
 !.env.example
+
+# B5: local საცავი (development)
+server/.media/
+__pycache__/

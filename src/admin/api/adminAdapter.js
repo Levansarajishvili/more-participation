@@ -84,7 +84,7 @@ import { normalizeError } from '@/content/errors.js';
 /**
  * @typedef {object} MediaItem
  * @property {string} id
- * @property {'image' | 'document'} kind
+ * @property {'image' | 'document' | 'track'} kind   `track` — VTT, მხოლოდ ატვირთვის პასუხში (B5)
  * @property {string | null} src
  * @property {string} alt                 სურათი: alt; დოკუმენტი: ''
  * @property {string} title               დოკუმენტის სათაური / ფაილის სახელი
@@ -156,9 +156,10 @@ import { normalizeError } from '@/content/errors.js';
  * @property {{
  *   list(p?: { kind?: 'image' | 'document', missingAlt?: boolean }): Promise<MediaItem[]>,
  *   upload(file: File, meta?: Partial<MediaItem>): Promise<MediaItem>,
+ *     B5: ტიპი შიგთავსით; ფაილის შეცდომა → `validation` + `fields.file` (HTTP 400), ფოტოს EXIF იშლება
  *   updateAlt(id: string, alt: string): Promise<MediaItem>,
  *   update(id: string, patch: Partial<MediaItem>): Promise<MediaItem>,
- *   remove(id: string): Promise<{ ok: true }>,
+ *   remove(id: string): Promise<{ ok: true }>,   გამოყენებული → `conflict`
  *   usage(id: string): Promise<MediaItem['usage']>,
  * }} media
  * @property {{

@@ -11,6 +11,61 @@ import { createHttpAdminAdapter } from '@/admin/api/http.js';
  */
 
 /**
+ * Blob → ბაიტები (jsdom-ის Blob-საც: `arrayBuffer`, ძველზე — FileReader).
+ * @param {Blob} blob
+ * @returns {Promise<Uint8Array>}
+ */
+async function blobBytes(blob) {
+  if (typeof blob.arrayBuffer === 'function') return new Uint8Array(await blob.arrayBuffer());
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(new Uint8Array(/** @type {ArrayBuffer} */ (reader.result)));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsArrayBuffer(blob);
+  });
+}
+
+/**
+ * B5: `FormData` → `multipart/form-data` (RFC 7578) ხელით. jsdom-ის FormData-ს Node-ის fetch ვერ
+ * კითხულობს (`[object FormData]` გაიგზავნებოდა) — ორივე გარემოში ერთნაირი სხეული.
+ * @param {FormData} form
+ * @returns {Promise<{ body: Uint8Array, type: string }>}
+ */
+export async function encodeMultipart(form) {
+  const boundary = `----mc-test-${Math.random().toString(16).slice(2)}`;
+  const encoder = new TextEncoder();
+  /** @type {Uint8Array[]} */
+  const chunks = [];
+  const quote = (/** @type {string} */ value) => value.replace(/"/g, '%22').replace(/\r|\n/g, ' ');
+  for (const [name, value] of form.entries()) {
+    if (typeof value === 'string') {
+      chunks.push(
+        encoder.encode(
+          `--${boundary}\r\nContent-Disposition: form-data; name="${quote(name)}"\r\n\r\n${value}\r\n`,
+        ),
+      );
+    } else {
+      const file = /** @type {File} */ (value);
+      chunks.push(
+        encoder.encode(
+          `--${boundary}\r\nContent-Disposition: form-data; name="${quote(name)}"; filename="${quote(file.name ?? 'blob')}"\r\nContent-Type: ${file.type || 'application/octet-stream'}\r\n\r\n`,
+        ),
+        await blobBytes(file),
+        encoder.encode('\r\n'),
+      );
+    }
+  }
+  chunks.push(encoder.encode(`--${boundary}--\r\n`));
+  const body = new Uint8Array(chunks.reduce((n, c) => n + c.length, 0));
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return { body, type: `multipart/form-data; boundary=${boundary}` };
+}
+
+/**
  * @param {{ base: string, matcher: ReturnType<typeof import('./contract/spec-match.js').createMatcher> }} options
  *   `base` — `http://127.0.0.1:<port>/api/admin`
  */
@@ -26,7 +81,14 @@ export function createBrowser({ base, matcher }) {
     if (jar.size) {
       headers.set('cookie', [...jar.values()].map((c) => `${c.name}=${c.value}`).join('; '));
     }
-    const response = await fetch(url, { ...init, headers });
+    let { body } = init;
+    const form = /** @type {any} */ (body);
+    if (form && typeof form.entries === 'function' && typeof form.append === 'function') {
+      const encoded = await encodeMultipart(form);
+      body = encoded.body;
+      headers.set('content-type', encoded.type);
+    }
+    const response = await fetch(url, { ...init, headers, body });
     for (const line of response.headers.getSetCookie()) {
       const [pair, ...attributes] = line.split(/;\s*/);
       const index = pair.indexOf('=');

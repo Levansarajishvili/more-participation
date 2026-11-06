@@ -4,6 +4,17 @@ import { buildApp } from '../app.js';
 import { loadConfig } from '../config.js';
 
 /**
+ * B5: წარმოებაში ფაილები მხოლოდ R2-შია (config) — production-ის ტესტისთვის ყალბი მნიშვნელობები.
+ * საცავი ზარმაცია: გაშვებისას ქსელს არ მიმართავს.
+ */
+export const FAKE_R2_ENV = Object.freeze({
+  R2_ACCOUNT_ID: '0123456789abcdef0123456789abcdef',
+  R2_BUCKET: 'mc-media-test',
+  R2_ACCESS_KEY_ID: 'AKIAEXAMPLEKEY12345',
+  R2_SECRET_ACCESS_KEY: 'fake-r2-secret-for-tests',
+});
+
+/**
  * @param {Record<string, string>} [env]
  */
 export function testConfig(env = {}) {

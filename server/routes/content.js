@@ -21,6 +21,8 @@ import { repositories } from '../lib/auth.js';
 import { validationFields } from '../lib/errors.js';
 import { createAjv, route, schemaRef } from '../lib/openapi.js';
 
+import { reconcileFiles } from './media-check.js';
+
 /**
  * `/api/admin/content*`, `/api/admin/items*` (B4). სემანტიკის ეტალონი — ადმინის mock
  * (`src/admin/api/mock.js`); პასუხის ფორმა, ფილტრი, დალაგება და შენახვის წესი საერთო
@@ -138,16 +140,19 @@ export function draftValidationError(request, draftPath) {
 /**
  * სერვერის გამოქვეყნების ბლოკერი (B4): `validate.js` ქართულ და ინგლისურ ვერსიაზე + ჩანაცვლება
  * YouTube-ის id-ში. frontend-ის შემოწმება მხოლოდ UX-ია (§12).
+ * B5: `extra` — ფაილის ბლოკერი (`fileMissing`, `media-check.js`), იმავე `fields`-ში.
  * @param {ContentType} type
  * @param {Record<string, any>} item
  * @param {Set<string>} slugs
+ * @param {Record<string, { code: string, message: string }>} [extra]
  */
-export function assertPublishable(type, item, slugs) {
+export function assertPublishable(type, item, slugs, extra = {}) {
   const blocking = publishBlockers(type, item, slugs, { placeholders: false });
-  if (!blocking.length) return;
+  const extraCount = Object.keys(extra).length;
+  if (!blocking.length && !extraCount) return;
   throw new ContentError('validation', {
-    fields: blockerFields(blocking),
-    detail: `${blocking.length} blocker(s)`,
+    fields: { ...extra, ...blockerFields(blocking) },
+    detail: `${blocking.length + extraCount} blocker(s)`,
   });
 }
 
@@ -288,11 +293,13 @@ export function registerContentRoutes(app) {
     if (status === 'scheduled') assertFuture(at, app.now(), ta('fieldErrors.scheduleFuture'));
     const publishedAt =
       status === 'scheduled' ? /** @type {string} */ (at) : new Date(app.now()).toISOString();
-    const item = publishItem(record.item, record.working?.item, data, { status, publishedAt });
-    assertDraft(record.type, item);
+    const merged = publishItem(record.item, record.working?.item, data, { status, publishedAt });
+    assertDraft(record.type, merged);
     if (invalid) throw invalid;
+    // B5: ფაილი რეესტრშია; VTT-ის cues / end — სერვერის `parseCaptions`-იდან
+    const { item, missing } = await reconcileFiles(app, merged);
     const context = await viewContext(app);
-    assertPublishable(record.type, item, context.slugs);
+    assertPublishable(record.type, item, context.slugs, /** @type {any} */ (missing));
     const saved = await repositories(app).content.replace(id, item, {
       by: actorId(request),
       version,

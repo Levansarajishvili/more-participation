@@ -89,7 +89,8 @@ export async function httpEnv(label, { start = Date.now(), env } = {}) {
     repos,
     clk,
     admin,
-    media: false,
+    // B5: მედიის API და საცავი (`MEDIA_STORAGE=memory`, ტესტის ნაგულისხმევი)
+    media: true,
     notes,
     problems: browser.problems,
     note: (...values) => notes.push(...values.map(plain)),

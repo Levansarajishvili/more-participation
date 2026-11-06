@@ -20,6 +20,10 @@ info:
     - `lang` (`ka` | `en`) — საჯარო პასუხის ენა: თარგმანი (`translations.en`) ზემოდან ედება, პასუხში
       ემატება `lang`, `translations` არ ხვდება (`src/content/localize.js`).
     - ფაილის `src: null` — ფაილი ჯერ არ არის; URL `null` — ბმული ჯერ უცნობია (`model.js`).
+    - ატვირთული ფაილი (B5): `src: /media/<key>` — `GET /media/{key}` (API-ს გარეთ, spec-ში
+      ოპერაცია არ არის): საჯარო, `Cache-Control: public, max-age=31536000, immutable`, ETag / 304,
+      `Content-Type` გაფართოებით + `nosniff`, CSP `default-src 'none'; sandbox`; PDF —
+      `Content-Disposition: attachment`. უცნობი / წაშლილი → 404.
 
     **შეცდომა** — ყოველთვის `{ code, message, fields? }` (`Error`), `message` ქართულად:
 
@@ -986,9 +990,21 @@ paths:
       tags: [media]
       summary: ატვირთვა — ფოტო, PDF, სუბტიტრი (VTT)
       description: |
-        ტიპი მოწმდება შიგთავსით (magic bytes) და არა სახელით; VTT — `WEBVTT` თავსართი და `vtt.js`-ის
-        `parseCaptions` (დაზიანებული ფაილი არ ინახება). ზომის / ტიპის დარღვევა → 422 (`fields.file`).
-        VTT ბიბლიოთეკაში არ ჩანს — პასუხში მხოლოდ მისამართია (`src`). ზღვრები — B5.
+        ტიპი მოწმდება შიგთავსით (magic bytes, `src/content/files.js`) და არა სახელით: ფოტო — JPEG,
+        PNG, WebP; დოკუმენტი — PDF (`%PDF-` … `%%EOF`); სუბტიტრი — VTT (`WEBVTT` + `vtt.js`-ის
+        `parseCaptions`, დაზიანებული ფაილი არ ინახება). SVG, GIF, აუდიო / ვიდეო — არა.
+
+        **ფაილის** დარღვევა → 400 `bad-request` + `fields.file` (`fileEmpty`, `fileType`,
+        `fileMismatch` — გაფართოება ან გამოცხადებული MIME ≠ შიგთავსი, `fileTooLarge`,
+        `imageTooLarge`, `fileDamaged`, `vttHeader` / `vttTiming` / `vttOrder` / `vttEmpty`);
+        **მეტა-ველის** (alt-ის სიგრძე, ratio, lang) → 422 `validation`, უცნობი ველი → 400.
+        ზღვრები — env (`MEDIA_MAX_IMAGE_MB` 10, `MEDIA_MAX_DOCUMENT_MB` 20, VTT 1 MB,
+        `MEDIA_MAX_MEGAPIXELS` 40).
+
+        ფოტო ხელახლა იკოდირდება: EXIF / GPS, XMP, IPTC, ICC იშლება, ორიენტაცია პიქსელებზე
+        აისახება, ანიმაციიდან — პირველი კადრი; ზომა და პროპორცია ინახება (`ratio` — მეტა-ველიდან ან
+        ზუსტი `RATIOS`-იდან, სხვაგვარად null). საჯარო მისამართი — `src: /media/<key>`.
+        VTT ბიბლიოთეკაში არ ჩანს (`kind: track`).
       x-adapter: media.upload
       x-permission: media.write
       x-step: B5
@@ -1019,6 +1035,10 @@ paths:
       operationId: updateMedia
       tags: [media]
       summary: alt (ფოტო — ყველა გამოყენებაში აისახება) / სათაური, ენა, tagged (დოკუმენტი)
+      description: |
+        `img:<მასალა>:<ველი>` / `doc:…` — ერთი ჩადგმული ველი; ატვირთული ფაილი (`m-…`) — რეესტრი და
+        ყოველი გამოყენება (გამოქვეყნებული ვერსია — ახალი ვერსიით, სამუშაო ასლი — რჩება). ფოტოს
+        ცარიელი alt → 422 (`fields.alt`); მასალა ამასობაში შეიცვალა → 409.
       x-adapter: [media.updateAlt, media.update]
       x-permission: media.write
       x-step: B5
@@ -1046,6 +1066,10 @@ paths:
       operationId: deleteMedia
       tags: [media]
       summary: წაშლა — გამოყენებული ფაილი იბლოკება (409)
+      description: |
+        გამოყენებული (გამოქვეყნებული ვერსია ან სამუშაო ასლი) და ჩადგმული (`img:` / `doc:`) → 409,
+        ტექსტით „გამოიყენება N მასალაში — ჯერ იქიდან მოხსენი.“ წაშლისას ფაილი საცავიდანაც იშლება,
+        ძველ ვერსიებში მისი `src` → null (თანხმობის გაუქმება — ფოტო ისტორიაშიც აღარ რჩება).
       x-adapter: media.remove
       x-permission: media.write
       x-step: B5
@@ -2797,7 +2821,10 @@ components:
       required: [id, kind, src, alt, title, ratio, size, lang, tagged, usage]
       properties:
         id: { $ref: '#/components/schemas/MediaId' }
-        kind: { $ref: '#/components/schemas/MediaKind' }
+        kind:
+          type: string
+          enum: [image, document, track]
+          description: '`track` — VTT, მხოლოდ ატვირთვის პასუხში (ბიბლიოთეკაში არ ჩანს)'
         src: { type: [string, 'null'], maxLength: 2048 }
         alt: { type: string, maxLength: 1000, description: "ფოტო — alt; დოკუმენტი — ''" }
         title: { type: string, maxLength: 300 }

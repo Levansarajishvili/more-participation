@@ -225,70 +225,10 @@ export function keepFeatured(current, next) {
   return out;
 }
 
-/* ─── B4 ნაწილი ბ: ბიბლიოთეკა (ჩადგმული), სტატისტიკა, ანგარიში, რჩეული ─────────────────── */
+/* ─── B4 ნაწილი ბ: სტატისტიკა, ანგარიში, რჩეული (ბიბლიოთეკა — `library.js`, B5) ──────────── */
 
-/** @typedef {import('./adminAdapter.js').MediaItem} MediaItem */
 /** @typedef {import('./adminAdapter.js').Stats} Stats */
 /** @typedef {import('./adminAdapter.js').A11yReport} A11yReport */
-
-/**
- * მასალაში ჩადგმული ფოტოები: `cover`, `photo`, ტექსტის `image` ბლოკები (B2: ფოტო — ჩადგმული ობიექტი).
- * @param {Record<string, any>} item
- * @returns {{ field: string, image: Record<string, any> }[]}
- */
-export function imagesOf(item) {
-  /** @type {{ field: string, image: Record<string, any> }[]} */
-  const out = [];
-  for (const field of ['cover', 'photo']) {
-    if (item[field] && typeof item[field] === 'object' && 'alt' in item[field]) {
-      out.push({ field, image: item[field] });
-    }
-  }
-  (item.body ?? []).forEach((/** @type {any} */ block, /** @type {number} */ i) => {
-    if (block?.type === 'image' && block.image)
-      out.push({ field: `body[${i}].image`, image: block.image });
-  });
-  return out;
-}
-
-/**
- * ბიბლიოთეკის ჩანაწერები მასალიდან (ფოტო, PDF) — mock-ის `media.list`-ის და სტატისტიკის წყარო;
- * ატვირთული ფაილები (`media` კოლექცია) — B5.
- * @param {ContentType} type
- * @param {SourceRecord} record
- * @returns {MediaItem[]}
- */
-export function embeddedMedia(type, record) {
-  const item = record.item;
-  /** @type {MediaItem[]} */
-  const items = imagesOf(item).map(({ field, image }) => ({
-    id: `img:${record.id}:${field}`,
-    kind: /** @type {const} */ ('image'),
-    src: image.src ?? null,
-    alt: image.alt ?? '',
-    title: image.credit ?? '',
-    ratio: image.ratio ?? null,
-    size: null,
-    lang: null,
-    tagged: null,
-    usage: [{ type, id: record.id, title: item.title ?? '', field }],
-  }));
-  if (item.pdf) {
-    items.push({
-      id: `doc:${record.id}:pdf`,
-      kind: 'document',
-      src: item.pdf.src ?? null,
-      alt: '',
-      title: item.pdf.label ?? '',
-      ratio: null,
-      size: item.pdf.size ?? null,
-      lang: item.pdf.lang ?? 'ka',
-      tagged: item.pdf.tagged ?? false,
-      usage: [{ type, id: record.id, title: item.title ?? '', field: 'pdf' }],
-    });
-  }
-  return items;
-}
 
 /**
  * დაფის მრიცხველები. `rowsByType` — ყველა ტიპის სტრიქონი; სტატუსი და ხარვეზი გვერდების გარეშე

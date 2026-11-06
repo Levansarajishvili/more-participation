@@ -139,6 +139,16 @@ export default {
     tooLong: 'The text is too long — at most {max} characters.',
     slugTaken: 'This address (slug) is already taken.',
     scheduleFuture: 'The scheduled date must be in the future.',
+    fileEmpty: 'The file is empty — choose another file.',
+    fileType:
+      'This file type isn’t accepted. Photos — JPG, PNG or WebP; documents — PDF; captions — VTT.',
+    fileMismatch:
+      'The file extension doesn’t match its content — check the file and upload it again.',
+    fileTooLarge: 'The file is too large — {max} at most.',
+    fileDamaged: 'The file is damaged or can’t be read — save it again and upload it.',
+    imageTooLarge:
+      'The image is too large — {max} megapixels at most. Make it smaller and upload it again.',
+    fileMissing: 'The file wasn’t found in storage — upload it again.',
   },
 
   session: {
@@ -656,11 +666,17 @@ export default {
       one: 'Used in {count} item — remove it from there first.',
       other: 'Used in {count} items — remove it from there first.',
     },
+    inUseNow: 'The file was just added to an item and can’t be deleted — the list was refreshed.',
+    uploadFailed: 'The file wasn’t uploaded: {message}',
     fields: {
       cover: 'Cover',
       photo: 'Photo',
       body: 'Photo in the text',
       pdf: 'PDF',
+      team: 'Team photo',
+      partners: 'Partner logo',
+      slides: 'Slide image',
+      captions: 'Captions',
     },
   },
 
@@ -679,6 +695,7 @@ export default {
     tagged: 'PDF/UA confirmed: {title}',
     taggedOn: 'PDF/UA confirmed.',
     taggedOff: 'PDF/UA confirmation removed.',
+    wrongType: 'This file isn’t a PDF — choose a PDF document.',
   },
 
   users: {

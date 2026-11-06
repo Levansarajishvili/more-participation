@@ -42,10 +42,21 @@ import { schemaFor } from '../../schemas/index.js';
  * @property {(type: ContentType) => Promise<string[]>} ids   ჩასმის რიგით
  * @property {() => number} now
  * @property {(ms: number) => void} advance   საათის გადაწევა (დაგეგმილი გამოქვეყნება)
- * @property {boolean} media                 B5-მდე HTTP-ზე `false`
+ * @property {boolean} media                 B5-დან ორივე გარემოში `true`
  * @property {unknown[]} notes
  * @property {(...values: unknown[]) => void} note
  */
+
+/** B5: 3 × 2 PNG (sharp-ით შექმნილი) — სერვერი მას ხელახლა კოდირებს, mock მხოლოდ ტიპს ამოწმებს. */
+export const PNG_3X2 = Uint8Array.from(
+  atob(
+    'iVBORw0KGgoAAAANSUhEUgAAAAMAAAACCAIAAAASFvFNAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAEElEQVQImWPgVnWFIAY4CwAaJAK/21JenwAAAABJRU5ErkJggg==',
+  ),
+  (c) => c.charCodeAt(0),
+);
+export const MINIMAL_PDF =
+  '%PDF-1.7\n1 0 obj << /Type /Catalog /Pages 2 0 R >> endobj\n2 0 obj << /Type /Pages /Kids [] /Count 0 >> endobj\ntrailer << /Root 1 0 R >>\n%%EOF\n';
+export const CAPTIONS = 'WEBVTT\n\n00:00:01.000 --> 00:00:02.500\nსატესტო სუბტიტრი\n';
 
 export const ADMIN_EMAIL = 'admin@example.org';
 export const EDITOR_EMAIL = 'editor@example.org';
@@ -402,6 +413,108 @@ export const SCENARIOS = [
       const removed = await code(admin.media.remove(item.id));
       expect(removed).toBe('conflict');
       env.note(item.id, removed);
+    },
+  },
+
+  {
+    name: 'მედია: ტიპი შიგთავსით (400 `fields.file`); ატვირთული ფაილი — გამოყენება, alt ყველგან, 409, წაშლა',
+    step: 'B5',
+    async run(env) {
+      const { admin } = env;
+      await env.login();
+      const svg = new File(['<svg xmlns="http://www.w3.org/2000/svg"/>'], 'photo.png', {
+        type: 'image/png',
+      });
+      const mismatch = new File([PNG_3X2], 'photo.jpg', { type: 'image/jpeg' });
+      const rejected = [];
+      for (const file of [svg, mismatch]) {
+        const error = await failure(admin.media.upload(file));
+        // http.js: 400 + `fields` → `validation`; mock — `bad-request` (ორივე ველს აჩვენებს)
+        expect(['validation', 'bad-request']).toContain(error.code);
+        rejected.push(error.fields?.file?.code);
+      }
+      expect(rejected).toEqual(['fileType', 'fileMismatch']);
+
+      const file = await admin.media.upload(
+        new File([PNG_3X2], 'photo.png', { type: 'image/png' }),
+        {
+          ratio: '3:2',
+        },
+      );
+      expect(file).toMatchObject({ kind: 'image', alt: '', title: 'photo.png', usage: [] });
+      expect((await admin.media.list({ missingAlt: true })).some((m) => m.id === file.id)).toBe(
+        true,
+      );
+
+      const draft = (await admin.content.list({ type: 'articles', status: 'draft' })).items[0];
+      const record = await admin.content.get(draft.id);
+      const used = await admin.content.update(
+        draft.id,
+        { cover: { src: file.src, alt: '[ყდა — ატვირთული]', ratio: '3:2' } },
+        { version: record.version },
+      );
+      const listed = (await admin.media.list({ kind: 'image' })).find((m) => m.id === file.id);
+      expect(listed?.usage).toEqual([
+        { type: 'articles', id: draft.id, title: draft.title, field: 'cover' },
+      ]);
+      expect(listed?.alt).toBe('[ყდა — ატვირთული]');
+      expect(
+        (await admin.media.list({ kind: 'image' })).some((m) => m.id === `img:${draft.id}:cover`),
+      ).toBe(false);
+
+      const patched = await admin.media.updateAlt(file.id, '[ახალი alt — ყველგან]');
+      expect(patched.alt).toBe('[ახალი alt — ყველგან]');
+      expect((await env.item(draft.id))?.cover.alt).toBe('[ახალი alt — ყველგან]');
+      const blocked = await code(admin.media.remove(file.id));
+      expect(blocked).toBe('conflict');
+      const usage = await admin.media.usage(file.id);
+
+      const current = await admin.content.get(draft.id);
+      await admin.content.update(
+        draft.id,
+        { cover: { src: null, alt: '', ratio: '3:2' } },
+        { version: current.version },
+      );
+      expect(await admin.media.remove(file.id)).toEqual({ ok: true });
+      expect((await admin.media.list()).some((m) => m.id === file.id)).toBe(false);
+      expect(await code(admin.media.usage(file.id))).toBe('not-found');
+      env.note(rejected, used.version, listed?.usage, patched.alt, blocked, usage);
+    },
+  },
+
+  {
+    name: 'მედია: დოკუმენტი (PDF) — სათაური / ენა / tagged; VTT — track, ბიბლიოთეკაში არ ჩანს',
+    step: 'B5',
+    async run(env) {
+      const { admin } = env;
+      await env.login();
+      const pdf = await admin.media.upload(
+        new File([MINIMAL_PDF], 'report.pdf', { type: 'application/pdf' }),
+        { title: '[ანგარიში]', lang: 'en' },
+      );
+      expect(pdf).toMatchObject({
+        kind: 'document',
+        title: '[ანგარიში]',
+        lang: 'en',
+        tagged: false,
+      });
+      const updated = await admin.media.update(pdf.id, { tagged: true, title: '[ანგარიში 2026]' });
+      expect(updated).toMatchObject({ tagged: true, title: '[ანგარიში 2026]', lang: 'en' });
+      const docs = await admin.media.list({ kind: 'document' });
+      expect(docs.find((m) => m.id === pdf.id)?.usage).toEqual([]);
+      const track = await admin.media.upload(new File([CAPTIONS], 'ka.vtt', { type: 'text/vtt' }));
+      expect(track.kind).toBe('track');
+      expect((await admin.media.list()).some((m) => m.id === track.id)).toBe(false);
+      const broken = await failure(
+        admin.media.upload(new File(['WEBVTT\n\nx --> y\n'], 'bad.vtt', { type: 'text/vtt' })),
+      );
+      expect(await admin.media.remove(pdf.id)).toEqual({ ok: true });
+      env.note(
+        [pdf.kind, pdf.lang, pdf.tagged],
+        [updated.title, updated.tagged],
+        track.kind,
+        broken.fields?.file?.code,
+      );
     },
   },
 

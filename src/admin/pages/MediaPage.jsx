@@ -11,10 +11,14 @@ import {
   SkeletonGroup,
   TextField,
 } from '@/components/ui/index.js';
+import { FieldError } from '@/components/ui/fields/Field.jsx';
+import { acceptFor, checkBlob } from '@/content/files.js';
 import { useContent } from '@/hooks/useContent.js';
 
 import { media } from '../api/adminAdapter.js';
+import { usageCount } from '../api/library.js';
 import ConfirmDialog from '../components/ConfirmDialog.jsx';
+import { checkMessage, uploadMessage } from '../components/upload-messages.js';
 import { typeLabel } from '../content-types.js';
 import { ta } from '../i18n/index.js';
 
@@ -23,7 +27,12 @@ import { ta } from '../i18n/index.js';
  * (ხატულა + ტექსტი); alt-ის რედაქტირება ადგილზე (ყველა გამოყენებაში აისახება); ჩანს, სად
  * გამოიყენება ფაილი; წაშლა — დადასტურებით, გამოყენებული ფაილისა — იბლოკება (მიზეზი ხილულია).
  * ატვირთვა ღილაკით ან გადათრევით (2.5.7). ფილტრი URL-შია (`?filter=missing-alt`).
+ *
+ * B5: ფაილი ჯერ ბრაუზერში მოწმდება (`files.js` — JPG / PNG / WebP, შიგთავსით, ზომა — მხოლოდ UX),
+ * სერვერის უარი (`fields.file`) ველთან ჩანს ხატულით და ტექსტით (`role="alert"`); წაშლის 409 →
+ * სია ახლდება და ღილაკი მიზეზით ითიშება.
  */
+const IMAGE_ACCEPT = acceptFor(['image']);
 export default function MediaPage() {
   const [params, setParams] = useSearchParams();
   const missing = params.get('filter') === 'missing-alt';
@@ -33,18 +42,48 @@ export default function MediaPage() {
     /** @type {import('../api/adminAdapter.js').MediaItem | null} */ (null),
   );
   const [dragging, setDragging] = useState(false);
+  const [problem, setProblem] = useState(/** @type {string | null} */ (null));
+  const [busy, setBusy] = useState(false);
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
+  const problemId = useId();
 
   /** @param {File | undefined} file */
   async function upload(file) {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setStatus(ta('editor.image.wrongType'));
+    setProblem(null);
+    const local = checkMessage(
+      await checkBlob(file, { kinds: ['image'] }),
+      'editor.image.wrongType',
+    );
+    if (local) {
+      setProblem(local);
       return;
     }
-    await media.upload(file);
-    setStatus(ta('library.uploaded', { name: file.name }));
-    list.reload();
+    setBusy(true);
+    try {
+      await media.upload(file);
+      setStatus(ta('library.uploaded', { name: file.name }));
+      list.reload();
+    } catch (error) {
+      setProblem(ta('library.uploadFailed', { message: uploadMessage(error) }));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function remove() {
+    if (!removing) return;
+    try {
+      await media.remove(removing.id);
+      setStatus(ta('library.removed'));
+    } catch (error) {
+      // ამასობაში მასალაში ჩაისვა — სიის განახლებით ღილაკი მიზეზით ითიშება
+      const code = /** @type {{ code?: string }} */ (error).code;
+      setStatus(code === 'conflict' ? ta('library.inUseNow') : uploadMessage(error));
+    } finally {
+      setRemoving(null);
+      list.reload();
+    }
   }
 
   return (
@@ -69,20 +108,30 @@ export default function MediaPage() {
         <input
           ref={inputRef}
           type="file"
-          accept="image/*"
+          accept={IMAGE_ACCEPT}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
-          onChange={(event) => upload(event.target.files?.[0])}
+          onChange={(event) => {
+            upload(event.target.files?.[0]);
+            event.target.value = '';
+          }}
         />
         <Button
           variant="secondary"
           size="sm"
           icon="image"
+          loading={busy}
+          aria-describedby={problem ? problemId : undefined}
           onClick={() => inputRef.current?.click()}
         >
           {ta('library.upload')}
         </Button>
+        {problem && (
+          <div role="alert" className="mc-library__problem">
+            <FieldError id={problemId}>{problem}</FieldError>
+          </div>
+        )}
         <ChipGroup
           label={ta('library.filter')}
           options={[
@@ -130,13 +179,7 @@ export default function MediaPage() {
         description={ta('library.removeText', { name: removing?.title || removing?.id || '' })}
         confirmLabel={ta('library.remove')}
         cancelLabel={ta('editor.cancel')}
-        onConfirm={async () => {
-          if (!removing) return;
-          await media.remove(removing.id);
-          setRemoving(null);
-          setStatus(ta('library.removed'));
-          list.reload();
-        }}
+        onConfirm={remove}
         onCancel={() => setRemoving(null)}
       />
     </div>
@@ -208,7 +251,13 @@ function MediaCard({ item, onSaved, onRemove }) {
               setError(ta('editor.image.altRequired'));
               return;
             }
-            await media.updateAlt(item.id, alt.trim());
+            try {
+              await media.updateAlt(item.id, alt.trim());
+            } catch (failure) {
+              setError(uploadMessage(failure));
+              return;
+            }
+            setError('');
             setEditing(false);
             onSaved(ta('library.altSaved'));
           }}
@@ -242,7 +291,9 @@ function MediaCard({ item, onSaved, onRemove }) {
             size="sm"
             disabled={item.usage.length > 0}
             disabledReason={
-              item.usage.length > 0 ? ta('library.inUse', { count: item.usage.length }) : undefined
+              item.usage.length > 0
+                ? ta('library.inUse', { count: usageCount(item.usage) })
+                : undefined
             }
             onClick={onRemove}
           >

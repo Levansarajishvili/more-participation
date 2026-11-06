@@ -13,18 +13,24 @@ import {
   TextField,
 } from '@/components/ui/index.js';
 import { FieldError, FieldHint } from '@/components/ui/fields/Field.jsx';
+import { acceptFor, checkBlob } from '@/content/files.js';
 import { slugify } from '@/content/slug.js';
 import { options as taxonomyOptions } from '@/content/taxonomy.js';
 import { VTT_MAX_BYTES, parseCaptions, parseVtt, summarizeCues } from '@/content/vtt.js';
 import { isYouTubeId, parseYouTube, youtubePoster } from '@/content/youtube.js';
 import { formatDuration, formatFileSize } from '@/i18n/index.js';
 
+import { checkMessage, uploadMessage } from '../../components/upload-messages.js';
 import { ta } from '../../i18n/index.js';
 import { fromClock, joinTbilisi, splitTbilisi, toClock } from '../datetime.js';
 import { fieldId, getIn } from '../path.js';
 
 /** TipTap ცალკე chunk-ია: პარამეტრების / ბიბლიოთეკის ეკრანები მას არ ტვირთავს. */
 const RichTextEditor = lazy(() => import('../RichTextEditor.jsx'));
+
+/** B5: `<input accept>` — სერვერის დაშვებული ტიპები (`files.js`). */
+const IMAGE_ACCEPT = acceptFor(['image']);
+const PDF_ACCEPT = acceptFor(['document']);
 
 /**
  * სქემის ველი → კომპონენტი (EntityEditor-ის ძრავი). ყველა ველი UI ნაკრების ველებზეა: ლეიბლი
@@ -295,14 +301,21 @@ function ImageField({ field, path, ctx }) {
   const [dragging, setDragging] = useState(false);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState('');
+  const [problem, setProblem] = useState(/** @type {string | null} */ (null));
   const id = fieldId(path);
   const ratio = field.ratio ?? '3:2';
 
   /** @param {File | undefined} file */
   async function take(file) {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setStatus(ta('editor.image.wrongType'));
+    setProblem(null);
+    // B5: ტიპი შიგთავსით (JPG / PNG / WebP) და ზომა — მხოლოდ UX; სერვერი თავიდან ამოწმებს
+    const local = checkMessage(
+      await checkBlob(file, { kinds: ['image'] }),
+      'editor.image.wrongType',
+    );
+    if (local) {
+      setProblem(local);
       return;
     }
     setBusy(true);
@@ -310,6 +323,8 @@ function ImageField({ field, path, ctx }) {
       const src = await ctx.upload(file);
       ctx.setValue(path, { ...(image ?? { alt: '' }), src, ratio });
       setStatus(ta('editor.image.uploaded', { name: file.name }));
+    } catch (error) {
+      setProblem(ta('library.uploadFailed', { message: uploadMessage(error) }));
     } finally {
       setBusy(false);
     }
@@ -358,17 +373,21 @@ function ImageField({ field, path, ctx }) {
               ref={inputRef}
               id={`${id}-file`}
               type="file"
-              accept="image/*"
+              accept={IMAGE_ACCEPT}
               className="sr-only"
               tabIndex={-1}
               aria-hidden="true"
-              onChange={(event) => take(event.target.files?.[0])}
+              onChange={(event) => {
+                take(event.target.files?.[0]);
+                event.target.value = '';
+              }}
             />
             <Button
               variant="secondary"
               size="sm"
               icon="image"
               loading={busy}
+              aria-describedby={problem ? `${id}-upload-error` : undefined}
               onClick={() => inputRef.current?.click()}
             >
               {image?.src ? ta('editor.image.replace') : ta('editor.image.upload')}
@@ -384,6 +403,11 @@ function ImageField({ field, path, ctx }) {
               >
                 {ta('editor.image.remove')}
               </Button>
+            )}
+            {problem && (
+              <div role="alert" className="mc-upload-problem">
+                <FieldError id={`${id}-upload-error`}>{problem}</FieldError>
+              </div>
             )}
           </div>
           <TextField
@@ -418,6 +442,7 @@ function FileField({ field, path, ctx }) {
   const inputRef = useRef(/** @type {HTMLInputElement | null} */ (null));
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
+  const [problem, setProblem] = useState(/** @type {string | null} */ (null));
   const id = fieldId(path);
   const isPdf = field.accept?.includes('pdf');
   const arrayPath = path.endsWith('[0]') ? path.slice(0, -3) : null;
@@ -425,6 +450,17 @@ function FileField({ field, path, ctx }) {
   /** @param {File | undefined} file */
   async function take(file) {
     if (!file) return;
+    setProblem(null);
+    if (isPdf) {
+      const local = checkMessage(
+        await checkBlob(file, { kinds: ['document'] }),
+        'documents.wrongType',
+      );
+      if (local) {
+        setProblem(local);
+        return;
+      }
+    }
     setBusy(true);
     try {
       const src = await ctx.upload(file);
@@ -436,6 +472,8 @@ function FileField({ field, path, ctx }) {
         ...(field.template?.type === undefined && !isPdf && file.type && { type: file.type }),
       });
       setStatus(ta('editor.file.uploaded', { name: file.name }));
+    } catch (error) {
+      setProblem(ta('library.uploadFailed', { message: uploadMessage(error) }));
     } finally {
       setBusy(false);
     }
@@ -462,17 +500,21 @@ function FileField({ field, path, ctx }) {
         <input
           ref={inputRef}
           type="file"
-          accept={field.accept}
+          accept={isPdf ? PDF_ACCEPT : field.accept}
           className="sr-only"
           tabIndex={-1}
           aria-hidden="true"
-          onChange={(event) => take(event.target.files?.[0])}
+          onChange={(event) => {
+            take(event.target.files?.[0]);
+            event.target.value = '';
+          }}
         />
         <Button
           variant="secondary"
           size="sm"
           icon="download"
           loading={busy}
+          aria-describedby={problem ? `${id}-upload-error` : undefined}
           onClick={() => inputRef.current?.click()}
         >
           {value?.src ? ta('editor.file.replace') : ta('editor.file.upload')}
@@ -492,6 +534,11 @@ function FileField({ field, path, ctx }) {
           </Button>
         )}
       </div>
+      {problem && (
+        <div role="alert" className="mc-upload-problem">
+          <FieldError id={`${id}-upload-error`}>{problem}</FieldError>
+        </div>
+      )}
       {isPdf && value && (
         <div className="mc-file-field__meta">
           <TextField
@@ -728,6 +775,9 @@ function CaptionsField({ field, path, ctx }) {
       };
       ctx.setValue(path, [...tracks.filter((item) => item.srclang !== srclang), next]);
       setStatus(ta('editor.captions.uploaded', { name: file.name, cues: result.cues.length }));
+    } catch (error) {
+      // B5: სერვერი VTT-ს თავიდან ამოწმებს (`parseCaptions`, ტიპი შიგთავსით) — უარი ველთან ჩანს
+      setProblem(ta('library.uploadFailed', { message: uploadMessage(error) }));
     } finally {
       setBusy(false);
     }

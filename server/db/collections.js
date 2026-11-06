@@ -78,6 +78,13 @@ export const SUBSCRIBER_STATUSES = Object.freeze(['pending', 'confirmed']);
 export const LANGS = Object.freeze(['ka', 'en']);
 export const DAY_SECONDS = 86_400;
 
+/** მასალის / ვერსიის ფაილების გასაღებები (`derive.js` — `mediaKeysOf`). */
+const MEDIA_KEYS = Object.freeze({
+  bsonType: 'array',
+  maxItems: 1000,
+  items: { bsonType: 'string', minLength: 1, maxLength: 512 },
+});
+
 const DATE = Object.freeze({ bsonType: 'date' });
 const DATE_OR_NULL = Object.freeze({ bsonType: ['date', 'null'] });
 const OBJECT_ID = Object.freeze({ bsonType: 'objectId' });
@@ -158,11 +165,7 @@ function contentValidator(spec, items) {
       updatedBy: userId,
       working: { bsonType: ['object', 'null'] },
       searchText: { bsonType: 'string', maxLength: 10_000 },
-      mediaKeys: {
-        bsonType: 'array',
-        maxItems: 1000,
-        items: { bsonType: 'string', minLength: 1, maxLength: 512 },
-      },
+      mediaKeys: MEDIA_KEYS,
     },
     additionalProperties: false,
     // ტიპის მიხედვით: id-ის პრეფიქსი, `item` და სამუშაო ასლი — `*Draft`
@@ -185,7 +188,7 @@ function contentValidator(spec, items) {
 function versionsValidator(spec, items) {
   return {
     bsonType: 'object',
-    required: ['_id', 'contentId', 'type', 'version', 'item', 'at', 'by'],
+    required: ['_id', 'contentId', 'type', 'version', 'item', 'at', 'by', 'mediaKeys'],
     properties: {
       _id: OBJECT_ID,
       contentId: { bsonType: 'string', pattern: pattern(spec, 'ItemId') },
@@ -194,6 +197,8 @@ function versionsValidator(spec, items) {
       item: { bsonType: 'object' },
       at: DATE,
       by: { bsonType: ['string', 'null'], pattern: pattern(spec, 'UserId') },
+      // B5: ვერსიის ფაილები — წაშლილი ფაილის `src` ისტორიაშიც იშლება (მიგრაცია 002 — ძველზე)
+      mediaKeys: MEDIA_KEYS,
     },
     additionalProperties: false,
     oneOf: CONTENT_TYPES.map((type) => ({
@@ -288,6 +293,9 @@ function mediaValidator(spec) {
       height: { bsonType: ['number', 'null'], multipleOf: 1, minimum: 1 },
       lang: { enum: [...LANGS, null] },
       tagged: { bsonType: ['bool', 'null'] },
+      // B5, VTT: სერვერის `parseCaptions`-ის შედეგი — გამოქვეყნებისას ბილიკის `cues` / `end` აქედანაა
+      cues: { bsonType: ['number', 'null'], multipleOf: 1, minimum: 0 },
+      end: { bsonType: ['number', 'null'], minimum: 0 },
       createdAt: DATE,
       createdBy: { bsonType: ['string', 'null'], pattern: pattern(spec, 'UserId') },
     },
@@ -411,7 +419,11 @@ export function defineCollections({ spec, retention = DEFAULT_RETENTION }) {
     {
       name: COLLECTION.versions,
       validator: versionsValidator(spec, items),
-      indexes: [{ name: 'contentId_version', key: { contentId: 1, version: -1 }, unique: true }],
+      indexes: [
+        { name: 'contentId_version', key: { contentId: 1, version: -1 }, unique: true },
+        // B5: ფაილის წაშლა ისტორიიდანაც მის `src`-ს შლის
+        { name: 'mediaKeys', key: { mediaKeys: 1 } },
+      ],
     },
     {
       name: COLLECTION.users,

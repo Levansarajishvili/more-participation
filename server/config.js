@@ -1,3 +1,5 @@
+import { URL, fileURLToPath } from 'node:url';
+
 import Ajv2020 from 'ajv/dist/2020.js';
 
 /**
@@ -26,7 +28,25 @@ import Ajv2020 from 'ajv/dist/2020.js';
  * @property {{ ttlMs: number }} invites                  B3: მოწვევის ვადა
  * @property {{ auth: RateLimit, forms: RateLimit }} rateLimit
  *   B3: `auth` — შესვლა / რეგისტრაცია (IP; შესვლაზე + ანგარიში), `forms` — საჯარო ფორმები (B6)
+ * @property {MediaConfig} media  B5: ფაილების საცავი და ატვირთვის ზღვრები
  */
+
+/**
+ * @typedef {object} MediaConfig
+ * @property {'r2' | 'local' | 'memory'} storage  r2 — Cloudflare R2 (S3 API); local — დისკი (dev);
+ *   memory — მეხსიერება (ტესტი)
+ * @property {string} dir                          local: საქაღალდე
+ * @property {{ endpoint: string, region: string, bucket: string, accessKeyId: string, secretAccessKey: string } | null} r2
+ * @property {{ image: number, document: number, track: number }} limits  ბაიტი
+ * @property {number} maxPixels
+ */
+
+/** VTT-ის ზღვარი — `src/content/vtt.js`-ის `VTT_MAX_BYTES` (F10; env-ით არ იცვლება). */
+const TRACK_LIMIT = 1024 * 1024;
+/** local საცავის ნაგულისხმევი საქაღალდე (git / zip-ის გარეთ). */
+// `String(import.meta.url)`: Vite-ის asset-ის გარდაქმნის გარეშე (jsdom-ის ტესტი, `openapi.js`-ის იგივე)
+export const DEFAULT_MEDIA_DIR = fileURLToPath(new URL('./.media/', String(import.meta.url)));
+export const STORAGE_KINDS = Object.freeze(['r2', 'local', 'memory']);
 
 /** @typedef {{ max: number, windowMs: number }} RateLimit */
 
@@ -65,10 +85,49 @@ export const ENV_SCHEMA = Object.freeze({
     RATE_LIMIT_AUTH_WINDOW_SECONDS: { type: 'integer', minimum: 1, maximum: 86_400, default: 900 },
     RATE_LIMIT_FORMS_MAX: { type: 'integer', minimum: 1, maximum: 1000, default: 10 },
     RATE_LIMIT_FORMS_WINDOW_SECONDS: { type: 'integer', minimum: 1, maximum: 86_400, default: 600 },
+    // B5 — ფაილების საცავი: ცარიელი → production: r2, development: local, test: memory
+    MEDIA_STORAGE: { type: 'string', enum: STORAGE_KINDS },
+    MEDIA_DIR: { type: 'string', minLength: 1, maxLength: 1024 },
+    // Cloudflare R2 (S3 API, SigV4): https://<R2_ACCOUNT_ID>.r2.cloudflarestorage.com/<R2_BUCKET>;
+    // R2_ENDPOINT — სხვა S3-თავსებადი მისამართი (ტესტი, MinIO)
+    R2_ACCOUNT_ID: { type: 'string', pattern: '^[0-9a-f]{32}$' },
+    R2_ENDPOINT: { type: 'string', maxLength: 512, pattern: '^https?://[^\\s/?#]+/?$' },
+    R2_BUCKET: { type: 'string', pattern: '^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$' },
+    R2_ACCESS_KEY_ID: { type: 'string', pattern: '^[A-Za-z0-9]{16,128}$' },
+    R2_SECRET_ACCESS_KEY: { type: 'string', pattern: '^\\S{16,256}$' },
+    // ატვირთვის ზღვრები — [MB], ნაგულისხმევი დასადასტურებელი; VTT — 1 MB (F10)
+    MEDIA_MAX_IMAGE_MB: { type: 'integer', minimum: 1, maximum: 50, default: 10 },
+    MEDIA_MAX_DOCUMENT_MB: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
+    // სურათის მეგაპიქსელები (მეხსიერება: 40 MP ≈ 120 MB გაშლილი)
+    MEDIA_MAX_MEGAPIXELS: { type: 'integer', minimum: 1, maximum: 100, default: 40 },
   },
-  // წარმოებაში in-memory ბაზა არ არსებობს — connection string სავალდებულოა
-  if: { properties: { NODE_ENV: { const: 'production' } }, required: ['NODE_ENV'] },
-  then: { required: ['MONGODB_URI'] },
+  allOf: [
+    // წარმოებაში in-memory ბაზა არ არსებობს — connection string სავალდებულოა; ფაილები — მხოლოდ R2
+    // (Render-ის დისკი deploy-ზე იშლება)
+    {
+      if: { properties: { NODE_ENV: { const: 'production' } }, required: ['NODE_ENV'] },
+      then: {
+        required: ['MONGODB_URI'],
+        properties: { MEDIA_STORAGE: { const: 'r2' } },
+      },
+    },
+    {
+      if: {
+        anyOf: [
+          { properties: { MEDIA_STORAGE: { const: 'r2' } }, required: ['MEDIA_STORAGE'] },
+          {
+            properties: { NODE_ENV: { const: 'production' } },
+            required: ['NODE_ENV'],
+            not: { required: ['MEDIA_STORAGE'] },
+          },
+        ],
+      },
+      then: {
+        required: ['R2_BUCKET', 'R2_ACCESS_KEY_ID', 'R2_SECRET_ACCESS_KEY'],
+        anyOf: [{ required: ['R2_ACCOUNT_ID'] }, { required: ['R2_ENDPOINT'] }],
+      },
+    },
+  ],
   additionalProperties: false,
 });
 
@@ -111,6 +170,8 @@ export function loadConfig(env = process.env) {
       if (error.keyword === 'pattern') return `${key}: ფორმატი არასწორია`;
       if (error.keyword === 'enum')
         return `${key}: დასაშვებია ${error.params.allowedValues.join(' | ')}`;
+      if (error.keyword === 'const') return `${key}: დასაშვებია ${error.params.allowedValue}`;
+      if (error.keyword === 'anyOf' || error.keyword === 'if') return 'env:';
       return `${key}: ${error.message}`;
     });
     throw new ConfigError([...new Set(problems)].filter((p) => !p.startsWith('env:')));
@@ -127,6 +188,27 @@ export function loadConfig(env = process.env) {
       windowMs: /** @type {number} */ (input[window]) * 1000,
     });
   const nodeEnv = /** @type {NodeEnv} */ (input.NODE_ENV);
+  const storage = /** @type {MediaConfig['storage']} */ (
+    input.MEDIA_STORAGE ??
+      (nodeEnv === 'production' ? 'r2' : nodeEnv === 'test' ? 'memory' : 'local')
+  );
+  if (storage === 'r2' && !input.R2_ACCOUNT_ID && !input.R2_ENDPOINT) {
+    throw new ConfigError(['R2_ACCOUNT_ID ან R2_ENDPOINT: სავალდებულოა']);
+  }
+  const r2 =
+    storage === 'r2'
+      ? Object.freeze({
+          endpoint: String(
+            input.R2_ENDPOINT ?? `https://${input.R2_ACCOUNT_ID}.r2.cloudflarestorage.com`,
+          ).replace(/\/$/, ''),
+          // R2-ის რეგიონი SigV4-ში — `auto`
+          region: 'auto',
+          bucket: /** @type {string} */ (input.R2_BUCKET),
+          accessKeyId: /** @type {string} */ (input.R2_ACCESS_KEY_ID),
+          secretAccessKey: /** @type {string} */ (input.R2_SECRET_ACCESS_KEY),
+        })
+      : null;
+  const megabytes = (/** @type {string} */ key) => /** @type {number} */ (input[key]) * 1024 * 1024;
   return Object.freeze({
     env: nodeEnv,
     // PaaS (Render, Fly) კონტეინერში 0.0.0.0-ზე უსმენს; ლოკალურად — მხოლოდ ამ კომპიუტერზე
@@ -150,6 +232,17 @@ export function loadConfig(env = process.env) {
     rateLimit: Object.freeze({
       auth: limit('RATE_LIMIT_AUTH_MAX', 'RATE_LIMIT_AUTH_WINDOW_SECONDS'),
       forms: limit('RATE_LIMIT_FORMS_MAX', 'RATE_LIMIT_FORMS_WINDOW_SECONDS'),
+    }),
+    media: Object.freeze({
+      storage,
+      dir: /** @type {string | undefined} */ (input.MEDIA_DIR) ?? DEFAULT_MEDIA_DIR,
+      r2,
+      limits: Object.freeze({
+        image: megabytes('MEDIA_MAX_IMAGE_MB'),
+        document: megabytes('MEDIA_MAX_DOCUMENT_MB'),
+        track: TRACK_LIMIT,
+      }),
+      maxPixels: /** @type {number} */ (input.MEDIA_MAX_MEGAPIXELS) * 1_000_000,
     }),
   });
 }

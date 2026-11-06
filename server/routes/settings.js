@@ -1,18 +1,18 @@
+import { buildLibrary, libraryCounts } from '@/admin/api/library.js';
 import {
   buildA11yReport,
   buildStats,
-  embeddedMedia,
   featuredChanges,
   featuredIds,
   FEATURED,
 } from '@/admin/api/records.js';
 import { CONTENT_TYPES } from '@/admin/content-types.js';
 
-import { COLLECTION } from '../db/collections.js';
 import { repositories } from '../lib/auth.js';
 import { route } from '../lib/openapi.js';
 
 import { actorId, rowsOf, viewContext } from './content.js';
+import { libraryState } from './media.js';
 
 /**
  * `/api/admin/settings` (ადმინისტრატორი — `settings.manage`) და `/api/admin/reports/*`
@@ -77,30 +77,14 @@ export function registerSettingsRoutes(app) {
   });
 
   route(app, spec, 'getStats', async () => {
-    const [rows, records, uploads] = await Promise.all([
-      rowsOf(app, CONTENT_TYPES),
-      recordsByType(app, CONTENT_TYPES),
-      // ატვირთული ფაილები (`media`) — B5; მანამდე 0
-      Promise.all(
-        ['image', 'document'].map((kind) =>
-          /** @type {import('mongodb').Db} */ (app.db)
-            .collection(COLLECTION.media)
-            .countDocuments({ kind }),
-        ),
-      ),
-    ]);
+    const [rows, library] = await Promise.all([rowsOf(app, CONTENT_TYPES), libraryState(app)]);
     /** @type {Record<string, any[]>} */
     const rowsByType = {};
     for (const row of rows) (rowsByType[row.type] ??= []).push(row);
-    const embedded = CONTENT_TYPES.flatMap((type) =>
-      records[type].flatMap((record) => embeddedMedia(type, record)),
-    );
+    // B5: ბიბლიოთეკის იგივე დათვლა (ჩადგმული + ატვირთული ფაილები; VTT — არა)
     return buildStats(/** @type {any} */ (rowsByType), {
       now: app.now(),
-      library: {
-        images: embedded.filter((m) => m.kind === 'image').length + uploads[0],
-        documents: embedded.filter((m) => m.kind === 'document').length + uploads[1],
-      },
+      library: libraryCounts(buildLibrary(library.records, library.files)),
     });
   });
 

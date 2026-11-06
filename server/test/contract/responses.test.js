@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { MINIMAL_PDF } from '@/admin/__tests__/scenarios/admin-scenarios.js';
 import { MOCK_INVITE, MOCK_PASSWORD, createMockAdminAdapter } from '@/admin/api/mock.js';
 import { SCHEMAS } from '@/admin/schemas/index.js';
 import { ContentError } from '@/content/errors.js';
@@ -189,8 +190,9 @@ describe('ადმინის mock (`createMockAdminAdapter`) ↔ პასუ
     const media = await admin.media.list({});
     expectConforms('media.list', media);
     expectConforms('media.list', await admin.media.list({ kind: 'image', missingAlt: true }));
+    // B5: mock ტიპს შიგთავსით ამოწმებს (`files.js`) — ვალიდური PDF-ის სათავე
     const upload = await admin.media.upload(
-      new File(['%PDF'], 'a.pdf', { type: 'application/pdf' }),
+      new File([MINIMAL_PDF], 'a.pdf', { type: 'application/pdf' }),
       { title: 'A' },
     );
     expectConforms('media.upload', upload);

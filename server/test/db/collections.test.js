@@ -31,7 +31,11 @@ const EXPECTED_INDEXES = {
     type_featured_unique: [{ type: 1 }, true, { 'item.featured': true }, undefined],
     mediaKeys: [{ mediaKeys: 1 }, false, null, undefined],
   },
-  versions: { contentId_version: [{ contentId: 1, version: -1 }, true, null, undefined] },
+  versions: {
+    contentId_version: [{ contentId: 1, version: -1 }, true, null, undefined],
+    // B5: წაშლილი ფაილის `src` ისტორიიდანაც
+    mediaKeys: [{ mediaKeys: 1 }, false, null, undefined],
+  },
   users: { email_unique: [{ email: 1 }, true, null, undefined] },
   sessions: {
     expiresAt_ttl: [{ expiresAt: 1 }, false, null, 0],
@@ -64,7 +68,9 @@ describe('მიგრაცია 001-init', () => {
   afterAll(() => database?.drop());
 
   it('პირველი გაშვება: 9 კოლექცია შეიქმნა, validator — strict / error', async () => {
-    expect(first.map((r) => r.id)).toEqual(['001-init']);
+    // B5: 002 — `versions.mediaKeys` ძველ ჩანაწერებზე (ცარიელ ბაზაზე — არაფერი)
+    expect(first.map((r) => r.id)).toEqual(['001-init', '002-version-media-keys']);
+    expect(first[1].reports).toEqual([{ name: 'versions', collection: 'unchanged', indexes: [] }]);
     expect(first[0].reports.every((r) => r.collection === 'created')).toBe(true);
     const infos = await database.db.listCollections().toArray();
     const names = infos.map((info) => info.name).sort();
@@ -103,7 +109,7 @@ describe('მიგრაცია 001-init', () => {
         report.name,
       ).toBe(true);
     }
-    expect(countChanges(first)).toBe(9 + 18);
+    expect(countChanges(first)).toBe(9 + 19);
   });
 
   it('დრეიფი: TTL-ის ვადა (collMod index), validator, ინდექსის ფორმა, ხელით დამატებული ინდექსი', async () => {
@@ -277,6 +283,7 @@ describe('validator-ები', () => {
         item: data.articles[0],
         at: now,
         by: null,
+        mediaKeys: [],
       }),
     ).toBe('ok');
   });
