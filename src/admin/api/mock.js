@@ -10,7 +10,7 @@ import { isYouTubeId } from '@/content/youtube.js';
 
 import { validateLogin, validateRegister } from '../auth/auth-forms.js';
 import { CONTENT_TYPES, TYPE_CONFIG } from '../content-types.js';
-import { adminDictionary, adminDictionaryEn, ta } from '../i18n/index.js';
+import { ta } from '../i18n/index.js';
 
 import {
   buildLibrary,
@@ -23,6 +23,7 @@ import {
   parseEmbeddedId,
   patchRecord,
 } from './library.js';
+import { PAGE_DEFS, basePageItem } from './pages.js';
 import { ROLES, can } from './permissions.js';
 import {
   assertFuture,
@@ -87,16 +88,8 @@ function restoreSession() {
 const DAY = 86_400_000;
 const STATE_KEY = 'admin';
 
-/** 7 საჯარო გვერდი (§5) — `pages` ტიპის ჩანაწერები. */
-export const PAGE_DEFS = Object.freeze([
-  { slug: 'home', path: '/' },
-  { slug: 'about', path: '/about' },
-  { slug: 'articles', path: '/articles' },
-  { slug: 'development', path: '/development' },
-  { slug: 'videos', path: '/videos' },
-  { slug: 'news', path: '/news' },
-  { slug: 'contact', path: '/contact' },
-]);
+/** 7 საჯარო გვერდი (§5) — B7: `pages.js` (წარმოების საბაზისო ჩანაწერებიც). */
+export { PAGE_DEFS };
 
 /**
  * @typedef {object} AdminState
@@ -153,31 +146,15 @@ export function adminState(store) {
   const snapshot = store.snapshot();
   for (const page of PAGE_DEFS) {
     if (store.findBySlug('pages', page.slug)) continue;
-    store.insert('pages', {
-      slug: page.slug,
-      // ქართული — ძირითადი ვერსია; ინგლისური — თარგმანი (F9; `ta()` მიმდინარე ენას დააბრუნებდა)
-      title:
-        adminDictionary.pageNames[
-          /** @type {keyof typeof adminDictionary.pageNames} */ (page.slug)
-        ],
-      translations: {
-        en: {
-          title:
-            adminDictionaryEn.pageNames[
-              /** @type {keyof typeof adminDictionaryEn.pageNames} */ (page.slug)
-            ],
-        },
-      },
-      path: page.path,
-      status: 'published',
-      publishedAt: tbilisi(now, -60),
-      fields: { heading: '', lead: '', description: '' },
-      // „ჩვენ შესახებ“: გუნდი და პარტნიორები — საიტის საცავის ასლი; შენახვისას საცავშიც იწერება
-      ...(page.slug === 'about' && {
-        team: structuredClone(snapshot.team),
-        partners: structuredClone(snapshot.partners),
+    store.insert(
+      'pages',
+      basePageItem(page, {
+        publishedAt: tbilisi(now, -60),
+        // „ჩვენ შესახებ“: გუნდი და პარტნიორები — საიტის საცავის ასლი; შენახვისას საცავშიც იწერება
+        team: snapshot.team,
+        partners: snapshot.partners,
       }),
-    });
+    );
   }
 
   // მონახაზები ხარვეზებით: alt, სათაურების რიგი, „აქ“-ბმული; ვიდეოს სუბტიტრი / აუდიოაღწერა

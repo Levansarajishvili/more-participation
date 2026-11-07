@@ -1,0 +1,51 @@
+# Render Blueprint (B7) — „მეტი ჩართულობა“: ერთი Web Service (API + საიტი), Frankfurt.
+# runbook — docs/deploy.md. საიდუმლო აქ არასოდეს: `sync: false` → მნიშვნელობა Dashboard-ში შეიყვანე.
+services:
+  - type: web
+    name: meti-chartuloba
+    runtime: node
+    region: frankfurt
+    # Starter — spin-down-ის გარეშე და pre-deploy-ით (B0 #1); Free-ზე: plan: free + MIGRATE_ON_START=1
+    plan: starter
+    # devDependencies build-ს სჭირდება (Vite); შემდეგ იშლება — გაშვებისას მხოლოდ dependencies
+    buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
+    # მიგრაცია + საბაზისო ჩანაწერები (7 გვერდი, პარამეტრები) — ახალი ვერსია ტრაფიკს მის შემდეგ იღებს
+    preDeployCommand: npm run server:migrate
+    startCommand: node server/index.js
+    healthCheckPath: /api/health
+    # SIGTERM → ახალ მოთხოვნას 503, მიმდინარე სრულდება (server/main.js — 10 წმ)
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Render-ის proxy — 1; Cloudflare-ის proxy-ით წინ — 2
+      - key: TRUST_PROXY
+        value: '1'
+      # staging / დომენამდე — off (noindex); საბოლოო დომენზე — on
+      - key: SITE_INDEXING
+        value: 'off'
+      # დომენამდე — log (წერილი არ იგზავნება); Resend-ის დომენის დადასტურების შემდეგ — resend
+      - key: MAIL_TRANSPORT
+        value: log
+      - key: MONGODB_DB
+        value: meti-chartuloba
+      - key: MONGODB_URI
+        sync: false
+      - key: PUBLIC_ORIGIN
+        sync: false
+      - key: CONTACT_INBOX
+        sync: false
+      - key: SUBSCRIBE_SECRET
+        generateValue: true
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false

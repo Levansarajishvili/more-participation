@@ -4,7 +4,8 @@ import { normalizeError } from './errors.js';
  * კონტენტის ერთადერთი შესასვლელი. გვერდები და hook-ები მხოლოდ ამ ფუნქციებს იძახებენ;
  * რა დგას უკან — mock თუ API — აქ წყდება: `VITE_CONTENT_API` (მაგ. `/api/v1`) → HTTP adapter-ი
  * (`http.js`, B6), მის გარეშე — mock (ცალკე lazy chunk). build-ში მეორე შტო არ ხვდება
- * (`import.meta.env.*` build-ის დროს ჩაისმება).
+ * (`import.meta.env.*` build-ის დროს ჩაისმება). B7: production build ყოველთვის API-ზეა (vite.config.js —
+ * `/api/v1`), mock — მხოლოდ dev-სა და ტესტებში (check-dist ამოწმებს).
  *
  * ყოველი ფუნქცია Promise-ს აბრუნებს; შეცდომა ყოველთვის ContentError-ია
  * (`{ code, message }`, ქართულად; ფორმაზე — `fields`).

@@ -76,6 +76,18 @@ export async function seedDatabase(database, { now = Date.now(), reset = false }
   const repos = createRepositories(database, { now: () => now });
 
   await inTransaction(client, async (session) => {
+    // B7: `server:migrate` ცარიელ ბაზაზე საბაზისო ჩანაწერებს ქმნის (7 გვერდი + პარამეტრები, `base.js`) —
+    // ხელუხლებელი (ვერსია 1, ავტორის გარეშე) seed-ს არ უშლის და seed-ის ჩანაწერებით იცვლება
+    const untouchedBase = { type: 'pages', version: 1, updatedBy: null };
+    const others = await db
+      .collection(COLLECTION.content)
+      .countDocuments({ $nor: [untouchedBase] }, { session });
+    if (others === 0 && !reset) {
+      await db.collection(COLLECTION.content).deleteMany(untouchedBase, { session });
+      await db
+        .collection(COLLECTION.settings)
+        .deleteMany({ version: 1, updatedBy: null }, { session });
+    }
     const existing = await db.collection(COLLECTION.content).countDocuments({}, { session });
     if (existing > 0 && !reset) {
       throw new SeedError(

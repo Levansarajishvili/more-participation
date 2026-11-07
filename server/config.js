@@ -31,17 +31,31 @@ import Ajv2020 from 'ajv/dist/2020.js';
  *   B3: `auth` — შესვლა / რეგისტრაცია (IP; შესვლაზე + ანგარიში), `forms` — საჯარო ფორმები (B6)
  * @property {MediaConfig} media  B5: ფაილების საცავი და ატვირთვის ზღვრები
  * @property {MailConfig} mail    B6: ელფოსტა (კონტაქტის წერილი, გამოწერის ბმული)
- * @property {string} publicOrigin  B6: საიტის origin წერილის ბმულისთვის (`https://…`, `/`-ის გარეშე)
+ * @property {string} publicOrigin  B6: საიტის origin წერილის ბმულისთვის (`https://…`, `/`-ის გარეშე);
+ *   B7: canonical, `og:url`, hreflang, sitemap
  * @property {{ secret: string }} subscriptions  B6: გაუქმების ბმულის HMAC-ის საიდუმლო
+ * @property {SiteConfig} site  B7: frontend-ის build (`dist/`) იმავე origin-ზე
+ * @property {boolean} migrateOnStart  B7: მიგრაცია + საბაზისო ჩანაწერები გაშვებისას (pre-deploy-ის
+ *   გარეშე ჰოსტინგი — Render Free / Fly.io)
+ */
+
+/**
+ * @typedef {object} SiteConfig
+ * @property {string | null} dir  build-ის საქაღალდე (`index.html` + `assets/`); null — საიტს სერვერი არ
+ *   ემსახურება (development: Vite, ტესტი). production-ის ნაგულისხმევი — რეპოს `dist/`
+ * @property {boolean} indexing  `SITE_INDEXING=on` — საძიებოს ინდექსაცია (მხოლოდ საბოლოო დომენზე);
+ *   `off` — ყველა პასუხს `X-Robots-Tag: noindex, nofollow` (staging, `*.onrender.com`)
  */
 
 /**
  * @typedef {object} MailConfig
- * @property {'log' | 'file' | 'memory'} transport  log — მხოლოდ მოვლენის სახელი ლოგში (stub, B7-მდე);
- *   file — წერილი ფაილად (`dir`, dev); memory — მეხსიერება (ტესტი, `mailer.outbox`)
+ * @property {'log' | 'file' | 'memory' | 'resend'} transport  resend — Resend-ის HTTP API (B7);
+ *   log — მხოლოდ მოვლენის სახელი ლოგში (stub: დომენამდე); file — წერილი ფაილად (`dir`, dev);
+ *   memory — მეხსიერება (ტესტი, `mailer.outbox`)
  * @property {string} dir     file: საქაღალდე
  * @property {string} inbox   კონტაქტის ფორმის მიმღები (`CONTACT_INBOX`, B0 #8)
  * @property {string} from    გამგზავნი (`no-reply@[დომენი]` — B7)
+ * @property {string | null} apiKey  resend: `RESEND_API_KEY` (მხოლოდ გაგზავნის უფლება, ერთ დომენზე)
  */
 
 /**
@@ -60,8 +74,10 @@ const TRACK_LIMIT = 1024 * 1024;
 // `String(import.meta.url)`: Vite-ის asset-ის გარდაქმნის გარეშე (jsdom-ის ტესტი, `openapi.js`-ის იგივე)
 export const DEFAULT_MEDIA_DIR = fileURLToPath(new URL('./.media/', String(import.meta.url)));
 export const STORAGE_KINDS = Object.freeze(['r2', 'local', 'memory']);
-/** B6: ელფოსტის გადამცემი. `resend` — B7 (დომენი, DNS: SPF / DKIM / DMARC). */
-export const MAIL_TRANSPORTS = Object.freeze(['log', 'file', 'memory']);
+/** B6: ელფოსტის გადამცემი; B7: `resend` (დომენი, DNS: SPF / DKIM / DMARC). */
+export const MAIL_TRANSPORTS = Object.freeze(['log', 'file', 'memory', 'resend']);
+/** B7: frontend-ის build-ის ნაგულისხმევი საქაღალდე წარმოებაში (რეპოს `dist/`, `npm run build`). */
+export const DEFAULT_SITE_DIR = fileURLToPath(new URL('../dist/', String(import.meta.url)));
 /** file გადამცემის ნაგულისხმევი საქაღალდე (git / zip-ის გარეთ). */
 export const DEFAULT_MAIL_DIR = fileURLToPath(new URL('./.mail/', String(import.meta.url)));
 /** development / test: მიმღები და გამგზავნი — `.invalid` (RFC 2606: ვერასდროს მიიღება). */
@@ -90,7 +106,8 @@ export const ENV_SCHEMA = Object.freeze({
     HOST: { type: 'string', minLength: 1, maxLength: 255, pattern: '^[^\\s/]+$' },
     PORT: { type: 'integer', minimum: 1, maximum: 65535, default: 3000 },
     LOG_LEVEL: { type: 'string', enum: LOG_LEVELS },
-    TRUST_PROXY: { type: 'integer', minimum: 0, maximum: 5, default: 0 },
+    // B7: წარმოებაში სავალდებულოა (≥ 1) — 0-ზე ყველა სტუმარი proxy-ის ერთ IP-ს და rate limit-ს იზიარებს
+    TRUST_PROXY: { type: 'integer', minimum: 0, maximum: 5 },
     BODY_LIMIT: { type: 'integer', minimum: 1024, maximum: 10_485_760, default: 1_048_576 },
     MONGODB_URI: { type: 'string', maxLength: 2048, pattern: '^mongodb(\\+srv)?://\\S+$' },
     MONGODB_DB: { type: 'string', pattern: '^[A-Za-z0-9_-]{1,38}$', default: 'meti-chartuloba' },
@@ -131,6 +148,14 @@ export const ENV_SCHEMA = Object.freeze({
     PUBLIC_ORIGIN: { type: 'string', maxLength: 255, pattern: '^https?://[^\\s/?#]+$' },
     // გაუქმების ბმულის HMAC-SHA256-ის საიდუმლო (≥ 32 სიმბოლო; შეცვლა ძველ ბმულებს აუქმებს)
     SUBSCRIBE_SECRET: { type: 'string', pattern: '^\\S{32,256}$' },
+    // B7 — Resend-ის API-ის გასაღები (`re_…`; Sending access, მხოლოდ ერთ დომენზე)
+    RESEND_API_KEY: { type: 'string', pattern: '^re_[A-Za-z0-9_-]{8,256}$' },
+    // B7 — frontend-ის build: production-ის ნაგულისხმევი `dist/`; development / test — მხოლოდ თუ მითითებულია
+    SITE_DIR: { type: 'string', minLength: 1, maxLength: 1024 },
+    // B7 — ინდექსაცია: on — მხოლოდ საბოლოო დომენზე; off (ნაგულისხმევი) — noindex ყველა პასუხზე
+    SITE_INDEXING: { type: 'string', enum: ['on', 'off'], default: 'off' },
+    // B7 — 1: გაშვებისას `server:migrate`-ის ნაბიჯები (pre-deploy-ის გარეშე ჰოსტინგი)
+    MIGRATE_ON_START: { type: 'integer', enum: [0, 1], default: 0 },
   },
   allOf: [
     // წარმოებაში in-memory ბაზა არ არსებობს — connection string სავალდებულოა; ფაილები — მხოლოდ R2
@@ -138,14 +163,27 @@ export const ENV_SCHEMA = Object.freeze({
     {
       if: { properties: { NODE_ENV: { const: 'production' } }, required: ['NODE_ENV'] },
       then: {
-        // B6: წერილის მიმღები, ბმულის origin (https) და გაუქმების საიდუმლო; ფოსტა — `log` (B7: resend)
-        required: ['MONGODB_URI', 'CONTACT_INBOX', 'PUBLIC_ORIGIN', 'SUBSCRIBE_SECRET'],
+        // B6: წერილის მიმღები, ბმულის origin (https) და გაუქმების საიდუმლო; B7: proxy-ის რაოდენობა
+        required: [
+          'MONGODB_URI',
+          'CONTACT_INBOX',
+          'PUBLIC_ORIGIN',
+          'SUBSCRIBE_SECRET',
+          'TRUST_PROXY',
+        ],
         properties: {
           MEDIA_STORAGE: { const: 'r2' },
-          MAIL_TRANSPORT: { const: 'log' },
+          // B7: resend — დომენის შემდეგ; log — stub (staging, დომენამდე: წერილი არ იგზავნება)
+          MAIL_TRANSPORT: { enum: ['log', 'resend'] },
           PUBLIC_ORIGIN: { type: 'string', pattern: '^https://' },
+          TRUST_PROXY: { type: 'integer', minimum: 1 },
         },
       },
+    },
+    // B7: Resend — გასაღები და გამგზავნი (`no-reply@[დომენი]`) სავალდებულოა
+    {
+      if: { properties: { MAIL_TRANSPORT: { const: 'resend' } }, required: ['MAIL_TRANSPORT'] },
+      then: { required: ['RESEND_API_KEY', 'MAIL_FROM'] },
     },
     {
       if: {
@@ -289,6 +327,7 @@ export function loadConfig(env = process.env) {
       dir: /** @type {string | undefined} */ (input.MAIL_DIR) ?? DEFAULT_MAIL_DIR,
       inbox: /** @type {string | undefined} */ (input.CONTACT_INBOX) ?? DEV_INBOX,
       from: /** @type {string | undefined} */ (input.MAIL_FROM) ?? DEV_FROM,
+      apiKey: /** @type {string | undefined} */ (input.RESEND_API_KEY) ?? null,
     }),
     publicOrigin:
       /** @type {string | undefined} */ (input.PUBLIC_ORIGIN) ?? 'http://localhost:5173',
@@ -298,5 +337,12 @@ export function loadConfig(env = process.env) {
         /** @type {string | undefined} */ (input.SUBSCRIBE_SECRET) ??
         randomBytes(32).toString('base64url'),
     }),
+    site: Object.freeze({
+      dir:
+        /** @type {string | undefined} */ (input.SITE_DIR) ??
+        (nodeEnv === 'production' ? DEFAULT_SITE_DIR : null),
+      indexing: input.SITE_INDEXING === 'on',
+    }),
+    migrateOnStart: input.MIGRATE_ON_START === 1,
   });
 }

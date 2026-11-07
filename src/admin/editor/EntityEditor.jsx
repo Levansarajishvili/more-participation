@@ -219,18 +219,38 @@ export default function EntityEditor({ type, routeId }) {
     [type, navigate, user],
   );
 
-  /** ავტოშენახვა: ერთდროულად ერთი მოთხოვნა; ბოლოს — ბოლო მნიშვნელობა. */
-  const saveNow = useCallback(async () => {
-    if (inflight.current) await inflight.current.catch(() => {});
-    if (sameValue(valuesRef.current, savedRef.current) && idRef.current) return;
-    const run = persist().then(
+  /**
+   * ჩაწერის რიგი: ერთდროულად ერთი მოთხოვნა (ავტოშენახვა, გამოქვეყნება, მონახაზად შენახვა). B7: რეალურ
+   * API-ზე ავტოშენახვის PATCH და გამოქვეყნების `persist` ერთი და იგივე `version`-ით ერთდროულად
+   * მიდიოდა → 409 (mock-ში დაყოვნება 0 იყო და რბოლა არ ჩანდა; აუდიტმა იპოვა).
+   * @template T
+   * @param {() => Promise<T>} work
+   * @returns {Promise<T>}
+   */
+  const exclusive = useCallback(async (work) => {
+    while (inflight.current) await inflight.current.catch(() => {});
+    const run = work();
+    const done = run.then(
       () => {},
       () => {},
     );
-    inflight.current = run;
-    await run;
-    inflight.current = null;
-  }, [persist]);
+    inflight.current = done;
+    try {
+      return await run;
+    } finally {
+      if (inflight.current === done) inflight.current = null;
+    }
+  }, []);
+
+  /** ავტოშენახვა: რიგში; ბოლოს — ბოლო მნიშვნელობა. */
+  const saveNow = useCallback(
+    () =>
+      exclusive(async () => {
+        if (sameValue(valuesRef.current, savedRef.current) && idRef.current) return;
+        await persist().catch(() => {});
+      }),
+    [exclusive, persist],
+  );
 
   useEffect(() => {
     if (!dirty) return undefined;
@@ -358,20 +378,21 @@ export default function EntityEditor({ type, routeId }) {
     setSummary([]);
     setBusy('publish');
     try {
-      if (!idRef.current || !sameValue(valuesRef.current, savedRef.current))
-        await persist({ autosave: true });
-      const data = valuesRef.current;
-      const record =
-        target === 'scheduled'
-          ? await content.schedule(
+      const record = await exclusive(async () => {
+        if (!idRef.current || !sameValue(valuesRef.current, savedRef.current))
+          await persist({ autosave: true });
+        const data = valuesRef.current;
+        return target === 'scheduled'
+          ? content.schedule(
               /** @type {string} */ (idRef.current),
               /** @type {string} */ (scheduleAt),
               { version: versionRef.current, data },
             )
-          : await content.publish(/** @type {string} */ (idRef.current), {
+          : content.publish(/** @type {string} */ (idRef.current), {
               version: versionRef.current,
               data,
             });
+      });
       applyRecord(record);
       setAttempted(false);
       setMessage(
@@ -404,7 +425,7 @@ export default function EntityEditor({ type, routeId }) {
     try {
       const data = { ...valuesRef.current, status: 'draft' };
       setValues(data);
-      const record = await persist({ autosave: false, data });
+      const record = await exclusive(() => persist({ autosave: false, data }));
       if (record) applyRecord(record);
       setMessage(ta('editor.publish.draftDone'));
     } catch {
@@ -684,7 +705,9 @@ export default function EntityEditor({ type, routeId }) {
             <h2 id="ed-versions" className="mc-admin-panel__title">
               {ta('editor.versions.title')}
             </h2>
-            {!recordId ? (
+            {/* B7: ცარიელი სია (`role="list"` შვილის გარეშე — ახალი მასალა, რომლის ისტორიაც ჯერ არ არის;
+                ან ჩატვირთვამდე) axe-ის aria-required-children-ს ვერ გადის — მის ნაცვლად შენიშვნა */}
+            {!recordId || !versions.data?.length ? (
               <p className="mc-admin-note">{ta('editor.versions.none')}</p>
             ) : (
               <ol role="list" className="mc-versions">

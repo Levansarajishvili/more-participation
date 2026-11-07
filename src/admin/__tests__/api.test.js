@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import { ContentError } from '@/content/errors.js';
 import { createMockStore } from '@/content/mock/index.js';
-import { ADMIN_PATH, createRouterOptions } from '@/routes.jsx';
+import { ADMIN_PATH } from '@/content/seo.js';
+import { createRouterOptions } from '@/routes.jsx';
 
 import { CSRF_COOKIE, CSRF_HEADER, createHttpAdminAdapter, readCsrfToken } from '../api/http.js';
 import { MOCK_PASSWORD, createMockAdminAdapter } from '../api/mock.js';

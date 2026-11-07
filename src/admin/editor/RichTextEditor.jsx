@@ -51,6 +51,8 @@ export default function RichTextEditor({
   const lastEmitted = useRef(value);
   const editor = useEditor({
     extensions: EDITOR_EXTENSIONS,
+    // B7: CSP `style-src 'self'` — TipTap-ის `<style>`-ის ჩასმა გათიშულია, წესები `editor.css`-შია
+    injectCSS: false,
     content: blocksToDoc(value),
     immediatelyRender: true,
     editorProps: {

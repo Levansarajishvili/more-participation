@@ -6,3 +6,4 @@ package-lock.json
 docs/
 CLAUDE.md
 dist-api
+.audit-mail

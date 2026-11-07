@@ -71,6 +71,12 @@ describe('node server/index.js', () => {
     const res = await fetch(`http://127.0.0.1:${port}/api/health`);
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ status: 'ok', db: 'up' });
+    // B7: frontend-ის build იმავე სერვისზე (SITE_DIR — fixture), CSP mc-boot-ის hash-ით
+    const home = await fetch(`http://127.0.0.1:${port}/`);
+    expect(home.status).toBe(200);
+    expect(home.headers.get('content-security-policy')).toMatch(/script-src 'self' 'sha256-/);
+    expect(await home.text()).toContain('<div id="root"></div>');
+    expect(server.output().stdout).toMatch(/"event":"startup".*"site":true/);
     server.child.kill('SIGTERM');
     expect(await server.exited).toBe(0);
     const { stdout, stderr } = server.output();
@@ -132,4 +138,37 @@ describe('node server/index.js', () => {
     expect(stderr).toMatch(/ბაზასთან კავშირი ვერ დამყარდა/);
     expect(stdout + stderr).not.toContain('s3cret-pass');
   });
+
+  it('B7: MIGRATE_ON_START=1 — ცარიელ ბაზაზე მიგრაცია + საბაზისო ჩანაწერები გაშვებისას', async () => {
+    const port = await freePort();
+    const server = start({
+      NODE_ENV: 'production',
+      ...FAKE_PRODUCTION_ENV,
+      HOST: '127.0.0.1',
+      PORT: String(port),
+      LOG_LEVEL: 'info',
+      MONGODB_URI: inject('mongoUri'),
+      MONGODB_DB: `mc_boot_migrate_${Math.random().toString(36).slice(2, 8)}`,
+      MIGRATE_ON_START: '1',
+    });
+    await server.waitFor(/Server listening/);
+    expect(server.output().stdout).toMatch(/"event":"migrate","changes":\d+,"basePages":7/);
+    const settings = await fetch(`http://127.0.0.1:${port}/api/v1/settings`);
+    expect(settings.status).toBe(200);
+    server.child.kill('SIGTERM');
+    expect(await server.exited).toBe(0);
+  }, 60_000);
+
+  it('B7: build-ის გარეშე (SITE_DIR-ში index.html არ არის) → exit 1, ახსნით', async () => {
+    const server = start({
+      NODE_ENV: 'production',
+      ...FAKE_PRODUCTION_ENV,
+      MONGODB_URI: inject('mongoUri'),
+      MONGODB_DB: 'mc_boot_nosite',
+      SITE_DIR: fileURLToPath(new URL('./fixtures/', import.meta.url)),
+      PORT: String(await freePort()),
+    });
+    expect(await server.exited).toBe(1);
+    expect(server.output().stderr).toMatch(/SITE_DIR: index\.html ვერ მოიძებნა/);
+  }, 60_000);
 });

@@ -2084,3 +2084,160 @@ CRUD, ავტოშენახვის სამუშაო ასლი, �
 ### შემდეგი: B7 — დაკავშირება და გაშვება
 
 env (`VITE_CONTENT_API=/api/v1`, `VITE_ADMIN_API=/api/admin` — mock წარმოების bundle-ში აღარ ხვდება), დომენი და `PUBLIC_ORIGIN`, Resend (`MAIL_TRANSPORT`), `SUBSCRIBE_SECRET`, `CONTACT_INBOX`, deploy — Render + Atlas + R2, SPA fallback (`/en/*`, `/admin/*`, `/subscribe/*`), სერვერის meta / noindex, პარამეტრების პირველი ჩანაწერი, backup, მონიტორინგი; production smoke: შესვლა → გამოქვეყნება → საჯარო გვერდზე ჩანს → კონტაქტის წერილი inbox-შია.
+
+## B7 — დაკავშირება, გაშვება, runbook ✅ (2026-11-07)
+
+**Gate:**
+- frontend — `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓; `server/`-ის ჩათვლით) · `npm test` ✓ (**48 ფაილი, 834 / 834**; B6 — 47 / 827) · `npm run build` ✓ + check-dist ✓: **46 JS chunk** (საჯარო 33, ადმინის 13; B6 — 49: mock-ის ორი chunk და mock-ის ფორმები აღარ არის), **mock არცერთ chunk-ში — მოდულები (`.vite/modules.json`) + სტრიქონები (`createMockData`, `mc-dev-password`, `MC-INVITE-0001` …), HTTP adapter-ები bundle-შია**; `VITE_MOCK=1`-ის build-ს check-dist უარყოფს (11 შეცდომა — შემოწმდა). entry 433.5 kB / 127.8 kB gzip (B6 — 430.0 / 126.5).
+- server — `npm run server:lint` ✓ · `npm run server:test` ✓ (**40 ფაილი, 447 ტესტი**; B6 — 35 / 410).
+- **zip-ის სუფთა ასლზე** `npm ci` → lint ✓ · server:lint ✓ · build ✓ (46 chunk, check-dist ✓) · test ✓ (48 / 834) · server:test ✓ (40 / 447).
+- **smoke ლოკალურად** — `npm run build && npm run smoke:local` (production build + `node server/index.js` NODE_ENV=production + MongoDB 8.0 memory + ყალბი S3; `server:migrate` → `server:create-admin` → მოწვევით რედაქტორი): **9 / 9 ✓ ორჯერ ზედიზედ, CSP-ის დარღვევა 0**.
+- **სრული აუდიტი production build-ზე და რეალურ API-ზე** — `npm run audit` (`local-prod.mjs --seed --mail-dir` → `audit.py`; Chromium 153.0.8010.12, axe-core 4.14.0, ფერის კონტრასტით): **479 გაშვება — WCAG-ის დარღვევა 0, incomplete 0, CSP-ის დარღვევა 0, ჰორიზონტალური სქროლი 0**:
+
+| ნაწილი | გაშვება | დარღვევა / incomplete / CSP | შენიშვნა |
+|---|---|---|---|
+| axe — 15 საჯარო როუტი × 3 თემა × 1440 / 390 + `/__kit` | 92 | 0 / 0 / 0 | სერვერის HTML, CSP-ით |
+| admin — 32 მდგომარეობა (შესვლა, რეგისტრაცია, შეცდომები, დაფა, სიები, რედაქტორი + ბლოკერი, გადახედვა, ბიბლიოთეკა, პარამეტრები, 403, 404) × 3 × 2 | 189 | 6 best-practice / 0 / 0 | გახსნილი compact-მენიუ (390): `landmark-one-main` / `page-has-heading-one` — `main` განზრახ `inert`-ია (F4 / F8-ის იგივე გამონაკლისი); WCAG — 0 |
+| en — 14 `/en` როუტი + ადმინის 6 × 3 × 2 | 120 | 0 / 0 / 0 | `<html lang="en">` ყველგან |
+| youtube — `/videos`, `/en/videos`, რედაქტორი (ცარიელი / ბმულით + VTT რეალურ საცავში), facade, ჩართული × 3 × 2 | 36 | 0 / 0 / 0 | facade: iframe 0, API-ის სკრიპტი არ არის; ჩართული: `tabindex="-1"`, `strict-origin-when-cross-origin`, K / C ✓; iframe-ის `frame-tested` გამორთულია (გარე origin) |
+| forms — კონტაქტი კლავიატურით, გამოწერა → წერილის ბმული → დადასტურება → გამოყენებული → გაუქმება × 3 × 2 | 36 | 0 / 0 / 0 | CAPTCHA 0; ფოკუსი „შეტყობინება მიღებულია“-ზე |
+| media — native ფლეიერი ფაილით (dev, mock — წარმოებაში არ არის) × 3 × 2 | 6 | 0 / 0 / 0 | ავტოდაკვრა არა, სუბტიტრი, AD, ტრანსკრიპტი, fullscreen ✓ |
+| keyboard — 9 გვერდი × 1440 / 390 + ადმინის 3 × 2 | 24 | რგოლის გარეშე 0, დაფარული 0, < 24px 0 | სლაიდერი / სერია / ვიდეო ✓ |
+| motion / reflow / placeholders / bundle | — | reduce → 0s; ჰორიზ. სქროლი 0 | `/__kit` 200%-ზე სქროლავს (dev, §9 #19 — უცვლელი) |
+
+- ქსელი: ახალი დომენი არ დასჭირდა (`playwright` 1.63.0 npm-იდან, Chromium — უკვე sandbox-ში).
+
+### აუდიტის აღმოჩენები (გასწორებულია)
+
+1. **რედაქტორი: ავტოშენახვა ↔ გამოქვეყნება — 409.** გამოქვეყნების `persist` ავტოშენახვის მიმდინარე PATCH-ს არ ელოდებოდა — ორივე ერთი `version`-ით მიდიოდა → კონფლიქტის დიალოგი. mock-ში დაყოვნება 0-ია და რბოლა არ ჩანდა; რეალურ API-ზე აუდიტის ვიდეოს გამოქვეყნება ჩავარდა. გასწორება: `EntityEditor`-ის `exclusive()` — ჩაწერები რიგშია (ავტოშენახვა, გამოქვეყნება, მონახაზად შენახვა). რეგრესიის ტესტი (`editor.test.jsx`, mock 200 მწმ დაყოვნებით): ძველ კოდზე **ვარდება**, ახალზე გადის.
+2. **ვერსიების ცარიელი სია** (`<ol role="list">` შვილის გარეშე — ახალი მასალა ისტორიის გარეშე / ჩატვირთვამდე) → axe incomplete `aria-required-children`. ახლა — შენიშვნა „ვერსიები პირველი შენახვის შემდეგ გამოჩნდება“.
+3. **აუდიტის media ნაწილი F10-ის შემდეგ მოძველებული იყო** (ინექცია `youtube`-ს და `poster`-ს არ ითვალისწინებდა — native ფლეიერი აღარ იხატებოდა) — გასწორდა.
+
+### SEO — გადაწყვეტილება: სერვერის meta, prerender / SSR-ის გარეშე
+
+სერვერი `index.html`-ში ჩასვამს `<html lang>`, `<title>`, description, `og:*` (`og:image` — ყდა / YouTube-ის კადრი), canonical, hreflang (ka / en / x-default) და robots-ს; უცნობი გზა / slug → **რეალური 404** (SPA თავის 404-ს ხატავს). HTML JS-ის გარეშეც შეიცავს სწორ ენას, სათაურს და ალტერნატივებს; გვერდის შიგთავსს React ხატავს. **დასაბუთება:** (1) კონტენტი ადმინიდან ნებისმიერ დროს ქვეყნდება — build-ის დროის SSG ძველდება, გამოქვეყნებაზე ხელახალი აწყობა კი ცალკე ინფრასტრუქტურაა; (2) SSR React-ის, router-ის მონაცემის, თემის ჩატვირთვისა და i18n-ის სერვერზე გადატანაა — ახალი რისკი hydration-ზე და CSP-ზე; (3) Google და Bing JS-ს ხატავენ (robots.txt `/api`-ს არ ბლოკავს), სოციალური ბარათისთვის `og:*` საკმარისია. SSR — ღია საკითხი, Search Console-ის მონაცემით. თარგმანის გარეშე მასალას en-ის ალტერნატივა არ აქვს და `/en/…`-ის canonical ქართულზეა (დუბლიკატი); sitemap.xml — იგივე წესით.
+
+### header → მნიშვნელობა → რატომ
+
+| header | მნიშვნელობა | რატომ |
+|---|---|---|
+| `Content-Security-Policy` (HTML) | `default-src 'self'; script-src 'self' 'sha256-[mc-boot]' https://www.youtube.com; style-src 'self'; img-src 'self' data: https://i.ytimg.com; font-src 'self'; connect-src 'self'; media-src 'self'; frame-src https://www.youtube-nocookie.com; manifest-src 'self'; worker-src 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'` | inline — მხოლოდ mc-boot (hash `dist/index.html`-იდან გაშვებისას); YouTube — §10; შრიფტები self-hosted; `data:` — ორბიტის SVG mask; TipTap-ის `injectCSS` გათიშულია |
+| `Content-Security-Policy` (API / ფაილი) | `default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'` / + `sandbox` | JSON და ფაილი გვერდად არ სრულდება (B1 / B5) |
+| `Permissions-Policy` | `accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), browsing-topics=(), autoplay=(self "https://www.youtube-nocookie.com"), encrypted-media=(…), picture-in-picture=(…), fullscreen=(self)` | საიტს ეს API-ები არ სჭირდება; YouTube-ის iframe — მხოლოდ დაკვრა |
+| `X-Robots-Tag` | `noindex, nofollow` — `/admin*`, `/en/admin*`, `/api/*`, `/subscribe/*`, 404; `SITE_INDEXING=off` — ყველა პასუხი | ადმინი / staging საძიებოში არ ხვდება; robots.txt `/admin`-ს არ ასახელებს (§10) |
+| `Strict-Transport-Security` | `max-age=31536000` | ASVS 3.4.1; `includeSubDomains` — დომენის შემდეგ |
+| `Referrer-Policy` | `strict-origin-when-cross-origin` | YouTube-ის ჩაშენება (F10) |
+| `Cache-Control` | `/assets/*` — `public, max-age=31536000, immutable`; HTML — `no-cache`; `favicon.svg` — `public, max-age=0, must-revalidate` + ETag; robots / sitemap — `public, max-age=3600`; API — B6-ის წესი | hash-იანი ფაილი არ იცვლება; HTML კონტენტზეა დამოკიდებული |
+| `Content-Encoding` / `Vary` | `br` / `gzip` (გაშვებისას შეკუმშული, 1.70 → 0.58 MB br) | Render-ის proxy-ზე დამოუკიდებლად |
+
+### env ცვლადი → სად → მაგალითი (ახალი B7-ში; სრული — `docs/deploy.md` §2)
+
+| env | სად | მაგალითი |
+|---|---|---|
+| `TRUST_PROXY` | Render (production — სავალდებულო, ≥ 1) | `1` · Cloudflare-ით `2` |
+| `MAIL_TRANSPORT` | Render | `log` (დომენამდე) → `resend` |
+| `RESEND_API_KEY` | Render, საიდუმლო (`resend`-ზე სავალდებულო) | `re_[…]` |
+| `MAIL_FROM` | Render (`resend`-ზე სავალდებულო) | `no-reply@[დომენი]` |
+| `SITE_DIR` | — (production-ის ნაგულისხმევი `dist/`) | `[საქაღალდე]` |
+| `SITE_INDEXING` | Render | `off` (staging) · `on` (დომენი) |
+| `MIGRATE_ON_START` | Render (Free / Fly.io) | `0` · `1` |
+| `VITE_MOCK` | მხოლოდ დემო build-ი | `1` |
+| `BASE_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD` | smoke-ის გამშვების ტერმინალი | `https://[სერვისი]`, `[ელფოსტა]`, `[პაროლი]` |
+
+### შექმნილი ფაილები
+
+- `src/content/seo.js` (+ `seo.test.js`) — `SITE_PAGES`, `ADMIN_PATH` (routes.jsx-იდან), `NOT_FOUND_TITLE`, `itemPath`, `matchSitePage`, `metaDescription`.
+- `src/admin/api/pages.js` — `PAGE_DEFS`, `basePageItem` (mock-ისა და წარმოების საბაზისო ჩანაწერების ერთი წესი).
+- `server/site/{files,headers,meta,sitemap}.js`; `server/routes/site.js`.
+- `server/db/{base,backup}.js`; `server/scripts/{backup,restore}.js`.
+- `server/test/site/site.test.js`; `server/test/deploy/{base,backup,mail-resend,check-dist}.test.js`; `server/test/fixtures/site/` (index.html, assets, favicon, `.vite/manifest.json`).
+- `scripts/{dist-rules,local-prod,smoke}.mjs`.
+- `render.yaml`, `.node-version`, `docs/deploy.md`.
+
+### შეცვლილი ფაილები (ერთი წინადადებით)
+
+- `vite.config.js` — `backendDefines` (build → `/api/v1`, `/api/admin`; `VITE_MOCK=1` / `--mode api`) და `mc-chunk-modules` (`.vite/modules.json`).
+- `scripts/check-dist.mjs` — B7-ის წესი: mock არცერთ chunk-ში, HTTP adapter-ები bundle-შია.
+- `scripts/audit.py` — production build + რეალური API (`local-prod.mjs`-ის შვილობილი), ანგარიშები env-იდან, დემო-მონახაზები ადმინის API-ით, axe `evaluate`-ით (CSP), CSP-ის დარღვევის აღრიცხვა, media-ს ინექციის გასწორება.
+- `package.json` — `dev:api`, `prod:local`, `smoke`, `smoke:local`, `audit` (რეალურ API-ზე), `server:backup`, `server:restore`; devDependency `playwright` 1.63.0.
+- `src/main.jsx` — სერვერის hreflang-ის დუბლიკატი იშლება (React-ის `AlternateLinks` რჩება).
+- `src/routes.jsx` — `ADMIN_PATH` `seo.js`-იდან; `src/admin/__tests__/api.test.js` — იმპორტი.
+- `src/admin/api/mock.js` — გვერდები `pages.js`-ით (შედეგი უცვლელია); `adminAdapter.js`, `src/content/adapter.js` — დოკუმენტაცია (წარმოება API-ზეა).
+- `src/admin/editor/EntityEditor.jsx` — ჩაწერის რიგი (`exclusive`), ცარიელი ვერსიების სიის ნაცვლად შენიშვნა; `RichTextEditor.jsx` — `injectCSS: false`; `editor.css` — ProseMirror-ის წესები (gapcursor ციმციმის გარეშე).
+- `src/admin/__tests__/editor.test.jsx` — რბოლის რეგრესიის ტესტი.
+- `server/config.js` — `TRUST_PROXY` (production ≥ 1), `resend` + `RESEND_API_KEY`, `SITE_DIR`, `SITE_INDEXING`, `MIGRATE_ON_START`, `DEFAULT_SITE_DIR`.
+- `server/app.js` — build-ის ჩატვირთვა (`site`), `registerSite`; `server/lib/security.js` — `Permissions-Policy`, noindex `SITE_INDEXING=off`-ზე.
+- `server/main.js` — `MIGRATE_ON_START`, `startup` / `migrate` ლოგი, დაუჭერელი შეცდომა → fatal + გაჩერება კოდით 1, `SiteError`.
+- `server/mail/index.js` — Resend-ის გადამცემი (`resendPayload`, `MailError`, `SENDER_NAME`).
+- `server/db/seed.js` — ხელუხლებელ საბაზისო ჩანაწერებს ცვლის; `server/scripts/migrate.js` — `prepareDatabase` (+ საბაზისო); `db-cli.js` — `BackupError`.
+- `server/.env.example` — B7-ის ცვლადები; `.gitignore` / `.prettierignore` / `eslint.config.js` — `.audit-mail`, `smoke-failure.png`.
+- ტესტები: `config.test.js` (B7-ის წესები), `boot.test.js` (საიტი, `MIGRATE_ON_START`, build-ის გარეშე → exit 1), `db/seed.test.js` (migrate-ის საბაზისო ხაზი), `media/library.test.js` (staging-ზე media-ც noindex), `helpers.js` (`SITE_FIXTURE`, `FAKE_PRODUCTION_ENV` + `TRUST_PROXY` / `SITE_DIR`).
+- `CLAUDE.md` — რუკა + „კოდის კონვენციები (B7)“; `docs/project-context.md` — §9, §10, §12.
+
+### საჯარო API
+
+**frontend:**
+- `@/content/seo.js`: `SITE_PAGES` (`{ path, title, description?, item?, query?, index?, sitemap? }`), `ADMIN_PATH`, `NOT_FOUND_TITLE`, `itemPath(collection, slug)`, `matchSitePage(pathname) → { page, slug } | null`, `metaDescription(text, max = 200)`.
+- `@/admin/api/pages.js`: `PAGE_DEFS`, `basePageItem(page, { publishedAt, team?, partners? })`.
+- `vite.config.js`: `backendDefines({ command, mode, env })`, `PRODUCTION_API`; `scripts/dist-rules.mjs`: `mockLeaks({ modules, texts })`, `MOCK_MODULES`, `MOCK_MARKERS`, `API_MODULES`.
+- npm: `dev:api`, `prod:local`, `smoke`, `smoke:local`, `audit`.
+
+**server:**
+- `site/files.js`: `loadSite(dir) → { template, scriptHashes, files }`, `siteFile`, `sendFile`, `pickEncoding`, `inlineScriptHashes`, `ASSET_CACHE`, `FILE_CACHE`, `HTML_CACHE`, `SiteError`.
+- `site/headers.js`: `siteCsp({ scriptHashes })`, `PERMISSIONS_POLICY`, `NOINDEX`; `site/meta.js`: `resolveMeta({ pathname, searchParams, origin, indexing, findItem, onError })`, `renderIndex(template, meta)`, `escapeHtml`; `site/sitemap.js`: `sitemapXml({ origin, listItems })`, `robotsTxt({ origin, indexing })`, `SITEMAP_CACHE`.
+- `routes/site.js`: `registerSite(app, { site })` — `GET /`, `/*`, `/assets/*`, `/robots.txt`, `/sitemap.xml`; `buildApp({ site })`, `app.site`.
+- `db/base.js`: `ensureBaseRecords(database, { now }) → { pages, settings }`, `prepareDatabase(database, { retention, now })`; `db/backup.js`: `exportDatabase(db, file)`, `importDatabase(database, file, { drop, retention })`, `BACKUP_COLLECTIONS`, `BackupError`.
+- `mail/index.js`: `createMailer(config, { logger, fetch })` — `resend`; `resendPayload(mail)`, `MailError`, `RESEND_ENDPOINT`, `SENDER_NAME`.
+- config: `site: { dir, indexing }`, `migrateOnStart`, `mail.apiKey`.
+- npm: `server:backup [-- --out ფაილი]`, `server:restore -- --in ფაილი --confirm <MONGODB_DB> [--drop]`.
+
+### გადახვევები prompt-იდან, §12-იდან და B0-იდან
+
+1. **`@fastify/static` → საკუთარი loader** (`server/site/`): HTML სერვერზე იწყობა (meta, რეალური 404), ფაილები მცირეა (≈ 2 MB, მეხსიერებაში, შეკუმშვით); `@fastify/static`-ის `glob` / `send` ჯაჭვი ≥ 14 დღის წესით ვერ ჩაიკეტება.
+2. **CSP-ში Google Fonts არ არის** (prompt ითხოვდა) — შრიფტები self-hosted-ია (F1, @fontsource): `font-src 'self'`, მესამე მხარის მოთხოვნა არ ემატება.
+3. **„საცავის დომენი“ CSP-ში არ არის** — ფოტო / PDF / VTT `/media/*`-ით იმავე origin-ზეა (B5); `MEDIA_BASE_URL` არ გამოიყენება.
+4. **`upgrade-insecure-requests` არ არის** — ყველა მისამართი ფარდობითია ან https; `http://localhost`-ის production-ზე ის ფაილებს https-ზე გადაიყვანდა.
+5. **prerender / SSG — არა**, სერვერის meta (B0-ის გადაწყვეტილება დადასტურდა — ზემოთ).
+6. **საბაზისო ჩანაწერები `server:migrate`-ის ნაბიჯია, არა დანომრილი მიგრაცია** — `migrate()`-ს dev-ის in-memory seed და ტესტები იძახებენ; seed ხელუხლებელ საბაზისოს ცვლის.
+7. **`TRUST_PROXY` production-ში სავალდებულოა** (B1-ის ნაგულისხმევი 0 Render-ზე ყველა სტუმარს ერთ rate limit-ში აერთიანებდა).
+8. **Atlas Free-ს cloud backup არ აქვს** — B0 / §12-ის „Free — backup ჩართული / ბოლო 4 დღიური“ გასწორდა (Flex — ყოველდღიური, ბოლო 8); დაემატა ლოგიკური `server:backup` / `server:restore` (Render-ის Node-ში `mongodump` არ არის).
+9. **აუდიტის სერვერი `NODE_ENV=development`-ითაა** (bundle — წარმოების `dist/`): production-ში ფოსტა მხოლოდ `resend` / `log`-ია, აუდიტს კი წერილის ბმული სჭირდება (`file`). smoke — `NODE_ENV=production`.
+10. **`/__kit` და native ფლეიერი აუდიტში Vite dev-ზე (mock)** — dev-only-ია და წარმოების bundle-ში განზრახ არ არის.
+11. **axe `evaluate`-ით** (`add_script_tag`-ის ნაცვლად) — CSP inline script-ს სწორად ბლოკავს; YouTube-ის iframe-ზე `frame-tested` გამორთულია.
+12. **Atlas-ის ქსელი** — მხოლოდ Render-ის Outbound დიაპაზონები (არა `0.0.0.0/0`); დიაპაზონი რეგიონში საერთოა და იცვლება — runbook-ში.
+13. **staging-ზე ატვირთული ფაილებიც noindex-ია** (`SITE_INDEXING=off` ყველა პასუხზე) — სურათების ძიებაში არ ხვდება.
+14. **რედაქტორის ჩაწერის რიგი** (frontend-ის ცვლილება backend-ის ნაბიჯში) — აუდიტმა რეალურ API-ზე იპოვა; კონტრაქტი უცვლელია.
+
+### ღია საკითხი → ვინ წყვეტს → ბლოკავს გაშვებას?
+
+| ღია საკითხი | ვინ წყვეტს | ბლოკავს? |
+|---|---|---|
+| ტარიფი: Render Starter + Atlas Flex (≈ $15/თვე) თუ $0 (Render Free / Fly.io + Atlas Free + კვირეული backup) | ორგანიზაცია | **დიახ** |
+| დომენი და რეგისტრატორი (`PUBLIC_ORIGIN`, `SITE_INDEXING=on`, HSTS `includeSubDomains`) | ორგანიზაცია | **დიახ** (production; staging — არა) |
+| Resend: დომენის DNS (SPF / DKIM / DMARC), `no-reply@` | ორგანიზაცია + დეველოპერი | **დიახ** — მანამდე ფორმის წერილი და გამოწერის ბმული არ იგზავნება |
+| რეალური კონტენტი და პარამეტრები (`[…]` საჯაროდ ჩანს) | ორგანიზაცია | **დიახ** |
+| კონფიდენციალურობის პოლიტიკა, შენახვის ვადები (B0 #10), ხელმისაწვდომობის განცხადება | ორგანიზაცია (+ იურისტი) | **დიახ** |
+| RTO / RPO, backup-ის შენახვის ადგილი და ვადა | ორგანიზაცია | არა (runbook-ში ნაგულისხმევი) |
+| SSR / prerender | დეველოპერი, Search Console-ის მიხედვით | არა |
+| Fly.io-ს Dockerfile ($0) | დეველოპერი | მხოლოდ $0 ვარიანტზე |
+| CSP-ის `report-to` endpoint | დეველოპერი | არა |
+| რუკის პროვაიდერი (CSP `frame-src`, cookies) | ორგანიზაცია | არა |
+| YouTube-ის რეალური IFrame API + CSP (sandbox-ში ყალბია) — staging-ზე ხელით / smoke-ის ვიდეოს ნაწილი | დეველოპერი | არა (staging-ის შემოწმება) |
+| ადმინის სიის ღილაკის სახელში ზედმეტი ჰარი („წაშლა : {სათაური}“, `VisuallyHidden`) | დეველოპერი | არა (P3) |
+| პაროლის შეცვლა / აღდგენა, `?invite=` → `#invite=` (§9 #28), newsletter, ბმულის გვერდების დიზაინი | დეველოპერი / დიზაინერი | არა |
+
+### გაშვების checklist
+
+- [ ] ტარიფის გადაწყვეტილება → Atlas (Frankfurt, custom role `mc-app`, Outbound IP-ები, backup) · R2 (private, ერთი bucket-ის token) · Render (`render.yaml`, env — `docs/deploy.md` §2)
+- [ ] პირველი deploy: pre-deploy `server:migrate` ✓, ლოგში `startup` (`site: true`, `storage: r2`), `/api/health` 200
+- [ ] `server:create-admin` (Shell / ლოკალურად), ADMIN_* env-ში არ არის
+- [ ] პარამეტრები — რეალური კონტაქტები; მოწვევა რედაქტორს
+- [ ] `npm run smoke` staging-ზე — 9 / 9 ✓; YouTube-ის ვიდეო ხელით (facade → ჩართვა, სუბტიტრის ზოლი, CSP-ის დარღვევა კონსოლში — 0)
+- [ ] დომენი + TLS → `PUBLIC_ORIGIN`, `SITE_INDEXING=on`; Resend — Verified → `MAIL_TRANSPORT=resend` → კონტაქტის წერილი inbox-შია, SPF / DKIM / DMARC — PASS
+- [ ] smoke production-ზე; Search Console — sitemap; გარე uptime-მონიტორი; Atlas-ის ალერტები
+- [ ] კონფიდენციალურობის პოლიტიკა + ხელმისაწვდომობის განცხადება — ბმული პარამეტრებში
+- [ ] backup-ის პირველი ასლი (`server:backup`) და აღდგენის საცდელი გაშვება ცალკე ბაზაზე
+
+### შემდეგი
+
+Backend-ის აგების გეგმა (§12, B0–B7) დასრულებულია. შემდეგი ნაბიჯები ღია საკითხებიდან: staging-ის გაშვება runbook-ით (მომხმარებელი), შემდეგ — პაროლის შეცვლა / აღდგენა (ASVS 6.2.2 / 6.2.3), newsletter-ის ინსტრუმენტი, რეალური კონტენტი.

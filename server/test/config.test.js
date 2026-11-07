@@ -4,6 +4,7 @@ import {
   ConfigError,
   DEFAULT_MAIL_DIR,
   DEFAULT_MEDIA_DIR,
+  DEFAULT_SITE_DIR,
   ENV_KEYS,
   loadConfig,
 } from '../config.js';
@@ -16,11 +17,15 @@ const R2 = {
   R2_ACCESS_KEY_ID: 'AKIAEXAMPLEKEY12345',
   R2_SECRET_ACCESS_KEY: 'r2-secret-value-for-tests-only',
 };
-/** B6: production-ში სავალდებულო — ფორმის მიმღები, ბმულის origin, გაუქმების საიდუმლო */
+/**
+ * B6: production-ში სავალდებულო — ფორმის მიმღები, ბმულის origin, გაუქმების საიდუმლო;
+ * B7: proxy-ის რაოდენობა (Render — 1)
+ */
 const FORMS = {
   CONTACT_INBOX: 'inbox@example.org',
   PUBLIC_ORIGIN: 'https://example.org',
   SUBSCRIBE_SECRET: 'subscribe-secret-for-tests-0123456789',
+  TRUST_PROXY: '1',
 };
 const MB = 1024 * 1024;
 
@@ -54,9 +59,12 @@ describe('loadConfig', () => {
         dir: DEFAULT_MAIL_DIR,
         inbox: 'inbox@example.invalid',
         from: 'no-reply@example.invalid',
+        apiKey: null,
       },
       publicOrigin: 'http://localhost:5173',
       subscriptions: { secret: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) },
+      site: { dir: null, indexing: false },
+      migrateOnStart: false,
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.mongo)).toBe(true);
@@ -197,6 +205,10 @@ describe('loadConfig', () => {
       'MAIL_FROM',
       'PUBLIC_ORIGIN',
       'SUBSCRIBE_SECRET',
+      'RESEND_API_KEY',
+      'SITE_DIR',
+      'SITE_INDEXING',
+      'MIGRATE_ON_START',
     ]);
     expect(() => loadConfig({ SOMETHING_ELSE: 'x', PATH: '/bin' })).not.toThrow();
   });
@@ -271,5 +283,53 @@ describe('loadConfig', () => {
         ConfigError,
       );
     }
+  });
+
+  it('B7 — TRUST_PROXY ≥ 1, Resend, საიტის build, ინდექსაცია, მიგრაცია გაშვებისას', () => {
+    const production = { NODE_ENV: 'production', MONGODB_URI: URI, ...R2, ...FORMS };
+    const { TRUST_PROXY: _proxy, ...noProxy } = production;
+    expect(() => loadConfig(noProxy)).toThrow(/TRUST_PROXY: სავალდებულოა/);
+    expect(() => loadConfig({ ...production, TRUST_PROXY: '0' })).toThrow(/TRUST_PROXY/);
+    expect(loadConfig({ ...production, TRUST_PROXY: '2' }).trustProxy).toBe(2);
+
+    const config = loadConfig(production);
+    expect(config.site).toEqual({ dir: DEFAULT_SITE_DIR, indexing: false });
+    expect(config.migrateOnStart).toBe(false);
+    expect(DEFAULT_SITE_DIR.replace(/\\/g, '/')).toMatch(/\/dist\/$/);
+    const site = loadConfig({
+      ...production,
+      SITE_DIR: '/srv/build',
+      SITE_INDEXING: 'on',
+      MIGRATE_ON_START: '1',
+    });
+    expect(site.site).toEqual({ dir: '/srv/build', indexing: true });
+    expect(site.migrateOnStart).toBe(true);
+    expect(loadConfig({ NODE_ENV: 'test', SITE_DIR: '/srv/build' }).site.dir).toBe('/srv/build');
+    expect(() => loadConfig({ SITE_INDEXING: 'yes' })).toThrow(/SITE_INDEXING/);
+    expect(() => loadConfig({ MIGRATE_ON_START: 'true' })).toThrow(/MIGRATE_ON_START/);
+
+    // Resend: გასაღები და გამგზავნი სავალდებულოა; გასაღები შეცდომის ტექსტში არ მეორდება
+    expect(() => loadConfig({ ...production, MAIL_TRANSPORT: 'resend' })).toThrow(
+      /RESEND_API_KEY: სავალდებულოა; MAIL_FROM: სავალდებულოა/,
+    );
+    const resend = loadConfig({
+      ...production,
+      MAIL_TRANSPORT: 'resend',
+      RESEND_API_KEY: 're_test_0123456789abcdef',
+      MAIL_FROM: 'no-reply@example.org',
+    });
+    expect(resend.mail).toMatchObject({
+      transport: 'resend',
+      apiKey: 're_test_0123456789abcdef',
+      from: 'no-reply@example.org',
+    });
+    let message = '';
+    try {
+      loadConfig({ ...production, MAIL_TRANSPORT: 'resend', RESEND_API_KEY: 'sk_live_secret' });
+    } catch (error) {
+      message = /** @type {Error} */ (error).message;
+    }
+    expect(message).toMatch(/RESEND_API_KEY: ფორმატი არასწორია/);
+    expect(message).not.toContain('sk_live_secret');
   });
 });

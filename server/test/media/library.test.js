@@ -266,7 +266,9 @@ describe('GET /media/* — მიწოდება', () => {
       'content-disposition': 'inline',
       'content-length': String(file.size),
     });
-    expect(res.headers['x-robots-tag']).toBeUndefined();
+    // B7: `SITE_INDEXING=off` (ნაგულისხმევი — staging / dev) ყველა პასუხს noindex-ს ადებს;
+    // ინდექსაციისას (`on`) ფაილს X-Robots-Tag არ აქვს — `test/site/site.test.js`
+    expect(res.headers['x-robots-tag']).toBe('noindex, nofollow');
     const etag = String(res.headers.etag);
     expect(etag).toMatch(/^".+"$/);
     const again = await ctx.app.inject({ url: file.src, headers: { 'if-none-match': etag } });

@@ -1,4 +1,5 @@
 import { Writable } from 'node:stream';
+import { fileURLToPath } from 'node:url';
 
 import { buildApp } from '../app.js';
 import { loadConfig } from '../config.js';
@@ -14,14 +15,21 @@ export const FAKE_R2_ENV = Object.freeze({
   R2_SECRET_ACCESS_KEY: 'fake-r2-secret-for-tests',
 });
 
+/** B7: frontend-ის build-ის fixture (index.html + assets) — `SITE_DIR`. */
+// `String(import.meta.url)`: jsdom-ის ტესტში Vite `new URL(…, import.meta.url)`-ს asset-ად არ აქცევს (config.js)
+export const SITE_FIXTURE = fileURLToPath(new URL('./fixtures/site/', String(import.meta.url)));
+
 /**
  * B6: production-ის სავალდებულო env (R2 + ფორმები) — სატესტო, ყალბი მნიშვნელობებით.
+ * B7: + `TRUST_PROXY` (წარმოებაში სავალდებულო) და `SITE_DIR` (build — fixture).
  */
 export const FAKE_PRODUCTION_ENV = Object.freeze({
   ...FAKE_R2_ENV,
   CONTACT_INBOX: 'inbox@example.org',
   PUBLIC_ORIGIN: 'https://example.org',
   SUBSCRIBE_SECRET: 'test-subscribe-secret-0123456789abcdef',
+  TRUST_PROXY: '1',
+  SITE_DIR: SITE_FIXTURE,
 });
 
 /**

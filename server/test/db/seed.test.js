@@ -154,11 +154,16 @@ describe('CLI: server:migrate / server:seed', () => {
     expect(first.code, first.stderr).toBe(0);
     expect(first.stdout).toMatch(/001-init · content: შეიქმნა; ინდექსები — 7 შეიქმნა/);
     expect(first.stdout).toMatch(/ცვლილება: 28/);
+    // B7: საბაზისო ჩანაწერები — 7 გვერდი + პარამეტრები (მხოლოდ პირველად)
+    expect(first.stdout).toMatch(
+      /საბაზისო ჩანაწერები: გვერდი \+7 \(home, about, .*\), პარამეტრები \+1/,
+    );
 
     const second = await run('migrate.js', [], env);
     expect(second.code, second.stderr).toBe(0);
     expect(second.stdout).toMatch(/ცვლილება: 0 — ბაზა უკვე განახლებულია/);
     expect(second.stdout).not.toMatch(/შეიქმნა|განახლდა/);
+    expect(second.stdout).toMatch(/გვერდი \+0, პარამეტრები — უკვე არის/);
 
     const seed = await run('seed.js', [], env);
     expect(seed.code, seed.stderr).toBe(0);

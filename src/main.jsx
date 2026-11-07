@@ -16,6 +16,10 @@ import { createRouterOptions, routes } from './routes.jsx';
 const locale = localeFromPath(window.location.pathname);
 setLocale(locale);
 
+// B7: სერვერი `<head>`-ში hreflang-ს JS-ის გარეშე წაკითხვისთვის სვამს (`data-mc-head`); React-ის
+// `AlternateLinks` იგივეს ხატავს და გადასვლისას აახლებს — სერვერის ასლი დუბლიკატი იქნებოდა
+for (const link of document.querySelectorAll('link[rel="alternate"][data-mc-head]')) link.remove();
+
 // ინგლისური ლექსიკონი ცალკე chunk-ია: ქართულ ვერსიაზე არ იტვირთება
 const ready =
   locale === 'en'

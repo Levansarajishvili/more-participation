@@ -7,7 +7,7 @@ import reactRefresh from 'eslint-plugin-react-refresh';
 import globals from 'globals';
 
 export default [
-  { ignores: ['dist', 'dist-api', 'coverage'] },
+  { ignores: ['dist', 'dist-api', 'coverage', '.audit-mail'] },
   js.configs.recommended,
   {
     files: ['**/*.{js,jsx}'],

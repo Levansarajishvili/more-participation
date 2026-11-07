@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 """
-F7: საბოლოო აუდიტი Chromium-ში (Playwright + axe-core).
+F7: საბოლოო აუდიტი Chromium-ში (Playwright + axe-core). B7: production build-ზე და რეალურ API-ზე.
 
-  npm run build && python3 scripts/audit.py [--out audit.json] [--fixtures DIR] [--only axe,keyboard,…]
+  npm run build && npm run audit [-- --only axe,keyboard,…]
+
+`npm run audit` = `node scripts/local-prod.mjs --seed --mail-dir .audit-mail --port 4173 -- python3
+scripts/audit.py --out audit.json`: `dist/` + `node server/index.js` (ერთი სერვისი — API + საიტი, სერვერის
+meta, CSP) + MongoDB (memory) seed-ით + ყალბი S3; ადმინისტრატორი `server:create-admin`-ით, რედაქტორი —
+მოწვევით. მისამართი და ანგარიშები env-იდან (`BASE_URL`, `MC_ADMIN_*`, `MC_EDITOR_*`, `MC_MAIL_DIR`) —
+პაროლი კოდში არ არის. სერვერი `NODE_ENV=development`-ითაა მხოლოდ იმიტომ, რომ წერილი ფაილად ჩაიწეროს
+(`forms`); bundle — წარმოების `dist/` (mock-ის გარეშე, check-dist).
+
+mock-ის ორი დემო-მონახაზი (სტატია ხარვეზებით, ვიდეო id-ისა და სუბტიტრის გარეშე) seed-ში არ არის —
+აუდიტი მათ ადმინის API-ით ქმნის (`prepare_admin_fixtures`). dev-only ნაწილები — `/__kit` და native
+ფლეიერი ფაილით (`media`) — `vite`-ზე (5173, mock): წარმოების bundle-ში ისინი განზრახ არ არის.
+ყოველ გვერდზე `securitypolicyviolation` ითვლება (`csp` — CSP-ის დარღვევა; B7).
 
 წინაპირობა: `pip install playwright` + `python -m playwright install chromium`; axe-core
-node_modules-შია (vitest-axe-ის დამოკიდებულება). სკრიპტი თავად უშვებს `vite preview`-ს (4173, build)
-და `vite`-ს (5173, მხოლოდ /__kit და ფლეიერი ფაილით).
+node_modules-შია (vitest-axe-ის დამოკიდებულება).
 
 ნაწილები:
 - axe     — ყველა როუტი × light / dark / contrast × 1440 / 390 (ფერის კონტრასტით), + ჰორიზ. სქროლი;
@@ -24,19 +35,14 @@ node_modules-შია (vitest-axe-ის დამოკიდებულე�
             1440 / 390; შემდეგ გამოქვეყნება → facade (iframe და API-ის სკრიპტი არ არის) → Enter → ყალბი
             IFrame API (page.route) → სუბტიტრის ზოლი, ფოკუსი, K / C; axe `iframes: false` (შიგთავსი გარეა);
 - forms   — B6: კონტაქტის ფორმა მხოლოდ კლავიატურით (Tab / Space / Enter → დადასტურება, CAPTCHA არ არის),
-            გამოწერა → „შეამოწმე ელფოსტა“, `AUDIT_API`-ით — წერილის ბმული (`MAIL_DIR`-ის ფაილი) →
+            გამოწერა → „შეამოწმე ელფოსტა“ → წერილის ბმული (`MC_MAIL_DIR`-ის ფაილი) →
             დადასტურება → გაუქმება, გამოყენებული ბმული → alert; ყოველ მდგომარეობაზე axe × 3 თემა × 1440 / 390;
 - admin   — F8: ადმინის როუტები (შესვლა / რეგისტრაცია / მდგომარეობები, დაფა, სიები, ანგარიში,
             ძიება, 403, 404, გახსნილი compact-მენიუ) × light / dark / contrast × 1440 / 390 — axe +
             ჰორიზ. სქროლი; Tab-ით გავლა (რგოლი, ხილვადობა, ≥ 24px) შესვლაზე, დაფასა და სიაზე.
-            mock-ის სესია მეხსიერებაშია — შესვლის შემდეგ გადასვლა SPA-ს შიგნით (history API).
+            შესვლა რეალური API-ით (`__Host-` cookie); შემდეგ გადასვლა SPA-ს შიგნით (history API).
 
-B6 — რეალური API (`AUDIT_API=1 npm run audit -- --only axe,en,forms`): სკრიპტი `node server/index.js`-ს
-უშვებს (development, in-memory MongoDB + seed, `MAIL_TRANSPORT=file` დროებით საქაღალდეში,
-`RATE_LIMIT_FORMS_MAX` — აუდიტის მოთხოვნებისთვის), აწყობს build-ს `VITE_CONTENT_API=/api/v1`-ით
-`dist-api/`-ში და 4173-ზე უშვებს `vite preview`-ს (`/api` — proxy სერვერზე). საჯარო გვერდები მონაცემს
-API-დან იღებენ; ადმინი mock-ზე რჩება (`VITE_ADMIN_API` არ არის — B4 / B5-ის აუდიტი ცალკეა); /__kit
-გამოტოვებულია. `AUDIT_THEMES` / `EN_THEMES` / `EN_WIDTHS` — ნაწილ-ნაწილ გაშვებისთვის.
+`AUDIT_THEMES` / `ADMIN_THEMES` / `ADMIN_WIDTHS` / `EN_THEMES` / `EN_WIDTHS` — ნაწილ-ნაწილ გაშვებისთვის.
 
 fixture-ები რეპოში არ ინახება (bundle-ში არ უნდა მოხვდეს): `scripts/audit.py --make-fixtures DIR`
 ffmpeg-ით ქმნის.
@@ -59,8 +65,14 @@ from playwright.sync_api import sync_playwright
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 AXE = ROOT / 'node_modules' / 'axe-core' / 'axe.min.js'
-PREVIEW = 'http://127.0.0.1:4173'
+# B7: production build + რეალური API (`scripts/local-prod.mjs`); dev-only ნაწილები — Vite (mock)
+PREVIEW = os.environ.get('BASE_URL', '').rstrip('/')
 DEV = 'http://127.0.0.1:5173'
+ADMIN = (os.environ.get('MC_ADMIN_EMAIL', ''), os.environ.get('MC_ADMIN_PASSWORD', ''))
+EDITOR = (os.environ.get('MC_EDITOR_EMAIL', ''), os.environ.get('MC_EDITOR_PASSWORD', ''))
+MAIL_DIR = pathlib.Path(os.environ['MC_MAIL_DIR']) if os.environ.get('MC_MAIL_DIR') else None
+# prepare_admin_fixtures(): დემო-მონახაზების id-ები (seed-ში არ არის)
+DEMO = {}
 
 ROUTES = [
     '/',
@@ -177,11 +189,6 @@ def wait_port(port, timeout=40):
     raise RuntimeError(f'port {port} არ გაიხსნა')
 
 
-API = os.environ.get('AUDIT_API', '') not in ('', '0')
-API_PORT = 3308
-MAIL_DIR = pathlib.Path(tempfile.mkdtemp(prefix='mc-audit-mail-')) if API else None
-
-
 def wait_http(url, timeout=180):
     end = time.time() + timeout
     while time.time() < end:
@@ -194,33 +201,21 @@ def wait_http(url, timeout=180):
     raise RuntimeError(f'არ გაიხსნა: {url}')
 
 
-def start_servers():
-    env = {**os.environ, 'BROWSER': 'none'}
+def start_servers(parts):
+    """B7: საიტი და API უკვე მუშაობს (`local-prod.mjs`); აქ მხოლოდ Vite dev (mock) — `/__kit` და
+    native ფლეიერი ფაილით, რომლებიც წარმოების bundle-ში არ არის."""
+    if not PREVIEW or not ADMIN[1] or not EDITOR[1]:
+        raise SystemExit('BASE_URL / MC_ADMIN_* / MC_EDITOR_* არ არის — გაუშვი `npm run audit` '
+                         '(scripts/local-prod.mjs --seed --mail-dir … -- python3 scripts/audit.py)')
+    wait_http(f'{PREVIEW}/api/health')
     procs = []
-    if API:
-        # B6: რეალური API — development, in-memory MongoDB (migrate + seed ავტომატურია), ფოსტა ფაილად
-        server_env = {**os.environ, 'NODE_ENV': 'development', 'HOST': '127.0.0.1', 'PORT': str(API_PORT),
-                      'LOG_LEVEL': 'warn', 'MEDIA_STORAGE': 'memory', 'MAIL_TRANSPORT': 'file',
-                      'MAIL_DIR': str(MAIL_DIR), 'PUBLIC_ORIGIN': PREVIEW, 'RATE_LIMIT_FORMS_MAX': '1000'}
-        procs.append(subprocess.Popen(['node', 'server/index.js'], cwd=ROOT, env=server_env,
-                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-        wait_http(f'http://127.0.0.1:{API_PORT}/api/health')
-        # build `VITE_CONTENT_API`-ით ცალკე საქაღალდეში (`dist-api/`, mock-ის dist რჩება) — HTTP adapter-ის
-        # შტო რეალურ bundle-ში; `vite preview` `/api`-ს სერვერზე გადასცემს (`preview.proxy` = `server.proxy`)
-        web_env = {**env, 'VITE_CONTENT_API': '/api/v1', 'VITE_API_PROXY': f'http://127.0.0.1:{API_PORT}'}
-        subprocess.run(['npx', 'vite', 'build', '--outDir', 'dist-api', '--emptyOutDir'], cwd=ROOT, env=web_env,
-                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        procs.append(subprocess.Popen(['npx', 'vite', 'preview', '--outDir', 'dist-api', '--host', '127.0.0.1',
-                                       '--port', '4173', '--strictPort'],
-                                      cwd=ROOT, env=web_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-        wait_port(4173)
-        return procs
-    procs.append(subprocess.Popen(['npx', 'vite', 'preview', '--host', '127.0.0.1', '--port', '4173', '--strictPort'],
-                                  cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-    procs.append(subprocess.Popen(['npx', 'vite', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], cwd=ROOT, env=env,
-                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
-    wait_port(4173)
-    wait_port(5173)
+    if parts & {'axe', 'reflow', 'media'}:
+        env = {**os.environ, 'BROWSER': 'none'}
+        for key in ('VITE_CONTENT_API', 'VITE_ADMIN_API', 'VITE_MOCK'):
+            env.pop(key, None)
+        procs.append(subprocess.Popen(['npx', 'vite', '--host', '127.0.0.1', '--port', '5173', '--strictPort'],
+                                      cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        wait_port(5173)
     return procs
 
 
@@ -229,9 +224,31 @@ def new_page(browser, width=1440, theme='light', size=100, spacing=False, reduce
                                   reduced_motion='reduce' if reduce else 'no-preference',
                                   color_scheme='dark' if theme == 'dark' else 'light')
     context.add_init_script(PREFS % (size, theme, 'true' if spacing else 'false'))
+    context.add_init_script(CSP_WATCH)
     page = context.new_page()
     page.set_default_timeout(20000)
     return context, page
+
+
+def inject_axe(page):
+    """B7: საიტის CSP inline script-ს (`add_script_tag`) არ უშვებს — axe DevTools-ის პროტოკოლით
+    (`evaluate`) ჩაიტვირთება, რომელსაც გვერდის CSP არ ეხება. CSP-ის დარღვევა ამიტომ არ ჩნდება."""
+    page.evaluate(AXE_SOURCE)
+
+
+AXE_SOURCE = AXE.read_text(encoding='utf-8')
+
+
+# B7: CSP-ის დარღვევა (`securitypolicyviolation`) — ყოველ გვერდზე, სესიის განმავლობაში
+CSP_WATCH = """window.__csp = []; document.addEventListener('securitypolicyviolation',
+  (e) => window.__csp.push(e.violatedDirective + ' ' + (e.blockedURI || 'inline')));"""
+
+
+def csp_of(page):
+    try:
+        return page.evaluate('() => window.__csp ?? []')
+    except Exception:
+        return []
 
 
 def goto(page, path, base=PREVIEW):
@@ -249,11 +266,11 @@ def goto(page, path, base=PREVIEW):
 
 
 def run_axe(page, retries=2):
-    """axe-core გვერდზე. Vite dev (`AUDIT_API`) ახალ დამოკიდებულებას აოპტიმიზებს და გვერდს თავიდან
-    ტვირთავს — ამ დროს კონტექსტი ქრება: ელოდება ჩატვირთვას და ხელახლა ცდის (ლოგში `↻`)."""
+    """axe-core გვერდზე (+ B7: CSP-ის დარღვევები). Vite dev (`/__kit`) ახალ დამოკიდებულებას აოპტიმიზებს და
+    გვერდს თავიდან ტვირთავს — ამ დროს კონტექსტი ქრება: ელოდება ჩატვირთვას და ხელახლა ცდის (ლოგში `↻`)."""
     for attempt in range(retries + 1):
         try:
-            return _run_axe(page)
+            return {**_run_axe(page), 'csp': csp_of(page)}
         except Exception as error:
             if 'Execution context was destroyed' not in str(error) or attempt == retries:
                 raise
@@ -265,7 +282,7 @@ def run_axe(page, retries=2):
 
 def _run_axe(page):
     if not page.evaluate('() => !!window.axe'):
-        page.add_script_tag(path=str(AXE))
+        inject_axe(page)
     return page.evaluate("""async () => {
       const r = await axe.run(document, { resultTypes: ['violations', 'incomplete'] });
       const pick = (list) => list.map((v) => ({ id: v.id, impact: v.impact,
@@ -290,8 +307,8 @@ def audit_axe(browser, report):
                 rows.append({'path': path, 'theme': theme, 'width': width, **result,
                              'scroll': overflow['scroll']})
                 context.close()
-    # /__kit — dev-ში (build-ში არ არის); API-ის რეჟიმში dev-სერვერი არ ეშვება (ნაკრები mock-ზეა)
-    for theme in [] if API else ['light']:
+    # /__kit — dev-ში (build-ში არ არის; Vite, mock)
+    for theme in ['light']:
         for width in WIDTHS:
             context, page = new_page(browser, width, theme)
             goto(page, '/__kit', DEV)
@@ -323,12 +340,13 @@ ADMIN_ROUTES = [
     '/admin/search?q=%E1%83%9B%E1%83%9D%E1%83%9C%E1%83%90%E1%83%AE%E1%83%90%E1%83%96%E1%83%98',
     '/admin/users',
     '/admin/ar-arsebuli',
-    # ნაწილი ბ: რედაქტორი (mock-ის id-ები დეტერმინისტულია: a-017 / v-007 — მონახაზები ხარვეზებით,
-    # p-002 — „ჩვენ შესახებ“ გუნდითა და პარტნიორებით), გადახედვა, ბიბლიოთეკა, პარამეტრები
-    '/admin/articles/a-017',
+    # ნაწილი ბ: რედაქტორი (seed-ის id-ები mock-ისაა: a-001 …; `{article}` / `{video}` — დემო-მონახაზები
+    # ხარვეზებით, `prepare_admin_fixtures`; p-002 — „ჩვენ შესახებ“ გუნდითა და პარტნიორებით), გადახედვა,
+    # ბიბლიოთეკა, პარამეტრები
+    '/admin/articles/{article}',
     '/admin/articles/new',
     '/admin/news/n-001',
-    '/admin/videos/v-007',
+    '/admin/videos/{video}',
     '/admin/series/s-001',
     '/admin/events/e-001',
     '/admin/pages/p-002',
@@ -384,11 +402,13 @@ def admin_ready(page):
     page.wait_for_timeout(300)
 
 
-def admin_login(page, email='admin@example.org'):
+def admin_login(page, account=ADMIN):
+    """რეალური შესვლა (B7): ანგარიში env-იდან (`local-prod.mjs`), cookie — `__Host-mc-session`."""
+    email, password = account
     page.goto(PREVIEW + '/admin/login')
     page.wait_for_selector('#login-email')
     page.fill('#login-email', email)
-    page.fill('#login-password', 'mc-dev-password')
+    page.fill('#login-password', password)
     page.click('#auth-panel-login button[type=submit]')
     page.wait_for_selector('.mc-admin')
     admin_ready(page)
@@ -437,16 +457,16 @@ def audit_admin(browser, report):
                          'scroll': page.evaluate(OVERFLOW)['scroll']})
 
             admin_login(page)
-            for path in ADMIN_ROUTES:
+            for path in [p.format(**DEMO) for p in ADMIN_ROUTES]:
                 admin_nav(page, path)
                 print(f'  admin {path} {theme} {width}', file=sys.stderr, flush=True)
                 rows.append({'path': path, 'theme': theme, 'width': width, **axe_admin(page),
                              'scroll': page.evaluate(OVERFLOW)['scroll']})
             # რედაქტორი: გამოქვეყნება ბლოკერით → შეცდომების ჯამი
-            admin_nav(page, '/admin/articles/a-017')
+            admin_nav(page, f"/admin/articles/{DEMO['article']}")
             page.click('.mc-editor__aside .mc-btn--cta')
             page.wait_for_selector('.mc-error-summary')
-            rows.append({'path': '/admin/articles/a-017 [გამოქვეყნების ბლოკერი]', 'theme': theme, 'width': width,
+            rows.append({'path': '/admin/articles/{article} [გამოქვეყნების ბლოკერი]', 'theme': theme, 'width': width,
                          **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
             if width == 390:
                 admin_nav(page, '/admin')
@@ -457,7 +477,7 @@ def audit_admin(browser, report):
             context.close()
             # რედაქტორი: 403 /admin/users-ზე
             context, page = new_page(browser, width, theme)
-            admin_login(page, 'editor@example.org')
+            admin_login(page, EDITOR)
             admin_nav(page, '/admin/users')
             rows.append({'path': '/admin/users [რედაქტორი → 403]', 'theme': theme, 'width': width,
                          **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
@@ -484,6 +504,68 @@ def audit_admin(browser, report):
     report['admin'] = {'axe': rows, 'keyboard': keyboard}
 
 
+# ───────────────────────────────────────────────────────────────── დემო-მონახაზები (B7)
+def tbilisi_iso(days):
+    """mock-ის `tbilisi(now, days)`: თარიღი Asia/Tbilisi-ით, 10:00."""
+    import datetime
+    tz = datetime.timezone(datetime.timedelta(hours=4))
+    day = (datetime.datetime.now(tz) + datetime.timedelta(days=days)).date()
+    return f'{day.isoformat()}T10:00:00+04:00'
+
+
+# mock-ის `adminState`-ის მონახაზი ხარვეზებით (alt, სათაურების რიგი, „აქ“-ბმული) — seed-ში არ შედის
+DEMO_ARTICLE = {
+    'slug': 'akhali-statia-monakhazi',
+    'title': '[სტატიის სათაური — მონახაზი]',
+    'excerpt': '[მოკლე აღწერა: ერთი-ორი წინადადება, რომელიც ბარათზე და ძიებაში ჩანს]',
+    'category': 'career',
+    'cover': {'src': None, 'alt': '', 'ratio': '3:2'},
+    'author': '[ავტორის სახელი გვარი]',
+    'status': 'draft',
+    'featured': False,
+    'body': [
+        {'type': 'h3', 'text': '[ქვესათაური]'},
+        {'type': 'p', 'content': [
+            {'type': 'text', 'text': '[ტექსტის აბზაცი — დაწვრილებით '},
+            {'type': 'link', 'text': 'აქ', 'href': '/articles'},
+            {'type': 'text', 'text': ']'},
+        ]},
+    ],
+    'audio': None,
+    'readingMinutes': 1,
+}
+DEMO_VIDEOS = 1 + len(THEMES) * len(WIDTHS)
+
+
+def prepare_admin_fixtures(browser):
+    """seed-ში არ არსებული დემო-მონახაზები ადმინის API-ით (`POST /api/admin/content/{type}`):
+    სტატია ხარვეზებით და ვიდეოები id-ისა და სუბტიტრის გარეშე (პირველი ვიდეოს ასლი — mock-ის იგივე
+    წესი); YouTube-ის ნაწილისთვის თითო თემასა და სიგანეზე ცალკე ვიდეო (გამოქვეყნება მდგომარეობას ცვლის)."""
+    context, page = new_page(browser)
+    admin_login(page)
+    token = next(c['value'] for c in context.cookies() if c['name'] == '__Host-mc-csrf')
+    headers = {'x-csrf-token': token, 'content-type': 'application/json'}
+
+    def create(kind, item):
+        res = context.request.post(f'{PREVIEW}/api/admin/content/{kind}', headers=headers,
+                                   data=json.dumps(item, ensure_ascii=False))
+        if not res.ok:
+            raise RuntimeError(f'{kind}: HTTP {res.status} {res.text()[:200]}')
+        return res.json()['id']
+
+    DEMO['article'] = create('articles', {**DEMO_ARTICLE, 'publishedAt': tbilisi_iso(7)})
+    first = context.request.get(f'{PREVIEW}/api/admin/items/v-001').json()['item']
+    videos = []
+    for n in range(DEMO_VIDEOS):
+        slug = 'akhali-video-monakhazi' if n == 0 else f'akhali-video-monakhazi-{n}'
+        item = {**first, 'slug': slug, 'title': '[ვიდეოს სათაური — მონახაზი]', 'status': 'draft',
+                'featured': False, 'youtube': {'id': ''}, 'captions': []}
+        videos.append({'id': create('videos', item), 'slug': slug})
+    DEMO['video'] = videos[0]['id']
+    DEMO['videos'] = videos
+    context.close()
+
+
 # ───────────────────────────────────────────────────────────────── en (F9)
 EN_PUBLIC = ['/en' + (p if p != '/' else '') for p in ROUTES if p != '/ar-arsebuli']
 EN_ADMIN = ['/en/admin', '/en/admin/articles', '/en/admin/articles/a-002', '/en/admin/settings', '/en/admin/media']
@@ -507,8 +589,8 @@ def audit_en(browser, report):
             rows.append({'path': '/en/admin/login', 'theme': theme, 'width': width, **axe_admin(page),
                          'scroll': page.evaluate(OVERFLOW)['scroll'],
                          'lang': page.evaluate('document.documentElement.lang')})
-            page.fill('#login-email', 'admin@example.org')
-            page.fill('#login-password', 'mc-dev-password')
+            page.fill('#login-email', ADMIN[0])
+            page.fill('#login-password', ADMIN[1])
             page.click('#auth-panel-login button[type=submit]')
             page.wait_for_selector('.mc-admin')
             admin_ready(page)
@@ -579,7 +661,7 @@ def audit_forms(browser, report):
             page.wait_for_function("() => /@/.test(document.querySelector('.mc-subscribe__status')?.textContent ?? '')")
             check_state(page, rows, '/news → შეამოწმე ელფოსტა', theme, width)
 
-            if API:
+            if MAIL_DIR:
                 link = latest_mail('subscribe-confirm', after)
                 page.goto(link)
                 page.wait_for_function(READY)
@@ -605,7 +687,7 @@ def audit_forms(browser, report):
                 flow.append({'step': 'subscribe', 'theme': theme, 'width': width,
                              'confirmLink': link.split('#')[0], 'unsubscribeLink': welcome.split('#')[0]})
             context.close()
-    report['forms'] = {'api': API, 'axe': rows, 'flow': flow}
+    report['forms'] = {'api': True, 'axe': rows, 'flow': flow}
 
 
 # ───────────────────────────────────────────────────────────────── keyboard
@@ -731,7 +813,10 @@ INJECT = """async () => {
   const { setContentAdapter } = await import('/src/content/adapter.js');
   const { createMockAdapter } = await import('/src/content/mock/index.js');
   const base = createMockAdapter();
-  const files = (v) => ({ ...v,
+  // F10-დან კონტენტის ვიდეო YouTube-ზეა — native ობიექტი (`sources`, `youtube`-ის გარეშე) მხოლოდ აქ
+  // (`resolveSource`: `sources` და არა `youtube` → nativeSource)
+  const files = ({ youtube, ...v }) => ({ ...v,
+    poster: { src: null, alt: '', ratio: '16:9' },
     sources: [{ src: '/__fixtures/video.webm', type: 'video/webm' }],
     captions: v.captions.map((c) => ({ ...c, src: '/__fixtures/captions.vtt' })),
     audioDescription: { ...v.audioDescription, src: '/__fixtures/ad.webm' },
@@ -962,7 +1047,7 @@ YT_FAKE_EMBED = '<!doctype html><html lang="en"><head><title>[YouTube embed]</ti
 YT_FAKE_THUMB = ('<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720">'
                  '<rect width="1280" height="720" fill="#0A1D38"/></svg>')
 YT_TEST_ID = 'TestVideo01'
-YT_TEST_AD = 'TestVideoAD'
+YT_TEST_AD = 'TestVidAD00'
 YT_VTT = 'WEBVTT\n\n00:00:00.500 --> 00:00:06.000\n[სუბტიტრი: პირველი ფრაზა]\n\n00:00:06.000 --> 00:00:12.000\n[სუბტიტრი: მეორე ფრაზა]\n'
 
 
@@ -986,26 +1071,27 @@ def youtube_routes(context, log):
 def run_axe_no_frames(page):
     """axe ჩვენს გვერდზე; iframe-ის შიგთავსი გარეა (YouTube) — `iframes: false`."""
     if not page.evaluate('() => !!window.axe'):
-        page.add_script_tag(path=str(AXE))
+        inject_axe(page)
     return page.evaluate("""async () => {
-      const r = await axe.run(document, { iframes: false, resultTypes: ['violations', 'incomplete'] });
+      // frame-tested — „axe iframe-შიც გაეშვა?“ (დაფარვის შემოწმება, არა WCAG-ის წესი): YouTube-ის iframe
+      // გარე origin-ია და ჩვენი კონტროლის მიღმაა
+      const r = await axe.run(document, { iframes: false, rules: { 'frame-tested': { enabled: false } },
+        resultTypes: ['violations', 'incomplete'] });
       const pick = (list) => list.map((v) => ({ id: v.id, impact: v.impact, nodes: v.nodes.length,
         targets: v.nodes.slice(0, 3).map((n) => n.target.join(' ')) }));
       return { violations: pick(r.violations), incomplete: pick(r.incomplete) };
-    }""")
+    }""") | {'csp': csp_of(page)}
 
 
-def open_video_editor(page):
-    admin_login(page, 'editor@example.org')
-    admin_nav(page, '/admin/videos')
-    page.click('a:has-text("[ვიდეოს სათაური — მონახაზი]")')
-    page.wait_for_selector('.mc-editor__grid')
-    admin_ready(page)
+def open_video_editor(page, video):
+    admin_login(page, EDITOR)
+    admin_nav(page, f"/admin/videos/{video}")
 
 
-def fill_youtube(page):
-    page.fill('#f-youtube-id', f'https://youtu.be/{YT_TEST_ID}?t=4')
-    page.fill('#f-youtube-adId', f'https://www.youtube.com/watch?v={YT_TEST_AD}')
+def fill_youtube(page, n=0):
+    # B7: რეალურ API-ზე ვიდეოები ერთ ბაზაშია — id თითოეულზე სხვაა (გამოყენებული id-ის გაფრთხილების გარეშე)
+    page.fill('#f-youtube-id', f'https://youtu.be/{YT_TEST_ID[:-2]}{n:02d}?t=4')
+    page.fill('#f-youtube-adId', f'https://www.youtube.com/watch?v={YT_TEST_AD[:-2]}{n:02d}')
     page.set_input_files('#f-captions input[type=file]',
                          files=[{'name': 'ka.vtt', 'mimeType': 'text/vtt', 'buffer': YT_VTT.encode('utf-8')}])
     page.wait_for_selector('text=ფაილი ატვირთულია')
@@ -1014,7 +1100,7 @@ def fill_youtube(page):
 
 def audit_youtube(browser, report):
     rows = []
-    # 1. /videos, /en/videos — mock (id-ის ჩანაცვლება): ჩანაცვლების ჩარჩო, ჩართვა aria-disabled
+    # 1. /videos, /en/videos — seed (id-ის ჩანაცვლება): ჩანაცვლების ჩარჩო, ჩართვა aria-disabled
     for path in ['/videos', '/en/videos']:
         for theme in THEMES:
             for width in WIDTHS:
@@ -1023,28 +1109,39 @@ def audit_youtube(browser, report):
                 youtube_routes(context, log)
                 goto(page, path)
                 print(f'  youtube {path} {theme} {width}', file=sys.stderr, flush=True)
-                rows.append({'path': path, 'state': 'mock', 'theme': theme, 'width': width, **run_axe(page),
+                rows.append({'path': path, 'state': 'seed', 'theme': theme, 'width': width, **run_axe(page),
                              'scroll': page.evaluate(OVERFLOW)['scroll'], 'youtubeRequests': len(log)})
                 context.close()
     # 2. ვიდეოს რედაქტორი — ბმული ჩასმული (id + კადრი), VTT ატვირთული; 3. გამოქვეყნება → facade → ჩართვა
+    n = 0
     for theme in THEMES:
         for width in WIDTHS:
+            n += 1
+            demo = DEMO['videos'][n]
             context, page = new_page(browser, width, theme)
             log = []
             youtube_routes(context, log)
             print(f'  youtube editor {theme} {width}', file=sys.stderr, flush=True)
-            open_video_editor(page)
+            api_log = []
+            page.on('response', lambda r: api_log.append(f'{r.request.method} {r.url.split("/api/")[-1]} {r.status}')
+                    if '/api/admin/' in r.url and r.status >= 400 else None)
+            open_video_editor(page, demo['id'])
             rows.append({'path': '/admin/videos/:id', 'state': 'editor-empty', 'theme': theme, 'width': width,
                          **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll']})
-            fill_youtube(page)
+            fill_youtube(page, n)
             title_before = page.input_value('#f-title')
             rows.append({'path': '/admin/videos/:id', 'state': 'editor-filled', 'theme': theme, 'width': width,
                          **axe_admin(page), 'scroll': page.evaluate(OVERFLOW)['scroll'],
                          'titleUnchanged': page.input_value('#f-title') == title_before,
                          'youtubeRequests': len(log)})
             page.click('button:has-text("გამოქვეყნება")')
-            page.wait_for_selector('text=გამოქვეყნდა', timeout=10000)
-            admin_nav(page, '/videos?video=akhali-video-monakhazi')
+            try:
+                page.wait_for_selector('text=გამოქვეყნდა', timeout=15000)
+            except Exception:
+                # დიაგნოსტიკა: ბლოკერის ჯამი / სერვერის შეცდომა ტექსტად
+                summary = page.locator('.mc-error-summary, .mc-editor__message, [role="alert"]').all_inner_texts()
+                raise RuntimeError(f'ვიდეო არ გამოქვეყნდა: {summary} {api_log}')
+            admin_nav(page, f"/videos?video={demo['slug']}")
             page.wait_for_selector('.mc-player__facade')
             page.wait_for_timeout(300)
             facade = {
@@ -1096,13 +1193,17 @@ def main():
         make_fixtures(fixtures)
     parts = set(args.only.split(','))
     report = {}
-    procs = start_servers()
+    procs = start_servers(parts)
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch(args=['--autoplay-policy=no-user-gesture-required'])
             report['chromium'] = browser.version
             report['axeCore'] = json.loads((AXE.parent / 'package.json').read_text())['version']
-            report['api'] = API
+            report['api'] = True
+            report['base'] = PREVIEW
+            if parts & {'admin', 'youtube'}:
+                prepare_admin_fixtures(browser)
+                report['demo'] = DEMO
             for name, fn in [('axe', audit_axe), ('keyboard', audit_keyboard), ('motion', audit_motion),
                              ('reflow', audit_reflow), ('placeholders', audit_placeholders),
                              ('admin', audit_admin), ('en', audit_en), ('youtube', audit_youtube),

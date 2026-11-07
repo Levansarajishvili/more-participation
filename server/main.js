@@ -3,8 +3,12 @@ import { ConfigError, loadConfig } from './config.js';
 import { connectDb, replicaSetName } from './lib/db.js';
 
 /**
- * სერვერის გაშვება: config → ბაზა → აპი → listen; SIGTERM / SIGINT — მოწესრიგებული გაჩერება
- * (ახალ მოთხოვნას 503, მიმდინარე სრულდება, კავშირები იხურება).
+ * სერვერის გაშვება: config → ბაზა → (B7: `MIGRATE_ON_START` — მიგრაცია + საბაზისო ჩანაწერები) → აპი
+ * (B7: frontend-ის build — `SITE_DIR`) → listen; SIGTERM / SIGINT — მოწესრიგებული გაჩერება (ახალ
+ * მოთხოვნას 503, მიმდინარე სრულდება, კავშირები იხურება). Render-ი SIGTERM-ს ძველ ინსტანციას ტრაფიკის
+ * გადართვიდან 60 წამში უგზავნის და SIGKILL-მდე 30 წამს ელოდება — `SHUTDOWN_TIMEOUT_MS` (10 წმ) ამაში
+ * ეტევა. B7: დაუჭერელი შეცდომა (`uncaughtException` / `unhandledRejection`) → ლოგი (ტიპი, კოდი, stack —
+ * ტექსტისა და მონაცემის გარეშე) და გაჩერება კოდით 1 — ჰოსტინგი სერვისს თავიდან უშვებს.
  */
 
 export const SHUTDOWN_TIMEOUT_MS = 10_000;
@@ -16,8 +20,10 @@ export const SHUTDOWN_TIMEOUT_MS = 10_000;
  */
 export function describeStartupError(error) {
   if (error instanceof ConfigError) return error.message;
-  const e = /** @type {{ name?: string, code?: unknown }} */ (error ?? {});
+  const e = /** @type {{ name?: string, code?: unknown, message?: string }} */ (error ?? {});
   const name = e.name ?? 'Error';
+  // B7: build-ის შეცდომის ტექსტი მნიშვნელობას (გზას) არ შეიცავს
+  if (name === 'SiteError') return String(e.message);
   if (/^Mongo/.test(name))
     return `${name} — ბაზასთან კავშირი ვერ დამყარდა (MONGODB_URI, ქსელი, IP access list)`;
   return e.code ? `${name} (${String(e.code)})` : name;
@@ -40,6 +46,13 @@ export async function main({ env = process.env, signals = true } = {}) {
   }
 
   const database = await connectDb({ uri, dbName: config.mongo.dbName });
+  // B7: pre-deploy-ის გარეშე ჰოსტინგი (Render Free, Fly.io) — `server:migrate`-ის იგივე ნაბიჯები
+  /** @type {Awaited<ReturnType<typeof import('./db/base.js').prepareDatabase>> | null} */
+  let prepared = null;
+  if (!memory && config.migrateOnStart) {
+    const { prepareDatabase } = await import('./db/base.js');
+    prepared = await prepareDatabase(database, { retention: config.retention });
+  }
   // B2: in-memory ბაზა ცარიელია — მიგრაცია + mock-ის seed, რომ dev-ის API მონაცემით გაეშვას
   let seeded = 0;
   if (memory) {
@@ -62,7 +75,15 @@ export async function main({ env = process.env, signals = true } = {}) {
     });
     admin = 'created';
   }
-  const app = await buildApp({ config, db: database.db });
+  /** @type {import('fastify').FastifyInstance} */
+  let app;
+  try {
+    app = await buildApp({ config, db: database.db });
+  } catch (error) {
+    await database.close();
+    await memory?.stop();
+    throw error;
+  }
   app.addHook('onClose', async () => {
     await database.close();
     await memory?.stop();
@@ -79,6 +100,25 @@ export async function main({ env = process.env, signals = true } = {}) {
       );
     } else app.log.info({ admin }, 'in-memory ბაზა: ადმინისტრატორი env-იდან');
   }
+  if (prepared) {
+    const { countChanges } = await import('./migrations/index.js');
+    app.log.info({
+      event: 'migrate',
+      changes: countChanges(prepared.migrations),
+      basePages: prepared.base.pages.length,
+      baseSettings: prepared.base.settings,
+    });
+  }
+  app.log.info({
+    event: 'startup',
+    env: config.env,
+    // Render-ის build-ის commit (არასავალდებულო) — რომელი ვერსია მუშაობს (rollback-ის შემოწმება)
+    commit: env.RENDER_GIT_COMMIT ? env.RENDER_GIT_COMMIT.slice(0, 7) : null,
+    site: Boolean(app.site),
+    indexing: config.site.indexing,
+    mail: config.mail.transport,
+    storage: config.media.storage,
+  });
   const setName = await replicaSetName(database.db);
   if (!setName) app.log.warn('ბაზა replica set არ არის — ტრანზაქციები (B4) ვერ იმუშავებს');
 
@@ -93,12 +133,20 @@ export async function main({ env = process.env, signals = true } = {}) {
       const force = setTimeout(() => process.exit(1), SHUTDOWN_TIMEOUT_MS);
       force.unref();
       app.close().then(
-        () => process.exit(0),
+        () => process.exit(process.exitCode ?? 0),
         () => process.exit(1),
       );
     };
     process.once('SIGTERM', () => shutdown('SIGTERM'));
     process.once('SIGINT', () => shutdown('SIGINT'));
+    /** @param {string} event @returns {(error: unknown) => void} */
+    const crash = (event) => (error) => {
+      app.log.fatal({ event, err: error });
+      process.exitCode = 1;
+      shutdown(event);
+    };
+    process.on('uncaughtException', crash('uncaughtException'));
+    process.on('unhandledRejection', crash('unhandledRejection'));
   }
   return app;
 }

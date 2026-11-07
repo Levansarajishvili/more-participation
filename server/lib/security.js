@@ -2,6 +2,8 @@ import helmet from '@fastify/helmet';
 
 import { ContentError } from '@/content/errors.js';
 
+import { NOINDEX, PERMISSIONS_POLICY } from '../site/headers.js';
+
 /**
  * უსაფრთხოების header-ები და CORS-ის პოლიტიკა (§12, B0 #4, #5).
  *
@@ -19,6 +21,9 @@ import { ContentError } from '@/content/errors.js';
  *   არის, CSRF token არ ითხოვება) ეს ფარავს login CSRF-ისგან.
  * - CSP — API-ს JSON-ისთვის (`default-src 'none'`). საიტის HTML-ის CSP (`YOUTUBE_CSP`) — B7,
  *   სტატიკურ ფაილებთან ერთად.
+ * - B7: `Permissions-Policy` ყველა პასუხზე (`site/headers.js`); `SITE_INDEXING=off` (staging) —
+ *   `X-Robots-Tag: noindex, nofollow` ყველა პასუხზე (HTML, ფაილები, `/media/*`); საიტის HTML-ის CSP —
+ *   `routes/site.js` (helmet-ის API-ის CSP-ს გადაწერს).
  * - `/api/*`: `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`. B6: საჯარო GET-ის წარმატებული
  *   პასუხი (200 / 304) თავის `Cache-Control`-ს თავად წერს (`routes/public.js` — ETag) და აქ არ
  *   იცვლება; შეცდომის პასუხზე (≥ 400) ყოველთვის `no-store`.
@@ -56,8 +61,10 @@ export async function registerSecurity(app) {
 
   app.removeContentTypeParser('text/plain');
 
+  const { indexing } = app.config.site;
   app.addHook('onRequest', async (request, reply) => {
     reply.header('x-request-id', request.id);
+    reply.header('permissions-policy', PERMISSIONS_POLICY);
     if (!UNSAFE_METHODS.has(request.method) || !isApi(request.url)) return;
     const site = request.headers['sec-fetch-site'];
     if (site !== undefined && !ALLOWED_FETCH_SITES.includes(String(site))) {
@@ -70,7 +77,9 @@ export async function registerSecurity(app) {
       if (reply.statusCode >= 400 || !reply.hasHeader('cache-control')) {
         reply.header('cache-control', 'no-store');
       }
-      reply.header('x-robots-tag', 'noindex, nofollow');
+      reply.header('x-robots-tag', NOINDEX);
+    } else if (!indexing) {
+      reply.header('x-robots-tag', NOINDEX);
     }
     return payload;
   });

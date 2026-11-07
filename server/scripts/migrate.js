@@ -1,12 +1,14 @@
 import '../alias.js';
 
 /**
- * `npm run server:migrate` — მიგრაციები რიგით (იდემპოტენტური; განმეორებით გაშვება უსაფრთხოა).
- * deploy-ის წინ (B7) და `MESSAGES_TTL_DAYS`-ის ცვლილების შემდეგ.
+ * `npm run server:migrate` — მიგრაციები რიგით (იდემპოტენტური; განმეორებით გაშვება უსაფრთხოა) და
+ * B7: საბაზისო ჩანაწერები (7 გვერდი + პარამეტრები — მხოლოდ რაც აკლია, `db/base.js`).
+ * deploy-ის წინ (Render-ის pre-deploy) და `MESSAGES_TTL_DAYS`-ის ცვლილების შემდეგ.
  */
 
 const { runCli } = await import('./db-cli.js');
-const { countChanges, migrate } = await import('../migrations/index.js');
+const { countChanges } = await import('../migrations/index.js');
+const { prepareDatabase } = await import('../db/base.js');
 
 /** @type {Record<string, string>} */
 const LABEL = {
@@ -18,7 +20,9 @@ const LABEL = {
 };
 
 await runCli('migrate', async (database, config) => {
-  const results = await migrate(database.db, { retention: config.retention });
+  const { migrations: results, base } = await prepareDatabase(database, {
+    retention: config.retention,
+  });
   for (const { id, reports } of results) {
     for (const report of reports) {
       /** @type {Record<string, number>} */
@@ -35,4 +39,7 @@ await runCli('migrate', async (database, config) => {
   }
   const changes = countChanges(results);
   console.log(changes ? `ცვლილება: ${changes}` : 'ცვლილება: 0 — ბაზა უკვე განახლებულია');
+  console.log(
+    `საბაზისო ჩანაწერები: გვერდი +${base.pages.length}${base.pages.length ? ` (${base.pages.join(', ')})` : ''}, პარამეტრები ${base.settings ? '+1' : '— უკვე არის'}`,
+  );
 });

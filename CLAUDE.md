@@ -95,7 +95,7 @@
 | ESLint | 9.39.5 + jsx-a11y (strict), react, react-hooks, react-refresh, prettier | 10-ზე jsx-a11y-ის peer ჯერ არ არის |
 | ტესტები | Vitest 5.0.x, jsdom 30.1.2, Testing Library, user-event 14.6.7, vitest-axe | `expect.extend(axeMatchers)` setup-ში; კლავიატურა — `userEvent.setup()` |
 
-npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება); B3: `server:create-admin` (პირველი ადმინისტრატორი — `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env-ით ან ტერმინალიდან; ნაგულისხმევი პაროლი არ არსებობს); B5: `audit:media-api` (Chromium, რეალური API). dev-ში `vite` `/api` და `/media`-ს `server:dev`-ზე (3000) აგზავნის — `VITE_ADMIN_API=/api/admin`.
+npm სკრიპტები: `dev`, `build` (+ `postbuild` → `scripts/check-dist.mjs`), `preview`, `lint` (ESLint `--max-warnings=0` + Prettier check — `server/`-იც), `format`, `test`, `test:watch`, `tokens:report`; B1: `server:dev` (`--watch`, `server/.env`), `server:start`, `server:test` (`server/vitest.config.js`), `server:lint`; B2: `server:migrate` (მიგრაციები, იდემპოტენტური), `server:seed` (mock-ის მონაცემი, `-- --reset`; წარმოებაში არ ეშვება); B3: `server:create-admin` (პირველი ადმინისტრატორი — `ADMIN_EMAIL` / `ADMIN_NAME` / `ADMIN_PASSWORD` env-ით ან ტერმინალიდან; ნაგულისხმევი პაროლი არ არსებობს); B5: `audit:media-api` (Chromium, რეალური API). dev-ში `vite` `/api` და `/media`-ს `server:dev`-ზე (3000) აგზავნის — `VITE_ADMIN_API=/api/admin`. B7: `dev:api` (`vite --mode api` — API-ზე, mock-ის გარეშე), `prod:local`, `smoke`, `smoke:local`, `audit` (production build + რეალური API), `server:backup`, `server:restore`; `npm run build` ყოველთვის `/api/v1` / `/api/admin`-ზეა (mock — მხოლოდ dev-სა და ტესტებში).
 
 ## ფოლდერების რუკა
 
@@ -104,10 +104,15 @@ CLAUDE.md                 ეს ფაილი
 docs/
   project-context.md      Context-ის ასლი (ჭეშმარიტების წყარო)
   progress.md             ნაბიჯების შეჯამება
+  deploy.md               B7: runbook — ანგარიშები, env, Atlas / R2 / Resend / Render, პირველი გაშვება,
+                          განახლება, rollback, backup / აღდგენა, როტაცია, მონიტორინგი, header-ები
 index.html                lang="ka", color-scheme meta, inline mc-boot, favicon.svg
+render.yaml               B7: Render Blueprint (Frankfurt, Starter, pre-deploy migrate, /api/health)
+.node-version             B7: Node 22 (Render)
 public/favicon.svg        ლოგოს 16px ვერსია (LogoSynergy)
 scripts/
-  check-dist.mjs          postbuild: mc-boot პირველია, /__kit და validate.js არ არის, შრიფტი არ არის base64
+  check-dist.mjs          postbuild: mc-boot პირველია, /__kit და validate.js არ არის, შრიფტი არ არის base64;
+                          B7: mock არცერთ chunk-ში (`.vite/modules.json` + სტრიქონები), bundle API-ზეა
   contrast-report.mjs     ტოკენების კონტრასტის ცხრილი
   i18n-stub.mjs           en.js-ის სინქრონი ka.js-თან — საიტი და ადმინი (`npm run i18n:stub`; თარგმანს ინარჩუნებს)
   placeholders.mjs        F7: [placeholder]-ები ტიპების მიხედვით (`npm run placeholders`, `--json`)
@@ -118,6 +123,17 @@ scripts/
                           `forms` — ფორმები კლავიატურით, double opt-in წერილის ფაილით (MAIL_DIR)
   audit_media_api.py      B5: `npm run audit:media-api` — მედიის ეკრანები რეალურ API-ზე (server:dev +
                           vite dev, proxy), ატვირთვის ნაკადი, axe × 3 თემა × 1440 / 390
+                          B7: `npm run audit` — წარმოების build-ზე და რეალურ API-ზე (`local-prod.mjs --seed`
+                          -ის შვილობილი პროცესი; ანგარიშები env-იდან; დემო-მონახაზები ადმინის API-ით;
+                          axe-ი `evaluate`-ით — CSP inline-ს არ უშვებს; `csp` — დარღვევები ყოველ გვერდზე);
+                          `/__kit` და native ფლეიერი — Vite dev (mock), წარმოებაში არ არის
+  dist-rules.mjs          B7: `mockLeaks` — mock-ის მოდული / სტრიქონი bundle-ში (check-dist + ტესტი)
+  local-prod.mjs          B7: `npm run prod:local` — dist + node server (production) + MongoDB (memory) +
+                          ყალბი S3 + server:migrate / create-admin / მოწვევით რედაქტორი; `-- <ბრძანება>`
+                          env-ით (BASE_URL, MC_ADMIN_*, MC_EDITOR_*, SMOKE_*); `--seed`, `--mail-dir`
+  smoke.mjs               B7: `npm run smoke` (BASE_URL + SMOKE_EMAIL / SMOKE_PASSWORD) / `smoke:local` —
+                          Playwright: header-ები → შესვლა → სტატია → alt-ის გარეშე 422 → გამოქვეყნება →
+                          ka + en → წაშლა → 404; CSP-ის დარღვევა 0
 src/
   main.jsx                შრიფტები, სტილები, RouterProvider
   routes.jsx              createRoutes() (ყოველ router-ს საკუთარი lazy-ობიექტები), routes, pageRoutes;
@@ -285,11 +301,16 @@ server/                   B1: API — ცალკე package (npm workspace), N
                           რიგით), checkPdf, checkVtt, detectRatio
     dev-db.js             startMemoryReplicaSet (MongoDB 8.0.34) — dev და ტესტი
   routes/health.js        GET /api/health — 200 / 503
+  routes/site.js          B7: frontend-ი იმავე სერვისზე — `/assets/*` (immutable, 404), root-ის ფაილები,
+                          robots.txt, sitemap.xml, SPA fallback სერვერის meta-თი, რეალური 404, CSP, 301
+  site/                   B7: files.js (dist მეხსიერებაში, br / gzip, mc-boot-ის hash), headers.js (siteCsp,
+                          PERMISSIONS_POLICY), meta.js (resolveMeta, renderIndex), sitemap.js (sitemapXml,
+                          robotsTxt)
   routes/public.js        B6: საჯარო GET /api/v1/* (13) — ბაზა → public.js → query.js; ETag +
                           `public, max-age=0, must-revalidate`, If-None-Match → 304
   routes/forms.js         B6: subscribe / subscribe/confirm / subscribe/unsubscribe / contact — forms.js-ის
                           ვალიდაცია, honeypot, rate limit (+ კონტაქტის მისამართი), ფოსტა
-  mail/                   B6: index.js (createMailer: memory | file | log — ლოგში მხოლოდ მოვლენა),
+  mail/                   B6: index.js (createMailer: memory | file | log | B7: resend — ლოგში მხოლოდ მოვლენა),
                           templates.js (დადასტურება / მისასალმებელი ka · en, კონტაქტი — ქართულად)
   routes/auth.js          B3: login, register, logout, me, extendSession
   routes/users.js         B3: listUsers, createInvite, setUserRole, deactivateUser (users.manage)
@@ -318,7 +339,11 @@ server/                   B1: API — ცალკე package (npm workspace), N
                           confirm — findOneAndUpdate ვადით, removeSubscriber)
     index.js              createRepositories → { content, settings, users, sessions, invites, media, forms,
                           snapshot }
-    seed.js               seedSource / seedDatabase (createMockData + adminState-ის გვერდები)
+    seed.js               seedSource / seedDatabase (createMockData + adminState-ის გვერდები); B7: ხელუხლებელ
+                          საბაზისო ჩანაწერებს ცვლის
+    base.js               B7: ensureBaseRecords (7 გვერდი + პარამეტრები, რაც აკლია), prepareDatabase
+                          (migrate + base — `server:migrate`, `MIGRATE_ON_START`)
+    backup.js             B7: exportDatabase / importDatabase (EJSON NDJSON gzip, sessions-ის გარეშე)
   migrations/             B2: ensure.js (იდემპოტენტური DDL), 001-init.js, index.js (migrate, countChanges);
                           B5: 002-version-media-keys.js (`versions.mediaKeys` ძველ ჩანაწერებზე);
                           B6: 003-public-search.js (`searchText` — სტატიის ტექსტი ორივე ენაზე)
@@ -326,6 +351,8 @@ server/                   B1: API — ცალკე package (npm workspace), N
   scripts/migrate.js      B2: `npm run server:migrate`
   scripts/seed.js         B2: `npm run server:seed [-- --reset]`
   scripts/create-admin.js B3: `npm run server:create-admin` (env ან ტერმინალი, ფარული პაროლი)
+  scripts/backup.js       B7: `npm run server:backup [-- --out ფაილი]`
+  scripts/restore.js      B7: `npm run server:restore -- --in ფაილი --confirm <MONGODB_DB> [--drop]`
   scripts/db-cli.js       CLI-ების საერთო: config, კავშირი, შეცდომის ტექსტი საიდუმლოს გარეშე
   vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server); B4: react() + svgr(),
                           `*.test.jsx` (jsdom — ფაილის `@vitest-environment`)
@@ -344,6 +371,9 @@ server/                   B1: API — ცალკე package (npm workspace), N
     ui/                   B4: editor-http.test.jsx — რედაქტორი (jsdom) რეალურ სერვერზე;
                           B5: media-http.test.jsx — მედიის ეკრანი და რედაქტორის ატვირთვა;
                           B6: forms-http.test.jsx — კონტაქტი (კლავიატურით, 429), გამოწერის მთელი გზა
+    site/                 B7: site.test.js — ფაილები, meta, CSP, sitemap / robots, 404, staging noindex
+    deploy/               B7: base, backup, mail-resend, check-dist (vite.config.js + dist-rules)
+    fixtures/site/        B7: build-ის fixture (`SITE_DIR` — FAKE_PRODUCTION_ENV)
     public/               B6: public-env.js (seed-იანი ბაზა, http.js, spec + ქეშის შემოწმება), parity
                           (CONTENT_ + FORM_SCENARIOS mock ↔ HTTP, ka + en), cache (ETag / 304), forms
     media/                B5: fixtures.js (GPS-იანი JPEG / PNG / WebP, PDF, VTT, multipart), upload,
@@ -631,3 +661,14 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **ფოსტა:** მხოლოდ `app.mailer.send(template(...))` — შაბლონი `server/mail/templates.js`-ში (ka / en; კონტაქტი — ქართულად, სათაურში პერსონალური მონაცემი არ არის). ლოგში — `mail.sent` / `mail.stub` / `mail.failed` + შაბლონი; მიმღები, სათაური, ტექსტი, ბმული და შეცდომის ტექსტი — არასოდეს. ტესტში — `MAIL_TRANSPORT=memory` (`app.mailer.outbox`, `failNext`).
 - **parity:** ახალი საჯარო ქცევა — სცენარი `src/content/__tests__/scenarios/content-scenarios.js`-ში (`CONTENT_SCENARIOS` / `FORM_SCENARIOS`, `locales`), `env.note()`-ში სრული პასუხი (შემთხვევითი token / id — არა). frontend — mock-ზე (`adapter.test.js`), სერვერი — ორივეზე (`test/public/parity.test.js`).
 
+## კოდის კონვენციები (B7 — გაშვება)
+
+- **build = API:** `npm run build` mock-ს არ შეიცავს — `vite.config.js`-ის `backendDefines` (`/api/v1`, `/api/admin`); `VITE_MOCK=1` — მხოლოდ დემო build-ი (check-dist მას უარყოფს). mock-ის მოდული საჯარო ან ადმინის chunk-ში → check-dist ✗ (`scripts/dist-rules.mjs`, `.vite/modules.json`). dev-ში API-ით — `npm run dev:api`.
+- **საიტი სერვერზე:** HTML მხოლოდ `routes/site.js`-ით (`resolveMeta` → `renderIndex`); inline script-ი მხოლოდ mc-boot (CSP-ის hash გაშვებისას ითვლება — `index.html`-ში ახალი inline script → CSP-ის ცვლილება და ტესტი). ახალი საჯარო როუტი → `src/content/seo.js`-ის `SITE_PAGES` (სათაური / აღწერა — i18n-ის გასაღები; `seo.test.js` routes.jsx-ს ადარებს); მასალის გვერდი — `item` / `query`.
+- **CSP:** `style-src 'self'` — `<style>` / `style=""` HTML-ში და `setAttribute('style')` აკრძალულია (React-ის `style` prop — CSSOM, დასაშვებია); ბიბლიოთეკის CSS-ის ჩასმა (TipTap `injectCSS`) — გათიშული, წესები CSS ფაილში. ახალი გარე origin (რუკა, ანალიტიკა) → `site/headers.js` + კონფიდენციალურობის პოლიტიკა.
+- **noindex:** ადმინი, API, `/subscribe/*`, 404 — ყოველთვის; `SITE_INDEXING=off` — ყველაფერი. robots.txt `/admin`-ს და `/api`-ს არ ასახელებს.
+- **ცარიელი ბაზა:** საბაზისო ჩანაწერები (`db/base.js`) — მხოლოდ რაც აკლია; ფაქტი `[ფრჩხილებშია]`. seed წარმოებაში არ ეშვება.
+- **რედაქტორის ჩაწერა რიგშია** (`EntityEditor` → `exclusive`): ავტოშენახვა, გამოქვეყნება, მონახაზად შენახვა ერთდროულად არ მიდის (რეალურ API-ზე იმავე `version`-ით → 409). ახალი ჩაწერის ქმედება — `exclusive(() => …)`-ით.
+- **ფოსტა:** production — `resend` ან `log`; Resend — `fetch`, SDK-ის გარეშე, ლოგში სტატუსი, მონაცემი არა.
+- **საიდუმლო:** smoke / audit / local-prod — ანგარიში env-იდან ან შემთხვევითი (გაშვებაზე); პაროლი კოდში, ფაილში და ლოგში არასოდეს. backup-ის ფაილი — `0600`, დაშიფრულად (`docs/deploy.md`).
+- **სერვერზე ცვლილების შემდეგ:** `npm run build && npm run smoke:local` (≈ 1 წთ) — header-ები, cookie, გამოქვეყნების ნაკადი, CSP.

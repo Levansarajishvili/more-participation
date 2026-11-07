@@ -8,9 +8,14 @@
  *    ყველაფერი, რაც entry-დან მიიღწევა (imports + dynamicImports), `src/admin/routes.jsx`-ის
  *    გავლის გარეშე (ის მხოლოდ `patchRoutesOnNavigation`-ით იტვირთება). ადმინის chunk-ში
  *    validate.js-ის წესები დაშვებულია (ჩეკლისტი).
+ * 6. B7: mock წარმოების bundle-ში არ არის — არც საჯარო, არც ადმინის chunk-ში (მოდულები
+ *    `.vite/modules.json`-იდან + სტრიქონები: `createMockData`, `mc-dev-password` …), HTTP adapter-ები
+ *    კი არის (`scripts/dist-rules.mjs`). `VITE_MOCK=1`-ის build აქ ვარდება — deploy-ისთვის არ არის.
  */
-import { readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+
+import { mockLeaks } from './dist-rules.mjs';
 
 const dist = 'dist';
 const html = readFileSync(join(dist, 'index.html'), 'utf8');
@@ -67,6 +72,16 @@ for (const file of publicCss) {
 }
 const adminFiles = scripts.length - [...publicJs].filter((file) => file.endsWith('.js')).length;
 
+// ---- B7: mock წარმოების bundle-ში არ არის
+const modulesFile = join(dist, '.vite', 'modules.json');
+const mockErrors = mockLeaks({
+  modules: existsSync(modulesFile) ? JSON.parse(readFileSync(modulesFile, 'utf8')) : null,
+  texts: Object.fromEntries(
+    scripts.map((file) => [`assets/${file}`, readFileSync(join(dist, 'assets', file), 'utf8')]),
+  ),
+});
+errors.push(...mockErrors.map((error) => `B7: ${error}`));
+
 const styles = assets.filter((file) => file.endsWith('.css'));
 if (styles.some((file) => readFileSync(join(dist, 'assets', file), 'utf8').includes('data:font'))) {
   errors.push('შრიფტი CSS-ში base64-ადაა ჩაწერილი');
@@ -77,5 +92,5 @@ if (errors.length) {
   process.exit(1);
 }
 console.log(
-  `✓ check-dist: mc-boot პირველია, /__kit არ არის, საჯარო ${publicJs.size} chunk-ში ადმინი / TipTap / validate-ის ანგარიში არ არის; ადმინის chunk — ${adminFiles}; სულ ${scripts.length} JS chunk`,
+  `✓ check-dist: mc-boot პირველია, /__kit არ არის, საჯარო ${publicJs.size} chunk-ში ადმინი / TipTap / validate-ის ანგარიში არ არის; ადმინის chunk — ${adminFiles}; სულ ${scripts.length} JS chunk; mock არცერთ chunk-ში არ არის (მოდულები + სტრიქონები), bundle API-ზეა (/api/v1, /api/admin)`,
 );

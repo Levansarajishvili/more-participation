@@ -3,8 +3,10 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { axe } from 'vitest-axe';
 
 import { setContentAdapter } from '@/content/adapter.js';
+import { createMockAdapter, createMockStore } from '@/content/mock/index.js';
 
 import { setAdminAdapter } from '../api/adminAdapter.js';
+import { createMockAdminAdapter } from '../api/mock.js';
 import { setAutosaveDelay } from '../editor/autosave.js';
 
 import { AXE, renderAdmin, setupAdmin, signInDirect } from './admin-helpers.jsx';
@@ -165,6 +167,39 @@ describe('რედაქტორი: შენახვა', () => {
     expect(
       screen.getByText(/^ავტომატურად შეინახა \d\d:\d\d · ავტორი: \[სახელი გვარი 2\]$/),
     ).toBeInTheDocument();
+  });
+
+  it('B7: გამოქვეყნება ავტოშენახვის მიმდინარე მოთხოვნას ელოდება — 409 არ არის (ქსელის დაყოვნებით)', async () => {
+    // რეალურ API-ზე ავტოშენახვის PATCH და გამოქვეყნების persist ერთი ვერსიით ერთდროულად მიდიოდა → 409
+    setAutosaveDelay(20);
+    const store = createMockStore();
+    setContentAdapter(createMockAdapter({ store }));
+    const admin = createMockAdminAdapter({ store, delay: 200 });
+    setAdminAdapter(admin);
+    signInDirect(admin, 'editor');
+    // მონახაზი (ავტოშენახვა ვერსიას ზრდის; გამოქვეყნებულზე მხოლოდ სამუშაო ასლი იწერება) ბლოკერის გარეშე
+    const source = store.records('articles').find((r) => r.item.status === 'published');
+    const record = store.insert('articles', {
+      ...structuredClone(source?.item),
+      slug: 'b7-autosave-race',
+      status: 'draft',
+      featured: false,
+    });
+    const { user } = renderAdmin(`/admin/articles/${record.id}`);
+    await screen.findByRole('heading', { level: 2, name: 'გამოქვეყნება' }, { timeout: 8000 });
+    const title = screen.getByRole('textbox', { name: /^სათაური/ });
+    await user.type(title, ' B7');
+    // ავტოშენახვა დაიწყო (20 მწმ) და ჯერ არ დასრულებულა (200 მწმ) — გამოქვეყნება ახლავე
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    await user.click(screen.getByRole('button', { name: 'გამოქვეყნება' }));
+    expect(
+      await screen.findByText('გამოქვეყნდა — საიტზე უკვე ჩანს.', {}, { timeout: 5000 }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'მასალა სხვამ შეცვალა' })).toBeNull();
+    expect(store.find('articles', record.id)?.item).toMatchObject({
+      status: 'published',
+      title: expect.stringMatching(/ B7$/),
+    });
   });
 
   it('შეუნახავი ცვლილებით გასვლა → დიალოგი; „დარჩენა“ ეკრანზე ტოვებს, „შენახვა და გასვლა“ ინახავს', async () => {

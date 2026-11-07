@@ -1,6 +1,7 @@
 import RootLayout from '@/components/layout/RootLayout.jsx';
 import RootError from '@/pages/RootError.jsx';
 import RouteError from '@/pages/RouteError.jsx';
+import { ADMIN_PATH } from '@/content/seo.js';
 import { stripLocale } from '@/i18n/locale.js';
 
 /**
@@ -118,9 +119,6 @@ export function createRoutes() {
     },
   ];
 }
-
-/** ადმინის მისამართი: `/admin`, `/admin/…`, `/admin?…` (არა `/administration`). */
-export const ADMIN_PATH = /^\/admin(?:[/?#]|$)/;
 
 /**
  * router-ის პარამეტრები: ადმინის როუტების lazy discovery (React Router `patchRoutesOnNavigation`).

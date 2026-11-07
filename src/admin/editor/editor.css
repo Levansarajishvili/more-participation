@@ -274,6 +274,52 @@
     border-style: solid;
     border-color: var(--mc-ink);
   }
+  /* B7: ProseMirror-ის საბაზისო წესები (TipTap-ის `injectCSS` გათიშულია — CSP `style-src 'self'`).
+     gapcursor არ ციმციმებს — თავისით მოძრავი არაფერი (CLAUDE.md, მოძრაობა). */
+  .ProseMirror {
+    position: relative;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    white-space: break-spaces;
+    font-variant-ligatures: none;
+    font-feature-settings: 'liga' 0;
+  }
+  .ProseMirror [contenteditable='false'] {
+    white-space: normal;
+  }
+  .ProseMirror [contenteditable='false'] [contenteditable='true'] {
+    white-space: pre-wrap;
+  }
+  img.ProseMirror-separator {
+    display: inline !important;
+    width: 0 !important;
+    height: 0 !important;
+    margin: 0 !important;
+    border: none !important;
+  }
+  .ProseMirror-gapcursor {
+    position: absolute;
+    display: none;
+    margin: 0;
+    pointer-events: none;
+  }
+  .ProseMirror-gapcursor::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    display: block;
+    width: 20px;
+    border-top: 2px solid currentColor;
+  }
+  .ProseMirror-focused .ProseMirror-gapcursor {
+    display: block;
+  }
+  .ProseMirror-hideselection *::selection {
+    background: transparent;
+  }
+  .ProseMirror-hideselection * {
+    caret-color: transparent;
+  }
   .mc-rte__card {
     padding: 0.75rem 1rem;
     border: 2px solid var(--mc-line);

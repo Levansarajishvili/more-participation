@@ -1,8 +1,8 @@
 import { normalizeError } from '@/content/errors.js';
 
 /**
- * ადმინის ერთადერთი შესასვლელი backend-თან (F8). Backend / CMS ჯერ არჩეული არ არის — UI მხოლოდ
- * ამ ფუნქციებს იძახებს, უკან კი ახლა mock დგას (`mock.js`, საჯარო საიტის საერთო საცავით).
+ * ადმინის ერთადერთი შესასვლელი backend-თან (F8). UI მხოლოდ ამ ფუნქციებს იძახებს; უკან — HTTP adapter-ი
+ * (B3–B7, წარმოება) ან dev-ში mock (`mock.js`, საჯარო საიტის საერთო საცავით).
  * `VITE_ADMIN_API` (URL) → HTTP adapter-ი (`http.js`): სესია httpOnly cookie-შია
  * (`credentials: 'include'`) + CSRF header; token localStorage-ში არასოდეს ინახება.
  *
@@ -191,8 +191,8 @@ function loadDefault() {
       createHttpAdminAdapter({ baseUrl: api }),
     );
   }
-  // TODO(backend): CMS-მდე mock წარმოებაშიც მუშაობს — სატესტო ანგარიშით. რეალურ გაშვებამდე
-  // VITE_ADMIN_API აუცილებელია (project-context §9.4).
+  // B7: production build-ში `VITE_ADMIN_API` ყოველთვის არის (`/api/admin`, vite.config.js) — ეს შტო
+  // და mock-ის chunk bundle-ში არ ხვდება (check-dist); mock — მხოლოდ dev-სა და ტესტებში
   return import('./mock.js').then(({ createMockAdminAdapter }) =>
     createMockAdminAdapter({
       delay: import.meta.env.MODE === 'development' ? DEV_DELAY : 0,

@@ -16,7 +16,9 @@ import { registerMediaRoutes } from './routes/media.js';
 import { registerFormRoutes } from './routes/forms.js';
 import { registerPublicRoutes } from './routes/public.js';
 import { registerSettingsRoutes } from './routes/settings.js';
+import { registerSite } from './routes/site.js';
 import { registerUsersRoutes } from './routes/users.js';
+import { loadSite } from './site/files.js';
 import { createMailer } from './mail/index.js';
 import { createStorage } from './storage/index.js';
 
@@ -28,6 +30,8 @@ import { createStorage } from './storage/index.js';
  * (`storage/index.js`). B6: საჯარო API `/api/v1/*` (`routes/public.js`) — ETag + მოკლე ქეში;
  * ფორმები (`routes/forms.js`) — გამოწერა double opt-in-ით, კონტაქტი; ელფოსტა — `app.mailer`.
  * ყოველი route `route(app, spec, operationId, handler)`-ით — guard-ს ავტომატურად იღებს.
+ * B7: frontend-ის build იმავე სერვისზე (`routes/site.js`) — `config.site.dir` (production: `dist/`):
+ * `/assets/*`, SPA fallback სერვერის meta-თი და რეალური 404-ით, `robots.txt`, `sitemap.xml`.
  */
 
 /** @typedef {import('./config.js').Config} Config */
@@ -43,6 +47,8 @@ import { createStorage } from './storage/index.js';
  * @property {() => number} [now]  საათი (სესია, მოწვევა, rate limit); ტესტში — მართვადი
  * @property {import('./storage/index.js').Storage} [storage]  B5: ნაგულისხმევი — `config.media`-დან
  * @property {import('./mail/index.js').Mailer} [mailer]  B6: ნაგულისხმევი — `config.mail`-დან
+ * @property {import('./site/files.js').Site | null} [site]  B7: ნაგულისხმევი — `config.site.dir`-იდან
+ *   (null — საიტს სერვერი არ ემსახურება; dev — Vite)
  */
 
 /**
@@ -58,7 +64,12 @@ export async function buildApp({
   now = Date.now,
   storage = createStorage(config.media, { now }),
   mailer,
+  site,
 }) {
+  // B7: build-ი ჯერ — `index.html`-ის გარეშე სერვისი არ ეშვება (SiteError)
+  const siteBuild =
+    site === undefined ? (config.site.dir ? await loadSite(config.site.dir) : null) : site;
+
   const app = Fastify({
     logger: loggerOptions({
       level: config.logLevel,
@@ -103,6 +114,7 @@ export async function buildApp({
   app.decorate('apiRoutes', apiRoutes);
   app.decorate('now', now);
   app.decorate('storage', storage);
+  app.decorate('site', siteBuild);
   // B6: ელფოსტა — ლოგი მხოლოდ მოვლენით (`mail/index.js`)
   app.decorate('mailer', mailer ?? createMailer(config.mail, { logger: app.log }));
   app.decorate(
@@ -138,6 +150,7 @@ export async function buildApp({
   await registerMediaRoutes(app);
   registerUsersRoutes(app);
   registerSettingsRoutes(app);
+  if (siteBuild) registerSite(app, { site: siteBuild });
   if (extend) await extend(app);
   return app;
 }

@@ -1,12 +1,14 @@
 node_modules
 dist
-# B6: audit.py-ის build რეალური API-სთვის (AUDIT_API=1)
-dist-api
+# B7: აუდიტის წერილები (local-prod.mjs --mail-dir)
+.audit-mail
 dist-ssr
 coverage
 *.local
 .DS_Store
 .vite
+# B7: build-ის fixture (სერვერის ტესტი — `.vite/` არ ემსახურება)
+!server/test/fixtures/site/.vite/
 .audit-fixtures
 audit.json
 audit-media-api.json
@@ -21,3 +23,6 @@ __pycache__/
 
 # B6: ელფოსტის file გადამცემი (development)
 server/.mail/
+
+# B7: smoke-ის დიაგნოსტიკა
+smoke-failure.png

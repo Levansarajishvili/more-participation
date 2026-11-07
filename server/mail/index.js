@@ -9,11 +9,31 @@ import { randomBytes } from 'node:crypto';
  * |---|---|---|
  * | `memory` (test) | `mailer.outbox` | მთელი წერილი — ტესტი ბმულს და header-ებს ამოწმებს |
  * | `file` (development) | `MAIL_DIR` (ნაგულისხმევი `server/.mail/`, git / zip-ის გარეთ) | წერილი ტექსტად — dev-ში ბმულის გასახსნელად |
- * | `log` (production-ის stub, B7-მდე) | ლოგი | მხოლოდ `mail.stub` + შაბლონის სახელი — მიმღები, სათაური და ტექსტი **არა** |
+ * | `log` (production-ის stub — დომენამდე, staging) | ლოგი | მხოლოდ `mail.stub` + შაბლონის სახელი — მიმღები, სათაური და ტექსტი **არა** |
+ * | `resend` (production, B7) | Resend-ის HTTP API (`POST /emails`) | — (ლოგში `mail.sent` / `mail.failed` + HTTP სტატუსი) |
  *
- * B7: `resend` (გამგზავნი `no-reply@[დომენი]`, DNS — SPF / DKIM / DMARC) იმავე ინტერფეისით.
+ * B7 — Resend: SDK-ის გარეშე (`fetch`; დამოკიდებულება არ ემატება), `Authorization: Bearer
+ * RESEND_API_KEY` (Sending access, ერთ დომენზე), გამგზავნი `„მეტი ჩართულობა“ <no-reply@[დომენი]>`,
+ * მხოლოდ ტექსტი (HTML არ არის), `reply_to`, `headers` (`List-Unsubscribe`, `Content-Language`),
+ * `User-Agent` (Resend მის გარეშე 403-ს აბრუნებს), ვადა 10 წმ. შეცდომა → `MailError` (სტატუსი — ტექსტი
+ * და მიმღები არა); ფორმის route წერილის ჩავარდნას 500-ად აბრუნებს (B6).
  * ლოგი არასოდეს შეიცავს მიმღებს, სათაურს, ტექსტს ან ბმულს (token) — მხოლოდ მოვლენასა და შაბლონს.
  */
+
+export const RESEND_ENDPOINT = 'https://api.resend.com/emails';
+export const MAIL_TIMEOUT_MS = 10_000;
+const USER_AGENT = 'meti-chartuloba-api';
+/** გამგზავნის სახელი წერილის ენაზე. */
+export const SENDER_NAME = Object.freeze({ ka: 'მეტი ჩართულობა', en: 'More Participation' });
+
+export class MailError extends Error {
+  /** @param {number | null} status  HTTP სტატუსი; null — ქსელი / ვადა */
+  constructor(status) {
+    super(status ? `mail transport: HTTP ${status}` : 'mail transport: network');
+    this.name = 'MailError';
+    this.status = status;
+  }
+}
 
 /**
  * @typedef {object} Mail
@@ -28,7 +48,7 @@ import { randomBytes } from 'node:crypto';
 
 /**
  * @typedef {object} Mailer
- * @property {'log' | 'file' | 'memory'} transport
+ * @property {'log' | 'file' | 'memory' | 'resend'} transport
  * @property {(mail: Mail) => Promise<void>} send
  * @property {(Mail & { from: string })[]} outbox  memory: გაგზავნილი წერილები (სხვა გადამცემზე — ცარიელი)
  * @property {(error: Error | null) => void} failNext  ტესტი: შემდეგი `send` ამ შეცდომით ჩავარდება
@@ -55,15 +75,32 @@ function toText(mail) {
 }
 
 /**
+ * Resend-ის მოთხოვნის სხეული (ტესტი ამოწმებს ველებს).
+ * @param {Mail & { from: string }} mail
+ */
+export function resendPayload(mail) {
+  return {
+    from: `${SENDER_NAME[mail.lang] ?? SENDER_NAME.ka} <${mail.from}>`,
+    to: [mail.to],
+    subject: mail.subject,
+    text: mail.text,
+    ...(mail.replyTo && { reply_to: mail.replyTo }),
+    headers: { 'Content-Language': mail.lang, ...mail.headers },
+  };
+}
+
+/**
  * @param {import('../config.js').MailConfig} config
- * @param {{ logger: { info: (obj: object, msg?: string) => void } }} options
+ * @param {{ logger: { info: (obj: object, msg?: string) => void, warn?: (obj: object, msg?: string) => void }, fetch?: typeof fetch }} options
  * @returns {Mailer}
  */
-export function createMailer(config, { logger }) {
+export function createMailer(config, { logger, fetch: fetchImpl = globalThis.fetch }) {
   /** @type {(Mail & { from: string })[]} */
   const outbox = [];
   /** @type {Error | null} */
   let failure = null;
+  /** @param {object} entry */
+  const warn = (entry) => (logger.warn ? logger.warn(entry) : logger.info(entry));
 
   return {
     transport: config.transport,
@@ -80,6 +117,28 @@ export function createMailer(config, { logger }) {
       const full = { ...mail, from: config.from };
       if (config.transport === 'memory') {
         outbox.push(full);
+      } else if (config.transport === 'resend') {
+        /** @type {Response} */
+        let response;
+        try {
+          response = await fetchImpl(RESEND_ENDPOINT, {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${config.apiKey}`,
+              'content-type': 'application/json',
+              'user-agent': USER_AGENT,
+            },
+            body: JSON.stringify(resendPayload(full)),
+            signal: AbortSignal.timeout(MAIL_TIMEOUT_MS),
+          });
+        } catch {
+          warn({ event: 'mail.failed', template: mail.template, status: null });
+          throw new MailError(null);
+        }
+        if (!response.ok) {
+          warn({ event: 'mail.failed', template: mail.template, status: response.status });
+          throw new MailError(response.status);
+        }
       } else if (config.transport === 'file') {
         await mkdir(config.dir, { recursive: true });
         const name = `${new Date().toISOString().replace(/[:.]/g, '-')}-${mail.template}-${randomBytes(4).toString('hex')}.txt`;

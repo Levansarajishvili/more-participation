@@ -23,7 +23,8 @@ export class CliError extends Error {
  * @returns {string}
  */
 export function describeCliError(error) {
-  if (error instanceof CliError || /** @type {any} */ (error)?.name === 'SeedError') {
+  const name = /** @type {any} */ (error)?.name;
+  if (error instanceof CliError || name === 'SeedError' || name === 'BackupError') {
     return /** @type {Error} */ (error).message;
   }
   if (error instanceof ContentError)
