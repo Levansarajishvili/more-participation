@@ -2,6 +2,7 @@ import { expect } from 'vitest';
 
 import { ContentError, normalizeError } from '@/content/errors.js';
 import { createMockAdapter, createMockStore } from '@/content/mock/index.js';
+import { setLocale } from '@/i18n/locale.js';
 
 import { MOCK_INVITE, MOCK_PASSWORD, createMockAdminAdapter } from '../../api/mock.js';
 import { CONTENT_TYPES } from '../../content-types.js';
@@ -17,7 +18,7 @@ import { schemaFor } from '../../schemas/index.js';
  * id, სათაური, ვერსია, სტატუსი, ავტორი. არა — ახალი მასალის id (`a-004` ↔ `a-<ObjectId>`) და დროის
  * სტრიქონის ფორმა (`+04:00` ↔ `Z`).
  *
- * `step` — ნაბიჯი, რომლიდანაც სცენარი HTTP-ზე მუშაობს (`B3`, `B4a`, `B4b`, `B5`).
+ * `step` — ნაბიჯი, რომლიდანაც სცენარი HTTP-ზე მუშაობს (`B3`, `B4a`, `B4b`, `B5`, `B6`).
  */
 
 /** @typedef {import('../../api/adminAdapter.js').AdminAdapter} AdminAdapter */
@@ -35,7 +36,7 @@ import { schemaFor } from '../../schemas/index.js';
  * @typedef {object} AdminEnv
  * @property {'mock' | 'http'} kind
  * @property {AdminAdapter} admin            შეცდომა — ყოველთვის `ContentError` (`normalizeError`)
- * @property {PublicView} pub                საჯარო ხედი (HTTP-ზე B6-მდე — ბაზის snapshot → mock adapter)
+ * @property {PublicView} pub                საჯარო ხედი (HTTP-ზე — B6-დან რეალური `/api/v1`, `http.js`)
  * @property {(email?: string) => Promise<any>} login
  * @property {(id: string) => Promise<Record<string, any> | null>} item   საცავის item (საიტის წყარო)
  * @property {(type: ContentType, slug: string) => Promise<{ id: string, item: Record<string, any> } | null>} bySlug
@@ -171,7 +172,7 @@ export function mockEnv({ start = Date.now() } = {}) {
 /**
  * @typedef {object} Scenario
  * @property {string} name
- * @property {'B3' | 'B4a' | 'B4b' | 'B5'} step
+ * @property {'B3' | 'B4a' | 'B4b' | 'B5' | 'B6'} step
  * @property {(env: AdminEnv) => Promise<void>} run
  */
 
@@ -802,6 +803,58 @@ export const SCENARIOS = [
       expect(afterSave).toBe('[ახალი სახელი გვარი]');
       expect(saved.issues).toEqual([]);
       env.note(before, afterAutosave, afterSave, saved.version);
+    },
+  },
+  {
+    name: '„ჩვენ შესახებ“: გვერდის ინგლისური თარგმანი (`translations.en.team[i]`) საჯარო გუნდში ჩანს (B6, `orgFromPage`)',
+    step: 'B6',
+    async run(env) {
+      const { admin, pub } = env;
+      await env.login();
+      const about = /** @type {{ id: string }} */ (await env.bySlug('pages', 'about'));
+      const record = await admin.content.get(about.id);
+      const team = record.item.team;
+      expect(team).toHaveLength(8);
+      // რედაქტორის English ჩანართი: ცარიელი სახელი (საკუთარი სახელი არ ითარგმნება), ნახვრეტები
+      const translations = {
+        ...record.item.translations,
+        en: {
+          ...record.item.translations?.en,
+          team: [
+            { name: '', role: '[Director]' },
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            { name: '  ', role: '[Volunteer coordinator]', bio: '' },
+          ],
+        },
+      };
+      const saved = await admin.content.update(
+        about.id,
+        { translations },
+        { version: record.version },
+      );
+      expect(saved.issues).toEqual([]);
+      const ka = await pub.getTeam();
+      setLocale('en');
+      try {
+        const en = await pub.getTeam();
+        // წევრი 0: გვერდის თარგმანი წევრის საკუთარზე ზემოდან (`[Founder]` → `[Director]`), სახელი ქართული
+        expect(en[0]).toMatchObject({ lang: 'en', role: '[Director]', name: team[0].name });
+        // წევრი 1: მხოლოდ საკუთარი თარგმანი (mock-ის მონაცემი); წევრი 3: თარგმანის გარეშე
+        expect(en[1].lang).toBe('en');
+        expect(en[3].lang).toBe('ka');
+        expect(en[7]).toMatchObject({ lang: 'en', role: '[Volunteer coordinator]' });
+        expect(en[7].bio).toBe(team[7].bio);
+        env.note(en.map((m) => [m.lang, m.name, m.role]));
+      } finally {
+        setLocale('ka');
+      }
+      expect(ka.map((m) => m.role)).toEqual(team.map((/** @type {any} */ m) => m.role));
+      env.note(ka.map((m) => [m.lang, m.role]));
     },
   },
   /* ─── B4: ნაწილი ბ — გამოქვეყნება, ძიება, პარამეტრები ─────────────────── */

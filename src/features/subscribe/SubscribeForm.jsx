@@ -4,7 +4,7 @@ import { Button, LiveRegion, TextField } from '@/components/ui/index.js';
 import { cx } from '@/components/ui/utils.js';
 import { subscribe } from '@/content/adapter.js';
 import { normalizeError } from '@/content/errors.js';
-import { validateSubscribe } from '@/content/forms.js';
+import { SUBSCRIBE_CONFIRM_DAYS, validateSubscribe } from '@/content/forms.js';
 import { t } from '@/i18n/index.js';
 
 import './subscribe.css';
@@ -17,6 +17,8 @@ import './subscribe.css';
  * (`noValidate`, `validateSubscribe` — adapter-ის იგივე წესი); შეცდომა ველის ქვემოთ ხატულით და
  * ტექსტით, ფოკუსი ველზე (ერთი ველისთვის ცალკე ჯამი არ ჩნდება); წარმატება — `role="status"`
  * (რეგიონი DOM-ში მუდმივად დგას), ველი სუფთავდება, ფოკუსი ღილაკზე რჩება. CAPTCHA არ არის.
+ * B6 — double opt-in: წარმატება = „შეამოწმე ელფოსტა“ (`subscribe.pending`), დადასტურება —
+ * წერილის ბმულით (`/subscribe/confirm`, `SubscriptionAction`).
  *
  * ფერი: `dark` — ფონი ძირეული თემის `--mc-hero`, შიგთავსი `data-theme="dark"` ქვეხე (#EAF0F7 #0B2545-ზე
  * 13.41:1); `card` — surface + 2px `--mc-card-border`. ღილაკი — CTA (ოქროსფერი მხოლოდ აქ).
@@ -54,7 +56,7 @@ export default function SubscribeForm({ headingId, title, text, tone = 'dark', c
     try {
       await subscribe(value);
       setEmail('');
-      setStatus(t('subscribe.success', { email: value }));
+      setStatus(t('subscribe.pending', { email: value, days: SUBSCRIBE_CONFIRM_DAYS }));
     } catch (raw) {
       const failure = normalizeError(raw);
       setError(failure.fields?.email?.message ?? failure.message);

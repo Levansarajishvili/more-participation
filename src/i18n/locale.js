@@ -45,6 +45,29 @@ export function setLocale(locale) {
   }
 }
 
+/**
+ * B6: ფუნქცია მითითებულ ენაზე — `t()`, `label()`, ველის შეცდომის ტექსტი — და ენის აღდგენა.
+ * მხოლოდ სინქრონული: სერვერი ერთ პროცესში სხვადასხვა ენის მოთხოვნას ემსახურება და `await`-ის
+ * შუაში სხვა მოთხოვნა ენას შეცვლიდა. Promise-ის დაბრუნება → TypeError. `<html lang>`-ს არ ეხება.
+ * @template T
+ * @param {Locale} locale
+ * @param {() => T} fn
+ * @returns {T}
+ */
+export function withLocale(locale, fn) {
+  const previous = current;
+  current = isLocale(locale) ? locale : DEFAULT_LOCALE;
+  try {
+    const result = fn();
+    if (result && typeof (/** @type {any} */ (result).then) === 'function') {
+      throw new TypeError('withLocale: ფუნქცია სინქრონული უნდა იყოს');
+    }
+    return result;
+  } finally {
+    current = previous;
+  }
+}
+
 /** @param {string} pathname @returns {Locale} */
 export function localeFromPath(pathname) {
   return pathname === EN_PREFIX || pathname.startsWith(`${EN_PREFIX}/`) ? 'en' : 'ka';

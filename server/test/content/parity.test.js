@@ -12,9 +12,12 @@ import { httpEnv } from './http-env.js';
  *
  * B5: მედიის სცენარებიც (ატვირთვა multipart-ით, ბიბლიოთეკა, alt ყველგან, 409, წაშლა) —
  * `http-env.js`-ის `media: true` (საცავი — მეხსიერება).
+ *
+ * B6: საჯარო ხედი (`pub`) HTTP-ზე რეალური `/api/v1`-ია (`createHttpContentAdapter`) — ადმინში
+ * გამოქვეყნება / წაშლა / გუნდის თარგმანი საჯარო API-ში მაშინვე ჩანს.
  */
 
-const STEPS = ['B3', 'B4a', 'B4b', 'B5'];
+const STEPS = ['B3', 'B4a', 'B4b', 'B5', 'B6'];
 
 describe('parity: ადმინის სცენარები — mock ↔ HTTP', () => {
   for (const scenario of SCENARIOS.filter((s) => STEPS.includes(s.step))) {

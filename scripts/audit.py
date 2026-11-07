@@ -23,10 +23,20 @@ node_modules-შია (vitest-axe-ის დამოკიდებულე�
 - youtube — F10: `/videos`, `/en/videos` (mock) და ვიდეოს რედაქტორი (ცარიელი / ბმულით + VTT) × 3 თემა ×
             1440 / 390; შემდეგ გამოქვეყნება → facade (iframe და API-ის სკრიპტი არ არის) → Enter → ყალბი
             IFrame API (page.route) → სუბტიტრის ზოლი, ფოკუსი, K / C; axe `iframes: false` (შიგთავსი გარეა);
+- forms   — B6: კონტაქტის ფორმა მხოლოდ კლავიატურით (Tab / Space / Enter → დადასტურება, CAPTCHA არ არის),
+            გამოწერა → „შეამოწმე ელფოსტა“, `AUDIT_API`-ით — წერილის ბმული (`MAIL_DIR`-ის ფაილი) →
+            დადასტურება → გაუქმება, გამოყენებული ბმული → alert; ყოველ მდგომარეობაზე axe × 3 თემა × 1440 / 390;
 - admin   — F8: ადმინის როუტები (შესვლა / რეგისტრაცია / მდგომარეობები, დაფა, სიები, ანგარიში,
             ძიება, 403, 404, გახსნილი compact-მენიუ) × light / dark / contrast × 1440 / 390 — axe +
             ჰორიზ. სქროლი; Tab-ით გავლა (რგოლი, ხილვადობა, ≥ 24px) შესვლაზე, დაფასა და სიაზე.
             mock-ის სესია მეხსიერებაშია — შესვლის შემდეგ გადასვლა SPA-ს შიგნით (history API).
+
+B6 — რეალური API (`AUDIT_API=1 npm run audit -- --only axe,en,forms`): სკრიპტი `node server/index.js`-ს
+უშვებს (development, in-memory MongoDB + seed, `MAIL_TRANSPORT=file` დროებით საქაღალდეში,
+`RATE_LIMIT_FORMS_MAX` — აუდიტის მოთხოვნებისთვის), აწყობს build-ს `VITE_CONTENT_API=/api/v1`-ით
+`dist-api/`-ში და 4173-ზე უშვებს `vite preview`-ს (`/api` — proxy სერვერზე). საჯარო გვერდები მონაცემს
+API-დან იღებენ; ადმინი mock-ზე რჩება (`VITE_ADMIN_API` არ არის — B4 / B5-ის აუდიტი ცალკეა); /__kit
+გამოტოვებულია. `AUDIT_THEMES` / `EN_THEMES` / `EN_WIDTHS` — ნაწილ-ნაწილ გაშვებისთვის.
 
 fixture-ები რეპოში არ ინახება (bundle-ში არ უნდა მოხვდეს): `scripts/audit.py --make-fixtures DIR`
 ffmpeg-ით ქმნის.
@@ -40,6 +50,8 @@ import os
 import pathlib
 import socket
 import subprocess
+import tempfile
+import urllib.request
 import sys
 import time
 
@@ -62,6 +74,10 @@ ROUTES = [
     '/news',
     '/news/tsipruli-unarebis-akademiis-akhali-nakadi-ikhsneba',
     '/contact',
+    # B6: წერილის ბმულის გვერდი — სწორი ფორმის token (ღილაკი), token-ის გარეშე, გაუქმება
+    '/subscribe/confirm#token=' + 'A' * 43,
+    '/subscribe/confirm',
+    '/subscribe/unsubscribe#token=' + '0' * 24 + '.' + 'A' * 43,
     '/ar-arsebuli',
 ]
 PAGES = ['/', '/about', '/articles', '/articles/zrdis-azrovneba-ratom-aris-jer-qvelaze-dzlieri-sitqva',
@@ -161,14 +177,48 @@ def wait_port(port, timeout=40):
     raise RuntimeError(f'port {port} არ გაიხსნა')
 
 
+API = os.environ.get('AUDIT_API', '') not in ('', '0')
+API_PORT = 3308
+MAIL_DIR = pathlib.Path(tempfile.mkdtemp(prefix='mc-audit-mail-')) if API else None
+
+
+def wait_http(url, timeout=180):
+    end = time.time() + timeout
+    while time.time() < end:
+        try:
+            with urllib.request.urlopen(url, timeout=2) as res:
+                if res.status < 500:
+                    return
+        except Exception:
+            time.sleep(0.5)
+    raise RuntimeError(f'არ გაიხსნა: {url}')
+
+
 def start_servers():
     env = {**os.environ, 'BROWSER': 'none'}
-    procs = [
-        subprocess.Popen(['npx', 'vite', 'preview', '--host', '127.0.0.1', '--port', '4173', '--strictPort'], cwd=ROOT, env=env,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
-        subprocess.Popen(['npx', 'vite', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], cwd=ROOT, env=env,
-                         stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL),
-    ]
+    procs = []
+    if API:
+        # B6: რეალური API — development, in-memory MongoDB (migrate + seed ავტომატურია), ფოსტა ფაილად
+        server_env = {**os.environ, 'NODE_ENV': 'development', 'HOST': '127.0.0.1', 'PORT': str(API_PORT),
+                      'LOG_LEVEL': 'warn', 'MEDIA_STORAGE': 'memory', 'MAIL_TRANSPORT': 'file',
+                      'MAIL_DIR': str(MAIL_DIR), 'PUBLIC_ORIGIN': PREVIEW, 'RATE_LIMIT_FORMS_MAX': '1000'}
+        procs.append(subprocess.Popen(['node', 'server/index.js'], cwd=ROOT, env=server_env,
+                                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        wait_http(f'http://127.0.0.1:{API_PORT}/api/health')
+        # build `VITE_CONTENT_API`-ით ცალკე საქაღალდეში (`dist-api/`, mock-ის dist რჩება) — HTTP adapter-ის
+        # შტო რეალურ bundle-ში; `vite preview` `/api`-ს სერვერზე გადასცემს (`preview.proxy` = `server.proxy`)
+        web_env = {**env, 'VITE_CONTENT_API': '/api/v1', 'VITE_API_PROXY': f'http://127.0.0.1:{API_PORT}'}
+        subprocess.run(['npx', 'vite', 'build', '--outDir', 'dist-api', '--emptyOutDir'], cwd=ROOT, env=web_env,
+                       check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        procs.append(subprocess.Popen(['npx', 'vite', 'preview', '--outDir', 'dist-api', '--host', '127.0.0.1',
+                                       '--port', '4173', '--strictPort'],
+                                      cwd=ROOT, env=web_env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+        wait_port(4173)
+        return procs
+    procs.append(subprocess.Popen(['npx', 'vite', 'preview', '--host', '127.0.0.1', '--port', '4173', '--strictPort'],
+                                  cwd=ROOT, env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+    procs.append(subprocess.Popen(['npx', 'vite', '--host', '127.0.0.1', '--port', '5173', '--strictPort'], cwd=ROOT, env=env,
+                                  stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
     wait_port(4173)
     wait_port(5173)
     return procs
@@ -198,7 +248,22 @@ def goto(page, path, base=PREVIEW):
         raise RuntimeError(f'{base}{path}: გვერდი არ ჩაიტვირთა') from error
 
 
-def run_axe(page):
+def run_axe(page, retries=2):
+    """axe-core გვერდზე. Vite dev (`AUDIT_API`) ახალ დამოკიდებულებას აოპტიმიზებს და გვერდს თავიდან
+    ტვირთავს — ამ დროს კონტექსტი ქრება: ელოდება ჩატვირთვას და ხელახლა ცდის (ლოგში `↻`)."""
+    for attempt in range(retries + 1):
+        try:
+            return _run_axe(page)
+        except Exception as error:
+            if 'Execution context was destroyed' not in str(error) or attempt == retries:
+                raise
+            print(f'  ↻ reload {page.url}', file=sys.stderr, flush=True)
+            page.wait_for_load_state('load')
+            page.wait_for_function(READY)
+            page.wait_for_timeout(500)
+
+
+def _run_axe(page):
     if not page.evaluate('() => !!window.axe'):
         page.add_script_tag(path=str(AXE))
     return page.evaluate("""async () => {
@@ -212,9 +277,10 @@ def run_axe(page):
 
 # ───────────────────────────────────────────────────────────────── axe
 def audit_axe(browser, report):
+    themes = [t for t in os.environ.get('AUDIT_THEMES', ','.join(THEMES)).split(',') if t]
     rows = []
     for path in ROUTES:
-        for theme in THEMES:
+        for theme in themes:
             for width in WIDTHS:
                 context, page = new_page(browser, width, theme)
                 goto(page, path)
@@ -224,8 +290,8 @@ def audit_axe(browser, report):
                 rows.append({'path': path, 'theme': theme, 'width': width, **result,
                              'scroll': overflow['scroll']})
                 context.close()
-    # /__kit — dev-ში (build-ში არ არის)
-    for theme in ['light']:
+    # /__kit — dev-ში (build-ში არ არის); API-ის რეჟიმში dev-სერვერი არ ეშვება (ნაკრები mock-ზეა)
+    for theme in [] if API else ['light']:
         for width in WIDTHS:
             context, page = new_page(browser, width, theme)
             goto(page, '/__kit', DEV)
@@ -457,6 +523,89 @@ def audit_en(browser, report):
                              'lang': page.evaluate('document.documentElement.lang')})
             context.close()
     report['en'] = {'axe': rows}
+
+
+# ───────────────────────────────────────────────────────────────── forms (B6)
+def latest_mail(template, after):
+    """`MAIL_DIR`-ის უახლესი წერილი შაბლონით (file გადამცემი) → ბმული (`#token=`)."""
+    end = time.time() + 15
+    while time.time() < end:
+        files = sorted(p for p in MAIL_DIR.glob(f'*-{template}-*.txt') if p.stat().st_mtime_ns > after)
+        if files:
+            text = files[-1].read_text(encoding='utf-8')
+            for line in text.splitlines():
+                if '#token=' in line and line.startswith('http'):
+                    return line.strip()
+        time.sleep(0.2)
+    raise RuntimeError(f'წერილი არ მოვიდა: {template}')
+
+
+def check_state(page, rows, state, theme, width):
+    print(f'  forms {state} {theme} {width}', file=sys.stderr, flush=True)
+    rows.append({'state': state, 'theme': theme, 'width': width, **run_axe(page),
+                 'scroll': page.evaluate(OVERFLOW)['scroll']})
+
+
+def audit_forms(browser, report):
+    themes = [t for t in os.environ.get('AUDIT_THEMES', ','.join(THEMES)).split(',') if t]
+    rows = []
+    flow = []
+    for theme in themes:
+        for width in WIDTHS:
+            context, page = new_page(browser, width, theme)
+            # კონტაქტი — მხოლოდ კლავიატურით: ველზე ფოკუსი, აკრეფა, Tab, Space (თანხმობა), Enter
+            goto(page, '/contact')
+            page.focus('#cf-name')
+            page.keyboard.type('[სახელი გვარი]')
+            page.keyboard.press('Tab')
+            assert page.evaluate('document.activeElement.id') == 'cf-contact', 'Tab: სახელი → კონტაქტი'
+            page.keyboard.type(f'audit-{theme}-{width}@example.org')
+            page.focus('#cf-consent')
+            page.keyboard.press('Space')
+            page.focus('#cf-name')
+            page.keyboard.press('Enter')
+            page.wait_for_selector('.mc-contact-confirm[role="status"]')
+            focused = page.evaluate('document.activeElement.textContent')
+            captcha = page.evaluate("() => /captcha/i.test(document.body.innerHTML)")
+            flow.append({'step': 'contact', 'theme': theme, 'width': width, 'focus': focused, 'captcha': captcha})
+            check_state(page, rows, '/contact → დადასტურება', theme, width)
+
+            # გამოწერა — „შეამოწმე ელფოსტა“
+            goto(page, '/news')
+            after = time.time_ns()
+            email = f'audit-{theme}-{width}@example.org'
+            page.fill('.mc-subscribe input[type="email"]', email)
+            page.keyboard.press('Enter')
+            page.wait_for_function("() => /@/.test(document.querySelector('.mc-subscribe__status')?.textContent ?? '')")
+            check_state(page, rows, '/news → შეამოწმე ელფოსტა', theme, width)
+
+            if API:
+                link = latest_mail('subscribe-confirm', after)
+                page.goto(link)
+                page.wait_for_function(READY)
+                page.wait_for_timeout(250)
+                check_state(page, rows, '/subscribe/confirm (წერილიდან)', theme, width)
+                after = time.time_ns()
+                page.click('.mc-subscription__form button[type="submit"]')
+                page.wait_for_selector('.mc-subscription__done[role="status"]')
+                check_state(page, rows, '/subscribe/confirm → დადასტურდა', theme, width)
+                welcome = latest_mail('subscribe-welcome', after)
+                # იგივე ბმული ხელახლა → გამოყენებულია (alert)
+                page.goto(PREVIEW + '/ar-arsebuli')
+                page.goto(link)
+                page.wait_for_function(READY)
+                page.click('.mc-subscription__form button[type="submit"]')
+                page.wait_for_selector('.mc-subscription__alert[role="alert"]')
+                check_state(page, rows, '/subscribe/confirm → გამოყენებული (alert)', theme, width)
+                page.goto(welcome)
+                page.wait_for_function(READY)
+                page.click('.mc-subscription__form button[type="submit"]')
+                page.wait_for_selector('.mc-subscription__done[role="status"]')
+                check_state(page, rows, '/subscribe/unsubscribe → გაუქმდა', theme, width)
+                flow.append({'step': 'subscribe', 'theme': theme, 'width': width,
+                             'confirmLink': link.split('#')[0], 'unsubscribeLink': welcome.split('#')[0]})
+            context.close()
+    report['forms'] = {'api': API, 'axe': rows, 'flow': flow}
 
 
 # ───────────────────────────────────────────────────────────────── keyboard
@@ -939,7 +1088,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--out', default='audit.json')
     parser.add_argument('--fixtures', default=str(ROOT / '.audit-fixtures'))
-    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin,en,youtube')
+    parser.add_argument('--only', default='axe,keyboard,motion,reflow,placeholders,media,bundle,admin,en,youtube,forms')
     parser.add_argument('--make-fixtures', action='store_true')
     args = parser.parse_args()
     fixtures = pathlib.Path(args.fixtures)
@@ -953,9 +1102,11 @@ def main():
             browser = p.chromium.launch(args=['--autoplay-policy=no-user-gesture-required'])
             report['chromium'] = browser.version
             report['axeCore'] = json.loads((AXE.parent / 'package.json').read_text())['version']
+            report['api'] = API
             for name, fn in [('axe', audit_axe), ('keyboard', audit_keyboard), ('motion', audit_motion),
                              ('reflow', audit_reflow), ('placeholders', audit_placeholders),
-                             ('admin', audit_admin), ('en', audit_en), ('youtube', audit_youtube)]:
+                             ('admin', audit_admin), ('en', audit_en), ('youtube', audit_youtube),
+                             ('forms', audit_forms)]:
                 if name in parts:
                     t0 = time.time()
                     fn(browser, report)

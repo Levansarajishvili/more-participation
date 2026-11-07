@@ -515,7 +515,35 @@ const en = {
     emailLabel: 'Email',
     submit: 'Subscribe',
     submitting: 'Sending…',
-    success: 'Subscription received: {email}.',
+    pending:
+      'Check your email: {email}. Confirm the subscription with the link in it — it works for {days} days.',
+  },
+
+  subscription: {
+    confirmTitle: 'Confirm your subscription',
+    confirmLead: 'One step left: confirm that you want updates at this email address.',
+    confirmAction: 'Confirm',
+    confirmSending: 'Checking…',
+    confirmDoneTitle: 'Subscription confirmed',
+    confirmDoneText:
+      'You will receive updates by email. The welcome email has an unsubscribe link — unsubscribe at any time with one link.',
+    confirmInvalid:
+      'The link has expired or has already been used. Subscribe again — a new link will arrive by email.',
+    unsubscribeTitle: 'Unsubscribe',
+    unsubscribeLead:
+      'After you unsubscribe, update emails will stop. You can subscribe again at any time.',
+    unsubscribeAction: 'Unsubscribe',
+    unsubscribeSending: 'Unsubscribing…',
+    unsubscribeDoneTitle: 'You have unsubscribed',
+    unsubscribeDoneText:
+      'Your email address was removed from the list — you will not receive our emails.',
+    unsubscribeInvalid: 'The link is not valid. Open the unsubscribe link from our latest email.',
+    linkNote: 'The link works for {days} days.',
+    missingToken:
+      'The link is incomplete. Open it from the email or copy it in full — to the end, including “#token=”.',
+    errorTitle: 'Something went wrong',
+    toArticles: 'Go to articles',
+    subscribeAgain: 'Subscribe again',
   },
 
   contact: {

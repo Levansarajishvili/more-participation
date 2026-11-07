@@ -4,6 +4,7 @@ import { checkBlob } from '@/content/files.js';
 import { normalizeEmail } from '@/content/forms.js';
 import { tbilisi } from '@/content/mock/helpers.js';
 import { ID_PREFIX, getSharedMockStore } from '@/content/mock/store.js';
+import { orgFromPage } from '@/content/public.js';
 import { parseCaptions, summarizeCues } from '@/content/vtt.js';
 import { isYouTubeId } from '@/content/youtube.js';
 
@@ -380,10 +381,15 @@ export function createMockAdminAdapter(options = {}) {
     // B5: ბიბლიოთეკის ცვლილება (alt) სამუშაო ასლს ინახავს — სხვა შენახვა მას ამტკიცებს / შლის
     if (working && previous) state.working.set(record.id, { ...previous, item: working });
     else state.working.delete(record.id);
-    // „ჩვენ შესახებ“ გვერდის გუნდი / პარტნიორები საჯარო საიტის საცავშიც იწერება
+    // „ჩვენ შესახებ“ გვერდის გუნდი / პარტნიორები საჯარო საიტის საცავშიც იწერება; B6: გვერდის
+    // ინგლისური თარგმანი (`translations.en.team[i]`) წევრს ერთვის — სერვერის იგივე `orgFromPage`
     const page = /** @type {{ slug?: string, team?: any[], partners?: any[] }} */ (item);
     if (type === 'pages' && page.slug === 'about') {
-      store.setOrg({ team: page.team, partners: page.partners });
+      const { team, partners } = orgFromPage(page);
+      store.setOrg({
+        ...(page.team && { team }),
+        ...(page.partners && { partners }),
+      });
     }
     history.push({
       version: record.meta.version,

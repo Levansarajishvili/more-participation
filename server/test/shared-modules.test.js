@@ -42,6 +42,8 @@ describe('საერთო მოდულები სუფთა Node-შ�
       'youtube',
       'vtt',
       'query',
+      'public',
+      'http',
     ]);
     for (const count of Object.values(result.exports)) expect(count).toBeGreaterThan(0);
     expect(result.missingKey).toBe('does.not.exist');
@@ -54,6 +56,13 @@ describe('საერთო მოდულები სუფთა Node-შ�
     );
     expect(result.captions).toBe(true);
     expect(result.youtube).toBe('dQw4w9WgXcQ');
+    expect(result.b6).toEqual({
+      english: expect.not.stringMatching(/[\u10D0-\u10FF]/),
+      locale: 'ka',
+      team: { role: '[Director]' },
+      article: 1,
+      unsubscribe: true,
+    });
     expect(result.admin).toEqual({
       csrf: ['__Host-mc-csrf', 'X-CSRF-Token'],
       passwordMin: 12,

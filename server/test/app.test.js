@@ -4,9 +4,8 @@ import { ContentError } from '@/content/errors.js';
 import { CONTACT_FIELDS, NAME_MAX } from '@/content/forms.js';
 
 import { connectDb } from '../lib/db.js';
-import { route } from '../lib/openapi.js';
 
-import { FAKE_R2_ENV, captureLogs, makeApp } from './helpers.js';
+import { FAKE_PRODUCTION_ENV, captureLogs, makeApp } from './helpers.js';
 
 const VALID_CONTACT = {
   name: 'ტესტი',
@@ -20,12 +19,11 @@ const VALID_CONTACT = {
 };
 
 /**
- * ტესტის route-ები: შეცდომის handler-ი და spec-ის სქემით ვალიდაცია რეალურ სქემაზე
- * (`sendContact` — B6-ის endpoint-ი, აქ მხოლოდ სქემის შესამოწმებლად, handler-ი ცარიელია).
+ * ტესტის route-ები: შეცდომის handler-ი. სქემით ვალიდაცია — რეალურ `sendContact`-ზე (B6,
+ * `routes/forms.js`); ბაზის გარეშე სწორი სხეული handler-მდე აღწევს და 500-ით მთავრდება.
  * @param {import('fastify').FastifyInstance} app
  */
 function testRoutes(app) {
-  route(app, app.spec, 'sendContact', async () => ({ ok: true, id: 'test' }));
   app.get('/api/test/throw/:code', async (request) => {
     throw new ContentError(/** @type {any} */ (request.params).code);
   });
@@ -162,13 +160,15 @@ describe('შეცდომის handler', () => {
     expect(res.json().code).toBe('not-found');
   });
 
-  it('სწორი სხეული spec-ის სქემით გადის', async () => {
+  it('სწორი სხეული spec-ის სქემით გადის (handler-მდე აღწევს)', async () => {
     const res = await app.inject({
       method: 'POST',
       url: '/api/v1/contact',
       payload: VALID_CONTACT,
     });
-    expect(res.statusCode).toBe(200);
+    // სქემა გაიარა → handler-ი (B6, `routes/forms.js`) ბაზას ითხოვს; აქ ბაზა არ არის → 500
+    expect(res.statusCode).toBe(500);
+    expect(res.json().code).toBe('server');
   });
 
   it('422: სავალდებულო, სიგრძე, ვარიანტი — ველის გზით', async () => {
@@ -224,7 +224,7 @@ describe('ლოგი — პერსონალური მონაცე�
         NODE_ENV: 'production',
         MONGODB_URI: 'mongodb://127.0.0.1:1/x',
         LOG_LEVEL: 'info',
-        ...FAKE_R2_ENV,
+        ...FAKE_PRODUCTION_ENV,
       },
     });
     await app.inject({
@@ -262,7 +262,11 @@ describe('ლოგი — პერსონალური მონაცე�
     expect(Object.keys(requests[0]).sort()).toEqual(
       ['level', 'time', 'service', 'reqId', 'method', 'route', 'statusCode', 'ms', 'msg'].sort(),
     );
-    const failure = logs.lines().find((line) => line.msg === 'request failed');
+    // ბოლო — `/api/test/crash` (კონტაქტის სწორი სხეული ბაზის გარეშე 500-ით მთავრდება — B6)
+    const failure = logs
+      .lines()
+      .filter((line) => line.msg === 'request failed')
+      .at(-1);
     expect(failure?.err).toMatchObject({ type: 'Error', stack: expect.any(Array) });
     expect(failure?.err.detail).toBeUndefined();
   });

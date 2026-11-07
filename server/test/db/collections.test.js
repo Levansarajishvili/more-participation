@@ -68,9 +68,14 @@ describe('მიგრაცია 001-init', () => {
   afterAll(() => database?.drop());
 
   it('პირველი გაშვება: 9 კოლექცია შეიქმნა, validator — strict / error', async () => {
-    // B5: 002 — `versions.mediaKeys` ძველ ჩანაწერებზე (ცარიელ ბაზაზე — არაფერი)
-    expect(first.map((r) => r.id)).toEqual(['001-init', '002-version-media-keys']);
+    // B5: 002 — `versions.mediaKeys` ძველ ჩანაწერებზე; B6: 003 — `searchText` (ცარიელ ბაზაზე — არაფერი)
+    expect(first.map((r) => r.id)).toEqual([
+      '001-init',
+      '002-version-media-keys',
+      '003-public-search',
+    ]);
     expect(first[1].reports).toEqual([{ name: 'versions', collection: 'unchanged', indexes: [] }]);
+    expect(first[2].reports).toEqual([{ name: 'content', collection: 'unchanged', indexes: [] }]);
     expect(first[0].reports.every((r) => r.collection === 'created')).toBe(true);
     const infos = await database.db.listCollections().toArray();
     const names = infos.map((info) => info.name).sort();

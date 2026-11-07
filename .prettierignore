@@ -5,3 +5,4 @@ package-lock.json
 # Context-ის ფაილები სიტყვასიტყვით ინახება
 docs/
 CLAUDE.md
+dist-api

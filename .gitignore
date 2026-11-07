@@ -1,5 +1,7 @@
 node_modules
 dist
+# B6: audit.py-ის build რეალური API-სთვის (AUDIT_API=1)
+dist-api
 dist-ssr
 coverage
 *.local
@@ -16,3 +18,6 @@ audit-media-api.json
 # B5: local საცავი (development)
 server/.media/
 __pycache__/
+
+# B6: ელფოსტის file გადამცემი (development)
+server/.mail/

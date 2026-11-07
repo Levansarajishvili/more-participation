@@ -1946,3 +1946,141 @@ CRUD, ავტოშენახვის სამუშაო ასლი, �
 ### შემდეგი: B6 — საჯარო API და ფორმები
 
 `ContentAdapter`-ის HTTP ვერსია (სიები, ფილტრები, `localize`, საჯარო ძიება `searchText`-ით), კონტაქტი (honeypot, rate limit `forms`, წერილი — fake transport), გამოწერა — double opt-in (`subscribe` → `{ ok, status: 'pending' }`, `confirmSubscription` — კონტრაქტი ორივე მხარეს), cache-header-ები საჯარო GET-ზე, სერვერის შეცდომის ენა მოთხოვნიდან. ფოტო საჯარო პასუხში — `/media/<key>` უკვე same-origin-ია (B5).
+
+## B6 — საჯარო API და ფორმები ✅ (2026-11-07)
+
+**Gate:**
+- frontend — `npm run lint` ✓ (ESLint 0 / 0, Prettier ✓) · `npm test` ✓ (47 ფაილი, **827 / 827**; B5 — 44 / 769) · `npm run build` ✓ + check-dist ✓ (49 JS chunk: საჯარო 34-ში ადმინი / TipTap / validate არ არის, ადმინის — 15). `src/content/http.js` წარმოების bundle-ში **არ ხვდება** (`VITE_CONTENT_API` არ არის — `/api/v1` და `credentials:"omit"` dist-ში არ მოიძებნა). ზომა B5-თან: საჯარო chunk-ები ჯამში +10.4 kB (+3.6 kB gzip; ახალი გვერდები, `public.js`, mock-ის ფორმები, ინგლისური ლექსიკონი), entry +1.0 kB (+0.33 kB gzip — ka.js-ის ახალი სტრიქონები), ადმინი +79 B.
+- server — `npm run server:lint` ✓ · `npm run server:test` ✓ (**35 ფაილი, 410 ტესტი**; B5 — 31 / 327).
+- **zip-ის სუფთა ასლზე** `npm ci` → lint ✓ · server:lint ✓ · build ✓ (49 chunk) · test ✓ (47 / 827) · server:test ✓ (35 / 410).
+- **parity mock ↔ HTTP, ka + en** (`server/test/public/parity.test.js`, seed-იანი memory-server, რეალური სერვერი + `src/content/http.js`): 55 / 55 — frontend-ის კონტენტის 22 სცენარი (`CONTENT_SCENARIOS`: 40 გაშვება) + ფორმის 6 (`FORM_SCENARIOS`: 12) + seed, თვითშემოწმება (ka ≠ en), ძიების ზესიმრავლე (ყოველი საჯარო სტატია თავისი სიტყვით მოიძებნება, ორივე ენაზე). კვალი — **სრული პასუხები** (JSON) და ველის შეცდომის ტექსტი — იდენტურია; HTTP-ის ყოველი მოთხოვნა / პასუხი spec-ს და ქეშის წესს აკმაყოფილებს (0 შენიშვნა). იგივე სცენარები frontend-ზე mock-ით — `src/content/adapter.test.js`.
+- **ადმინის parity** 25 / 25 — `pub` ახლა რეალური `/api/v1`-ია (B6-ის ახალი სცენარი: გვერდის `translations.en.team[i]` საჯარო გუნდში ჩანს — ორივე მხარეს).
+- **ქეში** (`cache.test.js`, 8): `ETag` = sha256, `public, max-age=0, must-revalidate`, `If-None-Match` (სია, `W/`, `*`) → 304 სხეულის გარეშე; ბაზაში ცვლილება / წაშლა და დაგეგმილი დროის დადგომა → მომდევნო მოთხოვნაზე ახალი ETag; 404 / 400 — `no-store`, ETag-ის გარეშე; HEAD; ცარიელი ბაზა.
+- **ფორმები სერვერზე** (`forms.test.js`, 13): წერილი inbox-ზე (სათაური — მხოლოდ თემა, `Reply-To`, სრული ტექსტი + მხარდაჭერა), honeypot → 200 იგივე ფორმით / არაფერი ინახება, დიაგნოზის / უცნობი ველი → 400, TTL, წერილის ჩავარდნა → 500 + ჩანაწერი იშლება, ველის შეცდომა ინგლისურად (422 — სქემაც და `validateContact`-იც), token — მხოლოდ sha256, ვადა 7 დღე, მისასალმებელი წერილი `List-Unsubscribe`-ით, სხვა საიდუმლოთი ხელმოწერილი ბმული → 404, **ოთხივე route-ზე 429 + `Retry-After`** ინგლისური ტექსტით, cross-site → 403, **ლოგი — მხოლოდ მოვლენები** (ელფოსტა, სახელი, ტექსტი, token, IP, შეცდომის ტექსტი — არა).
+- **ფორმები HTTP adapter-ით** (`server/test/ui/forms-http.test.jsx`, jsdom + რეალური სერვერი, 4): კონტაქტი მხოლოდ კლავიატურით → დადასტურება (ფოკუსი სათაურზე) → ბაზა + inbox, axe 0; 429 → `role="alert"`, ტექსტი რჩება; გამოწერა → „შეამოწმე ელფოსტა“ → წერილის ბმული → დადასტურება (ბმულის გახსნა არაფერს ცვლის) → მისასალმებელი წერილი → გაუქმება; ინგლისური ველის შეცდომა და `/en/subscribe/confirm` ბმული.
+- **Chromium 153.0.8010.12 + axe-core 4.14.0 რეალურ API-ზე** — `AUDIT_API=1 npm run audit -- --only axe,en,forms` (`node server/index.js` development / in-memory MongoDB + seed / `MAIL_TRANSPORT=file` + build `VITE_CONTENT_API=/api/v1`-ით `dist-api/`-ში, `vite preview` — `/api` proxy-ით; content-ის mock ამ bundle-ში არ არის): **axe (ka)** — 15 როუტი (B6: + `/subscribe/confirm` ღილაკით, token-ის გარეშე, `/subscribe/unsubscribe`) × light / dark / contrast × 1440 / 390 = **90 გაშვება — 0 დარღვევა, 0 incomplete, ჰორიზ. სქროლი 0**; **en** — 14 საჯარო `/en` როუტი + ადმინის 6 (mock) × 3 × 2 = **120 — 0 / 0, `<html lang="en">` ყველგან**; **forms** — 6 მდგომარეობა × 3 × 2 = **36 — 0 / 0**: `/contact` → დადასტურება (**მხოლოდ კლავიატურით**: ველზე ფოკუსი → აკრეფა → Tab → Space თანხმობაზე → Enter; ფოკუსი „შეტყობინება მიღებულია“-ზე; გვერდზე CAPTCHA 0), `/news` → „შეამოწმე ელფოსტა“, წერილის ფაილიდან ბმული → `/subscribe/confirm` → „დადასტურდა“, იგივე ბმული ხელახლა → alert, მისასალმებელი წერილის ბმული → „გაუქმდა“.
+- ქსელი: ახალი დომენი არ დასჭირდა.
+
+### endpoint → ContentAdapter → cache
+
+| endpoint | ფუნქცია | 200 / 304 | შეცდომა |
+|---|---|---|---|
+| `GET /api/v1/articles` | `listArticles` | `ETag` + `public, max-age=0, must-revalidate`; `If-None-Match` → 304 | 400 — `no-store` |
+| `GET /api/v1/articles/{slug}` | `getArticle` | იგივე | 404 — `no-store` |
+| `GET /api/v1/series`, `/{slug}` | `listSeries`, `getSeries` | იგივე | 400 / 404 |
+| `GET /api/v1/videos`, `/{slug}` | `listVideos`, `getVideo` | იგივე | 400 / 404 |
+| `GET /api/v1/news`, `/{slug}` | `listNews`, `getNews` | იგივე | 400 / 404 |
+| `GET /api/v1/events` | `listEvents` | იგივე | 400 |
+| `GET /api/v1/team`, `/partners`, `/stages` | `getTeam`, `getPartners`, `getStages` | იგივე | — |
+| `GET /api/v1/settings` | `getSettings` | იგივე | 404 (ცარიელი ბაზა) |
+| `POST /api/v1/subscribe` | `subscribe` | `no-store` | 400 / 403 / 422 / 429 / 500 |
+| `POST /api/v1/subscribe/confirm` | `confirmSubscription` | `no-store` | 400 / 403 / 404 / 429 |
+| `POST /api/v1/subscribe/unsubscribe` | `unsubscribe` | `no-store` | 400 / 403 / 404 / 429 |
+| `POST /api/v1/contact` | `sendContact` | `no-store` | 400 / 403 / 422 / 429 / 500 |
+
+ყოველ ოპერაციას `?lang=ka|en` აქვს: პასუხი (`localize`, `translations` არ ხვდება, `lang` ემატება) და შეცდომის ტექსტი ამ ენაზეა.
+
+### ფორმის ველი → წესი → შეცდომის ტექსტი (ka / en)
+
+| ფორმა · ველი | წესი (`forms.js`) | ka | en |
+|---|---|---|---|
+| გამოწერა · `email` | ცარიელი / ჰარი | ეს ველი სავალდებულოა. | This field is required. |
+| გამოწერა · `email` | ფორმატი (≤ 120) | ელფოსტა ასე უნდა გამოიყურებოდეს: name@example.ge | An email address looks like this: name@example.ge |
+| კონტაქტი · `name` | ცარიელი | ეს ველი სავალდებულოა. | This field is required. |
+| კონტაქტი · `name` | > 100 | ტექსტი ძალიან გრძელია — მაქსიმუმ 100 სიმბოლო. | The text is too long — at most 100 characters. |
+| კონტაქტი · `contact` | ცარიელი | ეს ველი სავალდებულოა. | This field is required. |
+| კონტაქტი · `contact` | არც ტელეფონი (7–15 ციფრი), არც ელფოსტა | შეიყვანე ტელეფონის ნომერი ან ელფოსტა. | Enter a phone number or an email address. |
+| კონტაქტი · `topic` | ვარიანტი | აირჩიე ერთ-ერთი ვარიანტი. | Choose one of the options. |
+| კონტაქტი · `message` | > 4000 | … მაქსიმუმ 4000 სიმბოლო. | … at most 4000 characters. |
+| კონტაქტი · `support` | > 1000 (თავისუფალი ტექსტი — დიაგნოზი არა) | … მაქსიმუმ 1000 სიმბოლო. | … at most 1000 characters. |
+| კონტაქტი · `replyVia` | ვარიანტი | აირჩიე ერთ-ერთი ვარიანტი. | Choose one of the options. |
+| კონტაქტი · `replyVia` | ელფოსტით — კონტაქტი ელფოსტაა | ელფოსტით პასუხისთვის „ტელეფონი ან ელფოსტა“ ველში ელფოსტა მიუთითე — ან აირჩიე სხვა არხი. | For a reply by email, enter an email address in “Phone or email” — or choose another channel. |
+| კონტაქტი · `replyVia` | ზარი / მესიჯი — კონტაქტი ტელეფონია | ზარისთვის ან მესიჯისთვის „ტელეფონი ან ელფოსტა“ ველში ტელეფონის ნომერი მიუთითე — ან აირჩიე სხვა არხი. | For a call or a message, enter a phone number in “Phone or email” — or choose another channel. |
+| კონტაქტი · `consent` | `true` | გაგზავნისთვის საჭიროა თანხმობა მონაცემების დამუშავებაზე. | To send the form, agree to the processing of your data. |
+| კონტაქტი · `website` | honeypot შევსებული → 200, არ ინახება, არ იგზავნება | — (შეცდომა არ ჩანს) | — |
+| ბმული · `token` | ფორმა (43 base64url / `<24 hex>.<43>`) → 400; უცნობი / ვადაგასული / გამოყენებული → 404 | ბმული ვადაგასულია ან უკვე გამოყენებულია… / ბმული არასწორია… | The link has expired or has already been used… / The link is not valid… |
+| ყველა | ძალიან ბევრი მცდელობა (`RATE_LIMIT_FORMS_*`; კონტაქტზე + მისამართი) | ძალიან ბევრი მცდელობა. სცადე ცოტა ხანში. | Too many attempts. Try again in a little while. |
+
+ვალიდაცია ორ ფენადაა: **სტრუქტურა** — spec (უცნობი ველი, ტიპი → 400; სავალდებულო გასაღები, ვარიანტი, ზღვარზე გრძელი → 422 მხოლოდ ამ ველზე), **შინაარსი** — `forms.js` handler-ში (სრული ველების ჯამი). ფორმა იგივე წესს ბრაუზერში იყენებს, ამიტომ მომხმარებელი პირველ ფენამდე არ აღწევს; parity-ის სცენარი UI-ის ფორმის სხეულით ორივე მხარეს ერთნაირ ველებსა და ტექსტს ამოწმებს. CAPTCHA და დროის ლიმიტი არცერთ ფორმაზე არ არის.
+
+### შექმნილი ფაილები
+
+- `src/content/http.js` — `createHttpContentAdapter({ baseUrl, fetch, locale })`, `responseError`, `DEFAULT_CONTENT_API`.
+- `src/content/public.js` — `PUBLIC_COLLECTIONS`, `deriveItem`, `publicItem`, `publicSnapshot`, `compactTranslation`, `orgFromPage`.
+- `src/content/mock/forms.js` — `createMockForms` (double opt-in, outbox, კონტაქტი).
+- `src/content/__tests__/scenarios/content-scenarios.js` — `CONTENT_SCENARIOS`, `FORM_SCENARIOS`, `mockContentEnv`, `CONTACT_BASE`, `NOW`, `plain`, `rejection`.
+- `src/content/{http,public}.test.js`; `src/features/subscribe/{SubscriptionAction.jsx, subscription.css, __tests__/subscription.test.jsx}`; `src/pages/{SubscribeConfirmPage,UnsubscribePage}.jsx`.
+- `server/routes/{public,forms}.js`; `server/mail/{index,templates}.js`; `server/lib/{i18n,subscriptions}.js`; `server/db/forms.js`; `server/migrations/003-public-search.js`.
+- `server/test/public/{public-env.js, parity.test.js, cache.test.js, forms.test.js}`; `server/test/ui/forms-http.test.jsx`.
+
+### შეცვლილი ფაილები (ერთი წინადადებით)
+
+- `src/i18n/locale.js`, `index.js` — `withLocale(locale, fn)` (სინქრონული; სერვერის ენა მოთხოვნიდან).
+- `src/content/query.js` — `articleHaystack` → ექსპორტირებული `articleSearchText` (კატეგორიის წარწერა მხოლოდ ვალიდურ კატეგორიაზე) — mock-ის ძიება და სერვერის `searchText` ერთი ფუნქციით.
+- `src/content/adapter.js` — `VITE_CONTENT_API` → `http.js`, `confirmSubscription` / `unsubscribe`, `source: 'mock' | 'http'`.
+- `src/content/model.js` — `SubscribeResult` (`status: 'pending'`), `ConfirmResult`, `UnsubscribeResult`.
+- `src/content/forms.js` — `SUBSCRIBE_CONFIRM_DAYS`, `SUBSCRIBE_TOKEN`, `UNSUBSCRIBE_TOKEN`, `isSubscribeToken`, `isUnsubscribeToken`, `subscriptionLink`, `tokenFromHash`.
+- `src/content/mock/index.js` — `publicSnapshot` (localize + გამოთვლადი ველები) და ფორმები `mock/forms.js`-იდან (`subscribers` — Map, `outbox`).
+- `src/admin/api/mock.js` — „ჩვენ შესახებ“-ის შენახვა `orgFromPage`-ით (გვერდის ინგლისური თარგმანი წევრს ერთვის).
+- `src/features/subscribe/SubscribeForm.jsx` — წარმატება = „შეამოწმე ელფოსტა… ბმული 7 დღე მოქმედებს“; `src/features/contact/ContactForm.jsx` — დოკუმენტაცია (rate limit — სერვერზე).
+- `src/routes.jsx` — `subscribe/confirm`, `subscribe/unsubscribe`; `src/i18n/{ka,en}.js` — `subscribe.pending`, `subscription.*`.
+- `src/content/adapter.test.js` — წაკითხვის ტესტები საერთო სცენარებად; `src/features/__tests__/page-helpers.jsx` — proxy-ში ახალი ფუნქციები; `subscribe.test.jsx` — ახალი ტექსტი.
+- `server/openapi.yaml` — საჯარო GET-ზე `ETag` / `Cache-Control` + 304 (`NotModified`), `getSettings` → 404, `confirmSubscription` / `unsubscribe` + token-ის სქემები, `SubscribeResult.status`, `Lang` ფორმებზე, აღწერები.
+- `server/app.js` — საჯარო და ფორმის route-ები (spec-ის რიგით), `app.mailer`; `server/lib/security.js` — საჯარო GET-ის `Cache-Control` არ იცვლება (შეცდომაზე — `no-store`); `server/lib/errors.js` — `/api/v1/*`-ზე ტექსტი `?lang=`-ით.
+- `server/config.js`, `server/.env.example` — `MAIL_TRANSPORT`, `MAIL_DIR`, `CONTACT_INBOX`, `MAIL_FROM`, `PUBLIC_ORIGIN`, `SUBSCRIBE_SECRET` (production-ის მოთხოვნებით).
+- `server/db/{derive,content,collections,index}.js` — `searchTextOf(item, type)` (სტატია — ორივე ენის საძიებო ტექსტი), `publicItems` / `publicItem`, `SEARCH_TEXT_MAX`, `forms` repository, `snapshot()` — `orgFromPage`.
+- `server/migrations/index.js` — 003; `server/scripts/shared-smoke.js` — `public`, `http`, B6-ის შემოწმება.
+- ტესტები: `openapi` (ყველა ოპერაცია რეგისტრირებულია, 304 / header-ები, rate limit-ის სია), `contract/requests` (რეალური `http.js`, `public-plan.js` წაიშალა), `contract/constants` (token-ის ფორმა ↔ spec), `config`, `app`, `auth/limits` (რეალური კონტაქტი + მისამართის ლიმიტი), `db/{collections,content,parity,seed}` (003), `content/{http-env,parity}` (`pub` — რეალური API), `browser.js` (`fetch`), `helpers.js` (`FAKE_PRODUCTION_ENV`), `shared-modules`.
+- `scripts/audit.py` — `AUDIT_API=1` (სერვერი + vite dev `VITE_CONTENT_API`), ბმულის გვერდები `ROUTES`-ში, `forms` ნაწილი, axe-ის ხელახალი ცდა Vite-ის reload-ზე; `.gitignore` — `server/.mail/`; `CLAUDE.md` — რუკა + „კოდის კონვენციები (B6)“; `docs/project-context.md` — §5, §9 (#16, #31), §10, §12.
+
+### საჯარო API
+
+**frontend:**
+- `adapter.js`: + `confirmSubscription(token) → Promise<{ ok: true, status: 'confirmed' }>`, `unsubscribe(token) → Promise<{ ok: true }>`; `subscribe(email) → Promise<{ ok: true, status: 'pending' }>`; `contentSource()` → `'mock' | 'http'`.
+- `http.js`: `createHttpContentAdapter({ baseUrl = '/api/v1', fetch, locale = getLocale })` → `ContentAdapter` (`source: 'http'`); `responseError(status, data)`.
+- `public.js`: `publicItem(collection, item, locale)`, `publicSnapshot(raw, locale)`, `orgFromPage(page)`, `compactTranslation(value)`, `deriveItem(collection, item)`.
+- `forms.js`: `SUBSCRIBE_CONFIRM_DAYS` (7), `SUBSCRIBE_TOKEN`, `UNSUBSCRIBE_TOKEN`, `isSubscribeToken`, `isUnsubscribeToken`, `subscriptionLink(origin, locale, kind, token)`, `tokenFromHash(hash)`.
+- `query.js`: `articleSearchText(article)`; `i18n/locale.js`: `withLocale(locale, fn)`.
+- კომპონენტი `SubscriptionAction({ kind: 'confirm' | 'unsubscribe' })`; i18n: `subscribe.pending`, `subscription.*`.
+- env: `VITE_CONTENT_API` (მაგ. `/api/v1`; ცარიელი — mock).
+
+**server:**
+- route-ები: 13 საჯარო GET + `POST /api/v1/subscribe`, `/subscribe/confirm`, `/subscribe/unsubscribe`, `/contact` (ცხრილი ზემოთ).
+- `routes/public.js`: `PUBLIC_CACHE_CONTROL`, `etagOf(body)`, `matchesEtag(header, etag)`, `registerPublicRoutes(app)`; `routes/forms.js`: `registerFormRoutes(app)`.
+- `mail/index.js`: `createMailer(config.mail, { logger })` → `{ transport, send(mail), outbox, failNext }`; `mail/templates.js`: `confirmMail`, `welcomeMail`, `contactMail`.
+- `lib/subscriptions.js`: `unsubscribeToken(secret, id)`, `verifyUnsubscribeToken(secret, token)`; `lib/i18n.js`: `requestLocale(value)`, `inLocale` (= `withLocale`).
+- repository: `content.publicItems(type, { at, where })`, `content.publicItem(type, slug, at)`; `forms.{insertMessage, markSent, removeMessage, countMessages, subscribe, confirm, removeSubscriber, findSubscriber}`; `derive.searchTextOf(item, type)`; `collections.SEARCH_TEXT_MAX`.
+- env: `MAIL_TRANSPORT` (`log` | `file` | `memory`; ნაგულისხმევი: production → log, development → file, test → memory), `MAIL_DIR` (`server/.mail/`), `CONTACT_INBOX`, `MAIL_FROM`, `PUBLIC_ORIGIN` (dev — `http://localhost:5173`), `SUBSCRIBE_SECRET` (dev / test — შემთხვევითი პროცესზე). production-ში სავალდებულოა `CONTACT_INBOX`, `PUBLIC_ORIGIN` (`https://`), `SUBSCRIBE_SECRET` (≥ 32), `MAIL_TRANSPORT` — მხოლოდ `log` (B7-მდე).
+- მიგრაცია 003 (`npm run server:migrate`): `searchText` ხელახლა, validator-ის ზღვარი — 001-ის `ensureCollection`-ით.
+
+### გადახვევები prompt-იდან, §12-იდან და B0-იდან
+
+1. **Cache-Control — `max-age=0` + ETag**, არა მოკლე დადებითი `max-age`: prompt-ის „მოკლე Cache-Control“ და „გამოქვეყნების შემდეგ საჯარო პასუხი მაშინვე ახლდება“ ერთმანეთს ეწინააღმდეგება — დადებითი `max-age` ძველ მასალას ამდენ წამს აჩვენებდა. ბრაუზერი ყოველ ჯერზე ამოწმებს (304 — სხეულის გარეშე); CDN-ის (B7) შემთხვევაში `PUBLIC_CACHE_CONTROL` ერთ ადგილას იცვლება.
+2. **საჯარო ძიება ბაზაში წინასწარი ფილტრია**, ზუსტი შედეგი — `query.js`: `searchText` (B2: slug + სათაური + აღწერა) mock-ის ძიებას (კატეგორია, ავტორი, ტექსტი, slug-ის გარეშე) ვერ ემთხვეოდა; ახლა სტატიისას ორივე ენის სრული საძიებო ტექსტი შეიცავს (ზესიმრავლე, ტესტით), ზღვარი 10 000 → 2 000 000, მიგრაცია 003.
+3. **`readingMinutes` ყოველ პასუხზე ითვლება** (mock-შიც) ენის ვერსიის ტექსტით — შენახული მნიშვნელობა ადმინის ახალ მასალაზე `1` იყო; ინგლისურ ვერსიას საკუთარი კითხვის დრო აქვს.
+4. **გუნდის თარგმანი** (B2 / B4 #4) — დახურულია `orgFromPage`-ით (ცარიელი ველი არ ითვლება — სახელი არ ითარგმნება, როლი კი ითარგმნება).
+5. **გაუქმების ბმული — HMAC** (`SUBSCRIBE_SECRET`), ბაზაში hash-ის ნაცვლად: მომავალ newsletter-ს ბმული ყოველ წერილში უნდა შექმნას, hash-იდან კი ბმული არ აღდგება. §12-ის მოდელი (`subscribers`) უცვლელია.
+6. **token ბმულის fragment-შია** (`#token=`) და არა query-ში — სერვერის ლოგი, Referer, ანალიტიკა მას ვერ ხედავს; GET არაფერს ცვლის, მოქმედება — ღილაკი (B0 #11).
+7. **კონტაქტის წერილი ვერ წავიდა → 500 და ჩანაწერი იშლება** — UI-ის გარეშე ბაზაში „უხილავად“ დარჩენილი შეტყობინება ორგანიზაციამდე ვერ მივიდოდა; მომხმარებელი ხედავს შეცდომას, ტექსტი ფორმაში რჩება.
+8. **production-ის ფოსტა — `log` stub** (prompt: „adapter-ის ინტერფეისი + ლოგის stub“): Resend — B7; production-ის კონფიგი სხვა გადამცემს ჯერ არ უშვებს.
+9. **`getSettings` ცარიელ ბაზაზე → 404** (mock-ს პარამეტრები ყოველთვის აქვს) — spec-ში დაემატა.
+10. **არასწორი slug / token → შეცდომა მოთხოვნის გარეშე** (`http.js`): mock-ის `find*` / ფორმის წესი; პირდაპირ API-ზე > 200 სიმბოლოს slug — 400 (`SlugPath.maxLength`).
+11. **contract-ტესტი რეალურ `http.js`-ზე** — `public-plan.js` (B1-ის გეგმა) წაიშალა; `http-env.js`-ის საჯარო ხედიც რეალური API-ა.
+12. **ბმულის გვერდებს დაფა არ აქვს** — UI ნაკრებით (PageIntro, Button CTA / primary, ✓ / alert-ის პატერნი F6-ის დადასტურებიდან), ორივე რეჟიმში ტოკენებით; დაფა კანვაზე დასამატებელია (§9 #31).
+13. **Chromium-ის აუდიტი dev-ზე** — `AUDIT_API=1`: 4173-ზე `vite preview`-ის ნაცვლად `vite` dev (`VITE_CONTENT_API`, proxy) — preview proxy-ს არ იძლევა; ადმინი mock-ზე რჩება (prompt — საჯარო გვერდები).
+
+### ღია საკითხები
+
+1. **ფოსტა production-ში** — Resend + დომენი + SPF / DKIM / DMARC (B7); მანამდე წერილი და გამოწერის ბმული არ იგზავნება (`log`) — staging-ზე ფორმები ჩართვამდე (ან გაფრთხილება).
+2. **newsletter-ის ინსტრუმენტი** (B0 #11) — გაგზავნა, RFC 8058 one-click (`List-Unsubscribe-Post` — form-urlencoded parser ერთ route-ზე); ბმული — `unsubscribeToken()`.
+3. **`/subscribe/*` noindex** — სერვერის meta (B7); გვერდები ნავიგაციაში არ ჩანს.
+4. **ბმულის გვერდების დიზაინი** — კანვაზე ორივე რეჟიმში და 1440 / 390 (ახლა — UI ნაკრებით).
+5. **ზღვრები** — `RATE_LIMIT_FORMS_*` (10 / 10 წთ) — IP-ზე და კონტაქტის მისამართზე ერთია; ერთ ქსელში (ოფისი, NAT) ბევრი მომხმარებელი — დასადასტურებელი.
+6. **ადმინის API-ის შეცდომის ენა** — ჯერ ქართულია (B4 #2, B5 #4): `http.js`-ს (ადმინის) `lang` არ ახლავს; მექანიზმი (`inLocale`) მზადაა.
+7. **პარამეტრები ცარიელ ბაზაზე** — 404; წარმოების პირველ გაშვებაზე ადმინმა უნდა შეინახოს (B7-ის ჩეკლისტი) ან ნაგულისხმევი ჩანაწერი მიგრაციით.
+8. **retry-რიგი წერილისთვის** არ არის (ჩავარდნა → 500, მომხმარებელი ცდის); Resend-ის შემდეგ — გადასახედი.
+9. B2–B5-ის დანარჩენი ღია საკითხები (პაროლის შეცვლა / აღდგენა, `?invite=`, slug-ის ცვლილება გამოქვეყნებულზე, ფოტოს ზომის ვარიანტები) — უცვლელია.
+
+### შემდეგი: B7 — დაკავშირება და გაშვება
+
+env (`VITE_CONTENT_API=/api/v1`, `VITE_ADMIN_API=/api/admin` — mock წარმოების bundle-ში აღარ ხვდება), დომენი და `PUBLIC_ORIGIN`, Resend (`MAIL_TRANSPORT`), `SUBSCRIBE_SECRET`, `CONTACT_INBOX`, deploy — Render + Atlas + R2, SPA fallback (`/en/*`, `/admin/*`, `/subscribe/*`), სერვერის meta / noindex, პარამეტრების პირველი ჩანაწერი, backup, მონიტორინგი; production smoke: შესვლა → გამოქვეყნება → საჯარო გვერდზე ჩანს → კონტაქტის წერილი inbox-შია.

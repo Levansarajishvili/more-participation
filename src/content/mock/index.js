@@ -1,5 +1,4 @@
 import { ContentError } from '../errors.js';
-import { isHoneypotFilled, validateContact, validateSubscribe } from '../forms.js';
 import {
   findArticle,
   findNews,
@@ -14,8 +13,9 @@ import {
 
 import { getLocale } from '@/i18n/locale.js';
 
-import { localizeSnapshot } from '../localize.js';
+import { publicSnapshot } from '../public.js';
 
+import { createMockForms } from './forms.js';
 import { createMockStore } from './store.js';
 
 /** @typedef {import('../adapter.js').ContentAdapter} ContentAdapter */
@@ -39,27 +39,26 @@ import { createMockStore } from './store.js';
  * F8: მონაცემი საცავიდან იკითხება ყოველ მოთხოვნაზე (`store.snapshot()` — არქივის გარეშე), ამიტომ
  * ადმინში შენახული / გამოქვეყნებული მასალა იმავე სესიაში საჯარო გვერდზეც ჩანს.
  * @param {MockOptions} [options]
- * @returns {ContentAdapter & { readonly snapshot: ContentSnapshot, store: import('./store.js').MockStore, subscribers: ReadonlySet<string>, contacts: () => number }}
+ * B6: ფორმები — `forms.js` (double opt-in, honeypot); `subscribers` / `outbox` / `contacts()` — ტესტებისთვის.
+ * @returns {ContentAdapter & { readonly snapshot: ContentSnapshot, store: import('./store.js').MockStore, subscribers: ReadonlyMap<string, import('./forms.js').MockSubscriber>, outbox: readonly import('./forms.js').MockMail[], contacts: () => number }}
  */
 export function createMockAdapter(options = {}) {
   const { delay = 0, fail = null } = options;
   const store = options.store ?? createMockStore({ now: options.now, data: options.data });
   const now = options.now ?? store.now;
-  // F9: პასუხი მიმდინარე ენაზე (`translations.<locale>` ზემოდან, თარგმანის გარეშე — ქართული)
+  // F9: პასუხი მიმდინარე ენაზე (`translations.<locale>` ზემოდან, თარგმანის გარეშე — ქართული);
+  // B6: + გამოთვლადი ველები ენის ვერსიის ტექსტით — სერვერის იგივე `publicSnapshot` (`public.js`)
   /** @type {{ raw: unknown, locale: string, value: ContentSnapshot } | null} */
   let localized = null;
   const data = () => {
     const raw = store.snapshot();
     const locale = getLocale();
     if (!localized || localized.raw !== raw || localized.locale !== locale) {
-      localized = { raw, locale, value: localizeSnapshot(raw, locale) };
+      localized = { raw, locale, value: publicSnapshot(raw, locale) };
     }
     return localized.value;
   };
-  /** @type {Set<string>} */
-  const subscribers = new Set();
-  let contactCount = 0;
-  let dropped = 0;
+  const forms = createMockForms({ now, locale: getLocale });
 
   /**
    * @template T
@@ -78,9 +77,9 @@ export function createMockAdapter(options = {}) {
       return data();
     },
     store,
-    subscribers,
-    /** მიღებული (honeypot-ის გარეშე) შეტყობინებების რაოდენობა — ტესტებისთვის. */
-    contacts: () => contactCount,
+    subscribers: forms.subscribers,
+    outbox: forms.outbox,
+    contacts: forms.contacts,
 
     listArticles: (params = {}) => respond(() => queryArticles(data().articles, params, now())),
     getArticle: (slug) => respond(() => findArticle(data().articles, slug, now())),
@@ -100,26 +99,10 @@ export function createMockAdapter(options = {}) {
     getStages: () => respond(() => data().stages),
     getSettings: () => respond(() => data().settings),
 
-    subscribe: (email) =>
-      respond(() => {
-        const fields = validateSubscribe(email);
-        if (Object.keys(fields).length) throw new ContentError('validation', { fields });
-        subscribers.add(email.trim().toLowerCase());
-        return /** @type {const} */ ({ ok: true });
-      }),
-
-    sendContact: (payload) =>
-      respond(() => {
-        // honeypot: ბოტს ჩვეულებრივი წარმატება ხვდება, შეტყობინება კი არ ინახება
-        if (isHoneypotFilled(payload ?? {})) {
-          dropped += 1;
-          return /** @type {const} */ ({ ok: true, id: `mock-dropped-${dropped}` });
-        }
-        const fields = validateContact(payload ?? {});
-        if (Object.keys(fields).length) throw new ContentError('validation', { fields });
-        contactCount += 1;
-        return /** @type {const} */ ({ ok: true, id: `mock-${contactCount}` });
-      }),
+    subscribe: (email) => respond(() => forms.subscribe(email)),
+    confirmSubscription: (token) => respond(() => forms.confirmSubscription(token)),
+    unsubscribe: (token) => respond(() => forms.unsubscribe(token)),
+    sendContact: (payload) => respond(() => forms.sendContact(payload)),
   };
 }
 

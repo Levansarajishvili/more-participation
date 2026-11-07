@@ -3,7 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { CONTENT_TYPES, TYPE_CONFIG } from '@/admin/content-types.js';
 import { PERMISSIONS, ROLES } from '@/admin/api/permissions.js';
 import { ERROR_CODES } from '@/content/errors.js';
-import { CONTACT_MAX, MESSAGE_MAX, NAME_MAX, SUPPORT_MAX } from '@/content/forms.js';
+import {
+  CONTACT_MAX,
+  MESSAGE_MAX,
+  NAME_MAX,
+  SUBSCRIBE_TOKEN,
+  SUPPORT_MAX,
+  UNSUBSCRIBE_TOKEN,
+} from '@/content/forms.js';
 import { EXCERPT_MAX, RATIOS, STATUSES } from '@/content/model.js';
 import { MAX_LIMIT, QUERY_MAX } from '@/content/query.js';
 import { SLUG_MAX, SLUG_PATTERN } from '@/content/slug.js';
@@ -92,6 +99,9 @@ describe('spec ↔ frontend-ის კონსტანტები', () => {
     expect(contact.message.maxLength).toBe(MESSAGE_MAX);
     expect(contact.support.maxLength).toBe(SUPPORT_MAX);
     expect(schemas.SubscribeRequest.properties.email.maxLength).toBe(CONTACT_MAX);
+    // B6: გამოწერის token-ის ფორმა — ერთი წესი (`forms.js` ↔ spec)
+    expect(schemas.SubscribeToken.pattern).toBe(SUBSCRIBE_TOKEN.source);
+    expect(schemas.UnsubscribeToken.pattern).toBe(UNSUBSCRIBE_TOKEN.source);
   });
 
   it('x-permission — permissions.js-ის უფლება; ადმინის ყოველ ოპერაციას (auth-ის გარდა) აქვს', () => {

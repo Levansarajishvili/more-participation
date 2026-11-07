@@ -92,14 +92,24 @@ describe('server/openapi.yaml', () => {
 
   it('პასუხები: 2xx + 500 ყველგან; შეცდომა — მხოლოდ ცხრილის სტატუსები და Error', () => {
     const allowed = new Set(Object.values(STATUS_BY_CODE).map(String));
-    for (const { operation, operationId } of operations) {
+    for (const { operation, operationId, path, method } of operations) {
       const statuses = Object.keys(operation.responses);
       expect(
         statuses.some((s) => /^2\d\d$/.test(s)),
         operationId,
       ).toBe(true);
       expect(statuses, operationId).toContain('500');
-      for (const status of statuses.filter((s) => !/^2/.test(s))) {
+      // B6: საჯარო GET — 304 (ETag) და 200-ზე `ETag` + `Cache-Control`; სხვაგან 304 არ არის
+      const cached = method === 'GET' && path.startsWith('/api/v1/');
+      expect(statuses.includes('304'), `${operationId} 304`).toBe(cached);
+      if (cached) {
+        expect(operation.responses['304'].$ref).toBe('#/components/responses/NotModified');
+        expect(Object.keys(operation.responses['200'].headers ?? {}).sort(), operationId).toEqual([
+          'Cache-Control',
+          'ETag',
+        ]);
+      }
+      for (const status of statuses.filter((s) => !/^[23]/.test(s))) {
         if (operationId === 'getHealth' && status === '503') continue;
         expect(allowed.has(status), `${operationId} ${status}`).toBe(true);
         expect(operation.responses[status].$ref, `${operationId} ${status}`).toMatch(
@@ -121,6 +131,11 @@ describe('server/openapi.yaml', () => {
       if (schema.body) ajv.compile(schema.body);
     }
     for (const [name, response] of Object.entries(spec.components.responses)) {
+      // 304 (NotModified) სხეულის გარეშეა
+      if (!(/** @type {any} */ (response).content)) {
+        expect(name).toBe('NotModified');
+        continue;
+      }
       const media = /** @type {any} */ (response).content['application/json'];
       const validate = ajv.compile(
         JSON.parse(
@@ -146,7 +161,14 @@ describe('server/openapi.yaml', () => {
     }
     const limited = operations.filter((op) => op.operation['x-rate-limit']);
     expect(limited.map((op) => op.operationId).sort()).toEqual(
-      ['login', 'register', 'sendContact', 'subscribe'].sort(),
+      [
+        'login',
+        'register',
+        'sendContact',
+        'subscribe',
+        'confirmSubscription',
+        'unsubscribe',
+      ].sort(),
     );
   });
 
@@ -156,10 +178,10 @@ describe('server/openapi.yaml', () => {
     }
   });
 
-  it('სერვერზე რეგისტრირებულია ზუსტად `x-step: B1 | B3 | B4 | B5` ოპერაციები, spec-ის რიგით', async () => {
+  it('სერვერზე რეგისტრირებულია spec-ის ყოველი ოპერაცია (`x-step: B1 … B6`), spec-ის რიგით', async () => {
     const app = await makeApp();
     const expected = operations
-      .filter((op) => ['B1', 'B3', 'B4', 'B5'].includes(op.operation['x-step']))
+      .filter((op) => ['B1', 'B3', 'B4', 'B5', 'B6'].includes(op.operation['x-step']))
       .map((op) => ({ method: op.method, url: fastifyPath(op.path), operationId: op.operationId }));
     expect(/** @type {any} */ (app).apiRoutes).toEqual(expected);
     await app.close();

@@ -126,8 +126,12 @@ describe('parity: repository ↔ mock', () => {
     ];
     const content = database.db.collection(COLLECTION.content);
     for (const q of queries) {
-      const expected = CONTENT_TYPES.flatMap((type) => store.records(type))
-        .filter((record) => matchesQuery(searchTextOf(/** @type {any} */ (record.item)), q))
+      const expected = CONTENT_TYPES.flatMap((type) =>
+        store.records(type).map((record) => ({ ...record, type })),
+      )
+        .filter((record) =>
+          matchesQuery(searchTextOf(/** @type {any} */ (record.item), record.type), q),
+        )
         .map((record) => record.id)
         .sort();
       const found = (

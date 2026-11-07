@@ -192,17 +192,23 @@ export function toArticleSummary(article) {
 const articleIndex = new WeakMap();
 
 /**
+ * სტატიის საძიებო ტექსტი (`normalizeSearch`): სათაური, აღწერა, კატეგორიის წარწერა, ავტორი, ტექსტი —
+ * მიმდინარე ენაზე (`label()` → `t()`; სტატია უკვე `localize`-ით უნდა იყოს). ერთი წესი mock-ის
+ * ძიებასა და სერვერის `searchText`-ს (B6: `server/db/derive.js` — ორივე ენის ტექსტი, `withLocale`).
+ * ქეში ობიექტზეა: ენის ყოველი ვერსია ცალკე ობიექტია (`localize`).
  * @param {Article} article
  * @returns {string}
  */
-function articleHaystack(article) {
+export function articleSearchText(article) {
   let text = articleIndex.get(article);
   if (text === undefined) {
     text = normalizeSearch(
       [
         article.title,
         article.excerpt,
-        label('articleCategory', article.category),
+        isOneOf(ARTICLE_CATEGORIES, article.category)
+          ? label('articleCategory', article.category)
+          : '',
         article.author,
         blocksToText(article.body),
       ].join(' '),
@@ -235,7 +241,7 @@ export function queryArticles(articles, params, now) {
     .filter((a) => isPublic(a, now))
     .filter((a) => !category || a.category === category)
     .filter((a) => featured === undefined || a.featured === featured)
-    .filter((a) => !q || matchesQuery(articleHaystack(a), q))
+    .filter((a) => !q || matchesQuery(articleSearchText(a), q))
     .sort((a, b) =>
       sort === 'shortest' ? a.readingMinutes - b.readingMinutes || byNewest(a, b) : byNewest(a, b),
     );

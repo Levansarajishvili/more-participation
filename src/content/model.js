@@ -443,7 +443,13 @@ export const MEDIA_RATIO = Object.freeze({
  */
 
 /** @typedef {{ ok: true, id: string }} ContactResult */
-/** @typedef {{ ok: true }} SubscribeResult */
+/**
+ * B6 — double opt-in: `subscribe` → `pending` (ბმული ელფოსტაზე; პასუხი იგივეა უკვე გამოწერილ
+ * მისამართზეც), `confirmSubscription` → `confirmed`, `unsubscribe` → `{ ok }` (ჩანაწერი იშლება).
+ * @typedef {{ ok: true, status: 'pending' }} SubscribeResult
+ * @typedef {{ ok: true, status: 'confirmed' }} ConfirmResult
+ * @typedef {{ ok: true }} UnsubscribeResult
+ */
 
 /* ─── ერთიანი ნაკრები ───────────────────────────────────────────────────── */
 

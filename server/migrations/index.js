@@ -2,6 +2,7 @@ import { loadSpec } from '../lib/openapi.js';
 
 import * as init from './001-init.js';
 import * as versionMediaKeys from './002-version-media-keys.js';
+import * as publicSearch from './003-public-search.js';
 
 /**
  * მიგრაციების რიგი. წესი: ყოველი მიგრაცია იდემპოტენტურია (განმეორებით გაშვება უსაფრთხოა), ამიტომ
@@ -11,7 +12,7 @@ import * as versionMediaKeys from './002-version-media-keys.js';
 
 /** @typedef {import('./ensure.js').CollectionReport} CollectionReport */
 
-export const MIGRATIONS = Object.freeze([init, versionMediaKeys]);
+export const MIGRATIONS = Object.freeze([init, versionMediaKeys, publicSearch]);
 
 /**
  * @param {import('mongodb').Db} db

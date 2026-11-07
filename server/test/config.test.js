@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { ConfigError, DEFAULT_MEDIA_DIR, ENV_KEYS, loadConfig } from '../config.js';
+import {
+  ConfigError,
+  DEFAULT_MAIL_DIR,
+  DEFAULT_MEDIA_DIR,
+  ENV_KEYS,
+  loadConfig,
+} from '../config.js';
 
 const URI = 'mongodb+srv://user:s3cret-pass@cluster0.example.mongodb.net/?retryWrites=true';
 /** B5: წარმოებაში ფაილები მხოლოდ R2-შია — სატესტო (ყალბი) მნიშვნელობები */
@@ -9,6 +15,12 @@ const R2 = {
   R2_BUCKET: 'mc-media',
   R2_ACCESS_KEY_ID: 'AKIAEXAMPLEKEY12345',
   R2_SECRET_ACCESS_KEY: 'r2-secret-value-for-tests-only',
+};
+/** B6: production-ში სავალდებულო — ფორმის მიმღები, ბმულის origin, გაუქმების საიდუმლო */
+const FORMS = {
+  CONTACT_INBOX: 'inbox@example.org',
+  PUBLIC_ORIGIN: 'https://example.org',
+  SUBSCRIBE_SECRET: 'subscribe-secret-for-tests-0123456789',
 };
 const MB = 1024 * 1024;
 
@@ -37,6 +49,14 @@ describe('loadConfig', () => {
         limits: { image: 10 * MB, document: 20 * MB, track: MB },
         maxPixels: 40_000_000,
       },
+      mail: {
+        transport: 'file',
+        dir: DEFAULT_MAIL_DIR,
+        inbox: 'inbox@example.invalid',
+        from: 'no-reply@example.invalid',
+      },
+      publicOrigin: 'http://localhost:5173',
+      subscriptions: { secret: expect.stringMatching(/^[A-Za-z0-9_-]{43}$/) },
     });
     expect(Object.isFrozen(config)).toBe(true);
     expect(Object.isFrozen(config.mongo)).toBe(true);
@@ -53,6 +73,7 @@ describe('loadConfig', () => {
       MONGODB_URI: URI,
       TRUST_PROXY: '1',
       ...R2,
+      ...FORMS,
     });
     expect(config.host).toBe('0.0.0.0');
     expect(config.trustProxy).toBe(1);
@@ -170,13 +191,19 @@ describe('loadConfig', () => {
       'MEDIA_MAX_IMAGE_MB',
       'MEDIA_MAX_DOCUMENT_MB',
       'MEDIA_MAX_MEGAPIXELS',
+      'MAIL_TRANSPORT',
+      'MAIL_DIR',
+      'CONTACT_INBOX',
+      'MAIL_FROM',
+      'PUBLIC_ORIGIN',
+      'SUBSCRIBE_SECRET',
     ]);
     expect(() => loadConfig({ SOMETHING_ELSE: 'x', PATH: '/bin' })).not.toThrow();
   });
 
   it('B5 — საცავი: test → memory; production → მხოლოდ r2, გასაღებები სავალდებულოა', () => {
     expect(loadConfig({ NODE_ENV: 'test' }).media.storage).toBe('memory');
-    const production = { NODE_ENV: 'production', MONGODB_URI: URI };
+    const production = { NODE_ENV: 'production', MONGODB_URI: URI, ...FORMS };
     expect(() => loadConfig(production)).toThrow(/R2_BUCKET/);
     expect(() => loadConfig({ ...production, ...R2, MEDIA_STORAGE: 'local' })).toThrow(
       /MEDIA_STORAGE/,
@@ -216,6 +243,33 @@ describe('loadConfig', () => {
     } catch (error) {
       expect(/** @type {Error} */ (error).message).toMatch(/R2_SECRET_ACCESS_KEY/);
       expect(/** @type {Error} */ (error).message).not.toContain('s3cret');
+    }
+  });
+  it('B6 — ფოსტა და ფორმები: ნაგულისხმევი გადამცემი, production-ის სავალდებულო ველები', () => {
+    expect(loadConfig({ NODE_ENV: 'test' }).mail.transport).toBe('memory');
+    const a = loadConfig({ NODE_ENV: 'test' }).subscriptions.secret;
+    expect(loadConfig({ NODE_ENV: 'test' }).subscriptions.secret).not.toBe(a);
+    const production = { NODE_ENV: 'production', MONGODB_URI: URI, ...R2 };
+    for (const key of Object.keys(FORMS)) {
+      const { [key]: _omit, ...rest } = FORMS;
+      expect(() => loadConfig({ ...production, ...rest }), key).toThrow(new RegExp(key));
+    }
+    const config = loadConfig({ ...production, ...FORMS });
+    expect(config.mail).toMatchObject({ transport: 'log', inbox: 'inbox@example.org' });
+    expect(config.publicOrigin).toBe('https://example.org');
+    expect(config.subscriptions.secret).toBe(FORMS.SUBSCRIBE_SECRET);
+    // production: http origin, file / memory გადამცემი, მოკლე საიდუმლო, ყალბი ელფოსტა — არა
+    for (const bad of [
+      { PUBLIC_ORIGIN: 'http://example.org' },
+      { PUBLIC_ORIGIN: 'https://example.org/path' },
+      { MAIL_TRANSPORT: 'file' },
+      { MAIL_TRANSPORT: 'memory' },
+      { SUBSCRIBE_SECRET: 'short' },
+      { CONTACT_INBOX: 'not-an-email' },
+    ]) {
+      expect(() => loadConfig({ ...production, ...FORMS, ...bad }), JSON.stringify(bad)).toThrow(
+        ConfigError,
+      );
     }
   });
 });

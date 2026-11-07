@@ -4,11 +4,12 @@ import { MOCK_PASSWORD, createMockAdminAdapter } from '@/admin/api/mock.js';
 import { CSRF_COOKIE, createHttpAdminAdapter } from '@/admin/api/http.js';
 import { SCHEMAS } from '@/admin/schemas/index.js';
 import * as contentAdapter from '@/content/adapter.js';
+import { createHttpContentAdapter } from '@/content/http.js';
 import { createMockStore } from '@/content/mock/store.js';
+import { setLocale } from '@/i18n/locale.js';
 
 import { loadSpec } from '../../lib/openapi.js';
 
-import { PUBLIC_PLAN } from './public-plan.js';
 import { createMatcher } from './spec-match.js';
 
 /**
@@ -22,6 +23,7 @@ const matcher = createMatcher(spec);
 const NOW = Date.parse('2026-10-26T10:00:00+04:00');
 const ADMIN_BASE = '/api/admin';
 const CSRF = 'csrf-test-token';
+const PUBLIC_BASE = '/api/v1';
 
 /** @type {{ method: string, url: string, headers: Record<string, string>, body?: unknown }[]} */
 const recorded = [];
@@ -211,7 +213,8 @@ describe('ადმინის HTTP adapter (`createHttpAdminAdapter`) ↔ Open
   });
 });
 
-describe('საჯარო ContentAdapter-ის HTTP გეგმა ↔ OpenAPI (განხორციელება — B6)', () => {
+describe('საჯარო ContentAdapter-ის HTTP adapter-ი (`src/content/http.js`, B6) ↔ OpenAPI', () => {
+  const http = createHttpContentAdapter({ baseUrl: PUBLIC_BASE, fetch: recordingFetch });
   const contact = {
     name: 'სახელი გვარი',
     contact: '+995 555 12 34 56',
@@ -222,7 +225,7 @@ describe('საჯარო ContentAdapter-ის HTTP გეგმა ↔ Open
     consent: true,
     website: '',
   };
-  /** @type {[string, unknown[]][]} */
+  /** @type {[string, unknown[], ('ka' | 'en')?][]} */
   const calls = [
     ['listArticles', [{}]],
     [
@@ -236,31 +239,54 @@ describe('საჯარო ContentAdapter-ის HTTP გეგმა ↔ Open
           sort: 'shortest',
           featured: false,
         },
-        'en',
       ],
+      'en',
     ],
     ['listArticles', [{ category: null, q: '', cursor: null }]],
     ['getArticle', ['chveva-5-nabiji']],
-    ['getArticle', ['Bad_Slug', 'en']],
     ['listSeries', [{ topic: 'flow', featured: true }]],
-    ['getSeries', ['chveva-5-nabiji', 'en']],
+    ['getSeries', ['chveva-5-nabiji'], 'en'],
     ['listVideos', [{ category: 'sport' }]],
     ['getVideo', ['video-1']],
     ['listNews', [{ type: 'event', year: 2026, cursor: '6', limit: 6, featured: false }]],
-    ['listNews', [{ type: null, year: null }, 'en']],
+    ['listNews', [{ type: null, year: null }], 'en'],
     ['getNews', ['siakhle-1']],
     ['listEvents', [{ upcoming: true }]],
-    ['listEvents', [{}, 'en']],
+    ['listEvents', [{}], 'en'],
     ['getTeam', []],
-    ['getPartners', ['en']],
+    ['getPartners', [], 'en'],
     ['getStages', []],
-    ['getSettings', ['en']],
+    ['getSettings', [], 'en'],
     ['subscribe', ['person@example.ge']],
+    ['subscribe', ['person@example.ge'], 'en'],
+    ['confirmSubscription', ['A'.repeat(43)]],
+    ['confirmSubscription', ['b_-'.repeat(14) + 'c'], 'en'],
+    ['unsubscribe', [`${'0123456789abcdef01234567'}.${'A'.repeat(43)}`]],
     ['sendContact', [contact]],
-    ['sendContact', [{ ...contact, website: 'https://spam.example' }]],
+    ['sendContact', [{ ...contact, website: 'https://spam.example' }], 'en'],
   ];
 
-  it('გეგმა ContentAdapter-ის ყოველ ფუნქციას ფარავს (adapter.js-ის ექსპორტი)', () => {
+  afterAll(() => setLocale('ka'));
+
+  /**
+   * @param {string} name
+   * @param {unknown[]} args
+   * @param {'ka' | 'en'} [locale]
+   */
+  async function record(name, args, locale = 'ka') {
+    recorded.length = 0;
+    setLocale(locale);
+    try {
+      await /** @type {any} */ (http)[name](...args);
+    } catch {
+      // ყალბი პასუხი ({}) ზოგჯერ შეცდომად ითარგმნება — მოთხოვნა მაინც ჩაიწერა
+    } finally {
+      setLocale('ka');
+    }
+    return [...recorded];
+  }
+
+  it('adapter-ი ContentAdapter-ის ყოველ ფუნქციას ფარავს (adapter.js-ის ექსპორტი)', () => {
     const exported = Object.entries(contentAdapter)
       .filter(
         ([name, value]) =>
@@ -268,16 +294,22 @@ describe('საჯარო ContentAdapter-ის HTTP გეგმა ↔ Open
       )
       .map(([name]) => name)
       .sort();
-    expect(Object.keys(PUBLIC_PLAN).sort()).toEqual(exported);
+    const { source, ...functions } = http;
+    expect(source).toBe('http');
+    expect(Object.keys(functions).sort()).toEqual(exported);
     expect([...new Set(calls.map(([name]) => name))].sort()).toEqual(exported);
   });
 
-  it('ყოველი დაგეგმილი მოთხოვნა spec-ს შეესაბამება', () => {
+  it('ყოველი მოთხოვნა spec-ს შეესაბამება (მეთოდი, გზა, query + `lang`, body)', async () => {
     /** @type {string[]} */
     const failures = [];
-    for (const [name, args] of calls) {
-      const planned = PUBLIC_PLAN[name](...args);
-      const { op, problems } = matcher.checkRequest(planned);
+    for (const [name, args, locale] of calls) {
+      const requests = await record(name, args, locale);
+      expect(requests, name).toHaveLength(1);
+      const [request] = requests;
+      const url = new URL(request.url);
+      expect(url.searchParams.get('lang'), name).toBe(locale ?? 'ka');
+      const { op, problems } = matcher.checkRequest(/** @type {any} */ (request));
       if (!op) failures.push(`${name}: ${problems.join('; ')}`);
       else {
         if (op.operation['x-adapter'] !== name)
@@ -289,24 +321,28 @@ describe('საჯარო ContentAdapter-ის HTTP გეგმა ↔ Open
     expect(failures).toEqual([]);
   });
 
-  it('spec-ის ყოველი საჯარო ოპერაცია გეგმაშია', () => {
+  it('spec-ის ყოველი საჯარო ოპერაცია adapter-შია', () => {
     const specNames = matcher.operations
       .filter((op) => op.path.startsWith('/api/v1/'))
       .map((op) => op.operation['x-adapter'])
       .sort();
-    expect(specNames).toEqual(Object.keys(PUBLIC_PLAN).sort());
+    const { source: _source, ...functions } = http;
+    expect(specNames).toEqual(Object.keys(functions).sort());
   });
 
-  it('არასწორი მოთხოვნა spec-ის ვალიდატორს არ გადის (ტესტის თვითშემოწმება)', () => {
+  it('არასწორი მოთხოვნა spec-ის ვალიდატორს არ გადის (ტესტის თვითშემოწმება)', async () => {
     const bad = [
-      PUBLIC_PLAN.listArticles({ category: 'politics' }),
-      PUBLIC_PLAN.listArticles({ limit: 500 }),
-      PUBLIC_PLAN.listNews({ year: 'last' }),
-      PUBLIC_PLAN.listArticles({ unknown: 1 }),
-      PUBLIC_PLAN.sendContact({ ...contact, diagnosis: 'x' }),
-      PUBLIC_PLAN.subscribe(undefined),
+      ...(await record('listArticles', [{ category: 'politics' }])),
+      ...(await record('listArticles', [{ limit: 500 }])),
+      ...(await record('listNews', [{ year: 'last' }])),
+      ...(await record('listArticles', [{ unknown: 1 }])),
+      ...(await record('sendContact', [{ ...contact, diagnosis: 'x' }])),
+      ...(await record('subscribe', [undefined])),
     ];
-    for (const planned of bad)
-      expect(matcher.checkRequest(planned).problems, planned.url).not.toEqual([]);
+    expect(bad).toHaveLength(6);
+    for (const request of bad)
+      expect(matcher.checkRequest(/** @type {any} */ (request)).problems, request.url).not.toEqual(
+        [],
+      );
   });
 });

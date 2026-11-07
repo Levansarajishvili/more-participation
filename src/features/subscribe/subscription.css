@@ -1,0 +1,77 @@
+/*
+ * გამოწერის ბმულის გვერდი (B6: `/subscribe/confirm`, `/subscribe/unsubscribe`). დაფა არ არის —
+ * UI ნაკრებით, კონტაქტის ფორმის დადასტურებისა და შეცდომის პატერნით (F6): ბარათი surface-ზე
+ * 2px `--mc-card-border`, რადიუსი 24 (`--radius-card`); წარმატება — 2px `--mc-growth` + ✓ + ტექსტი
+ * (მწვანე მხოლოდ წარმატებაა, ფერი მარტო არასოდეს); შეცდომა — 3px `--mc-error` + ხატულა + ტექსტი.
+ * ფერი მხოლოდ --mc-* ტოკენით (ღია / მუქი / კონტრასტი); ანიმაცია არ არის. ტექსტის სვეტი ≤ 45rem.
+ */
+@layer components {
+  .mc-subscription {
+    max-width: 45rem;
+    padding: 2rem 1.5rem;
+    border: 2px solid var(--mc-card-border);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+    overflow-wrap: anywhere;
+  }
+  @media (min-width: 48rem) {
+    .mc-subscription {
+      padding: 2.5rem 3rem;
+    }
+  }
+  .mc-subscription__form,
+  .mc-subscription__body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.25rem;
+    min-width: 0;
+  }
+  .mc-subscription__form > p,
+  .mc-subscription__body > p,
+  .mc-subscription__note > p {
+    margin: 0;
+  }
+  .mc-subscription__done {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    margin: -0.5rem;
+    padding: 1.5rem;
+    border: 2px solid var(--mc-growth);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+  }
+  .mc-subscription__done-icon {
+    flex-shrink: 0;
+    color: var(--mc-growth);
+  }
+  .mc-subscription__title {
+    margin: 0;
+    font-size: var(--text-h3);
+    line-height: var(--text-h3--line-height);
+    font-weight: 800;
+  }
+  .mc-subscription__alert {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    margin: 0;
+    padding: 1rem 1.25rem;
+    border: 3px solid var(--mc-error);
+    border-radius: var(--radius-card);
+    background-color: var(--mc-surface);
+    color: var(--mc-ink);
+  }
+  .mc-subscription__alert-icon,
+  .mc-subscription__note-icon {
+    flex-shrink: 0;
+    color: var(--mc-error);
+  }
+  .mc-subscription__note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}

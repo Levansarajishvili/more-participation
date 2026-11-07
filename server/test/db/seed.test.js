@@ -8,10 +8,12 @@ import { validateContent } from '@/content/validate.js';
 
 import { COLLECTION, DRAFT_SCHEMA } from '../../db/collections.js';
 import { createRepositories } from '../../db/index.js';
+import { searchTextOf } from '../../db/derive.js';
 import { SeedError, seedDatabase, seedSource } from '../../db/seed.js';
+import { countChanges, migrate } from '../../migrations/index.js';
 import { createAjv, loadSpec, schemaRef } from '../../lib/openapi.js';
 
-import { FAKE_R2_ENV } from '../helpers.js';
+import { FAKE_PRODUCTION_ENV } from '../helpers.js';
 
 import { T0, caught, freshDatabase, json } from './helpers.js';
 
@@ -80,6 +82,26 @@ describe('seed', () => {
       );
     }
     expect(ajv.validate(schemaRef('SiteSettingsDraft'), json(settings))).toBe(true);
+  });
+
+  it('B6: მიგრაცია 003 — ძველი `searchText` ხელახლა ითვლება, მეორედ — არაფერი', async () => {
+    const content = database.db.collection(COLLECTION.content);
+    const before = /** @type {any} */ (
+      await content.findOne({ _id: /** @type {any} */ ('a-001') })
+    );
+    expect(before.searchText).toBe(searchTextOf(before.item, 'articles'));
+    expect(before.searchText.length).toBeGreaterThan(1000);
+    await content.updateOne(
+      { _id: /** @type {any} */ ('a-001') },
+      { $set: { searchText: 'b2 ძველი ტექსტი' } },
+    );
+    const first = await migrate(database.db);
+    expect(first.find((r) => r.id === '003-public-search')?.reports).toEqual([
+      { name: 'content', collection: 'updated', indexes: [] },
+    ]);
+    const after = /** @type {any} */ (await content.findOne({ _id: /** @type {any} */ ('a-001') }));
+    expect(after.searchText).toBe(before.searchText);
+    expect(countChanges(await migrate(database.db))).toBe(0);
   });
 
   it('განმეორებით — SeedError (არაფერი იცვლება); --reset — იგივე შედეგი', async () => {
@@ -156,7 +178,7 @@ describe('CLI: server:migrate / server:seed', () => {
 
     const production = await run('seed.js', [], {
       ...env,
-      ...FAKE_R2_ENV,
+      ...FAKE_PRODUCTION_ENV,
       NODE_ENV: 'production',
     });
     expect(production.code).toBe(1);

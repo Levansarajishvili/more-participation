@@ -1,5 +1,7 @@
 import { ContentError, ERROR_CODES, fieldError } from '@/content/errors.js';
 
+import { inLocale, requestLocale } from './i18n.js';
+
 /**
  * შეცდომის ერთი handler: ყოველი შეცდომა → `{ code, message, fields? }` (`ContentError.toJSON()`,
  * საერთო `src/content/errors.js`) და HTTP სტატუსი. სხვა ფორმა API-დან არ გამოდის.
@@ -146,8 +148,27 @@ export function toHttpError(error) {
  * @param {import('fastify').FastifyInstance} app
  */
 export function registerErrorHandlers(app) {
+  // B6: საჯარო API-ის (`/api/v1/*`) შეცდომის ტექსტი მოთხოვნის ენაზეა (`?lang=`): ajv-ის ველის
+  // შეცდომა, 404, 429 — `inLocale`-ში იქმნება; ზედა დონის ტექსტი თავიდან იწერება (ადმინს — B5-ის
+  // კონკრეტული ტექსტი, მაგ. „გამოიყენება N მასალაში“ — უცვლელია, ის ქართულია)
+  /** @param {import('fastify').FastifyRequest} request */
+  const localeOf = (request) =>
+    requestLocale(/** @type {{ lang?: unknown } | undefined} */ (request.query)?.lang);
+  const isPublic = (/** @type {string} */ url) => url.startsWith('/api/v1/');
+
   app.setErrorHandler((error, request, reply) => {
-    const { status, error: body, internal } = toHttpError(error);
+    const {
+      status,
+      error: body,
+      internal,
+    } = inLocale(localeOf(request), () => {
+      const result = toHttpError(error);
+      if (!isPublic(request.url)) return result;
+      return {
+        ...result,
+        error: new ContentError(result.error.code, { fields: result.error.fields }),
+      };
+    });
     if (internal) request.log.error({ err: error }, 'request failed');
     else request.log.info({ code: body.code }, 'request rejected');
     if (status === 429 && !reply.getHeader('retry-after')) reply.header('retry-after', 60);
@@ -155,6 +176,6 @@ export function registerErrorHandlers(app) {
   });
 
   app.setNotFoundHandler((request, reply) =>
-    reply.code(404).send(new ContentError('not-found').toJSON()),
+    reply.code(404).send(inLocale(localeOf(request), () => new ContentError('not-found').toJSON())),
   );
 }

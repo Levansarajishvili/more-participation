@@ -31,6 +31,7 @@ export {
   storeLocale,
   storedLocale,
   stripLocale,
+  withLocale,
 } from './locale.js';
 
 /** მიმდინარე ინტერფეისის ენის კოდი (`<html lang>`, `lang` ატრიბუტი). */

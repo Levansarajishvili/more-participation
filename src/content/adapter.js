@@ -2,7 +2,9 @@ import { normalizeError } from './errors.js';
 
 /**
  * კონტენტის ერთადერთი შესასვლელი. გვერდები და hook-ები მხოლოდ ამ ფუნქციებს იძახებენ;
- * რა დგას უკან — mock თუ CMS — აქ წყდება. ახლა: mock, ცალკე lazy chunk-ად.
+ * რა დგას უკან — mock თუ API — აქ წყდება: `VITE_CONTENT_API` (მაგ. `/api/v1`) → HTTP adapter-ი
+ * (`http.js`, B6), მის გარეშე — mock (ცალკე lazy chunk). build-ში მეორე შტო არ ხვდება
+ * (`import.meta.env.*` build-ის დროს ჩაისმება).
  *
  * ყოველი ფუნქცია Promise-ს აბრუნებს; შეცდომა ყოველთვის ContentError-ია
  * (`{ code, message }`, ქართულად; ფორმაზე — `fields`).
@@ -24,6 +26,8 @@ import { normalizeError } from './errors.js';
 /** @typedef {import('./model.js').ContactPayload} ContactPayload */
 /** @typedef {import('./model.js').ContactResult} ContactResult */
 /** @typedef {import('./model.js').SubscribeResult} SubscribeResult */
+/** @typedef {import('./model.js').ConfirmResult} ConfirmResult */
+/** @typedef {import('./model.js').UnsubscribeResult} UnsubscribeResult */
 /** @typedef {import('./query.js').ArticleQuery} ArticleQuery */
 /** @typedef {import('./query.js').SeriesQuery} SeriesQuery */
 /** @typedef {import('./query.js').VideoQuery} VideoQuery */
@@ -36,7 +40,7 @@ import { normalizeError } from './errors.js';
 
 /**
  * @typedef {object} ContentAdapter
- * @property {'mock' | 'cms'} source
+ * @property {'mock' | 'http'} source
  * @property {(params?: ArticleQuery) => Promise<Page<ArticleSummary>>} listArticles
  * @property {(slug: string) => Promise<Article>} getArticle
  * @property {(params?: SeriesQuery) => Promise<SeriesSummary[]>} listSeries
@@ -51,6 +55,8 @@ import { normalizeError } from './errors.js';
  * @property {() => Promise<Stage[]>} getStages
  * @property {() => Promise<SiteSettings>} getSettings
  * @property {(email: string) => Promise<SubscribeResult>} subscribe
+ * @property {(token: string) => Promise<ConfirmResult>} confirmSubscription
+ * @property {(token: string) => Promise<UnsubscribeResult>} unsubscribe
  * @property {(payload: ContactPayload) => Promise<ContactResult>} sendContact
  */
 
@@ -62,6 +68,12 @@ let current = null;
 
 /** @returns {Promise<ContentAdapter>} */
 function loadDefault() {
+  const api = import.meta.env.VITE_CONTENT_API;
+  if (api) {
+    return import('./http.js').then(({ createHttpContentAdapter }) =>
+      createHttpContentAdapter({ baseUrl: api }),
+    );
+  }
   return import('./mock/index.js').then(({ createMockAdapter, getSharedMockStore }) => {
     // F8: საერთო საცავი — ადმინის adapter-იც მას კითხულობს (ადმინში გამოქვეყნებული საიტზე ჩანს)
     const adapter = createMockAdapter({
@@ -85,7 +97,7 @@ function getAdapter() {
 }
 
 /**
- * adapter-ის ჩანაცვლება (ტესტები, მომავალი CMS). `null` — ნაგულისხმევზე დაბრუნება.
+ * adapter-ის ჩანაცვლება (ტესტები, HTTP adapter-ი). `null` — ნაგულისხმევზე დაბრუნება.
  * @param {ContentAdapter | null} adapter
  */
 export function setContentAdapter(adapter) {
@@ -214,10 +226,29 @@ export function subscribe(email) {
 }
 
 /**
+ * B6: გამოწერის დადასტურება წერილის ბმულიდან (`/subscribe/confirm#token=…`, ღილაკი — POST).
+ * @param {string} token
+ * @returns {Promise<ConfirmResult>}  უცნობი / ვადაგასული / გამოყენებული → `not-found`;
+ *   არასწორი ფორმა → `bad-request`
+ */
+export function confirmSubscription(token) {
+  return call('confirmSubscription', token);
+}
+
+/**
+ * B6: გამოწერის გაუქმება ერთი ბმულით (`/subscribe/unsubscribe#token=…`); ჩანაწერი იშლება.
+ * განმეორებით — იგივე `{ ok: true }`.
+ * @param {string} token
+ * @returns {Promise<UnsubscribeResult>}  ყალბი ხელმოწერა → `not-found`; არასწორი ფორმა → `bad-request`
+ */
+export function unsubscribe(token) {
+  return call('unsubscribe', token);
+}
+
+/**
  * კონტაქტის ფორმა. spam-ისგან დაცვა CAPTCHA-ს გარეშეა: honeypot (`payload.website`) — შევსებულს
- * სერვერი ჩუმად აგდებს და ჩვეულებრივ `{ ok: true }`-ს აბრუნებს.
- * TODO(backend): სერვერის rate limit (IP + საკონტაქტო მისამართი, მაგ. 5 შეტყობინება / საათი) —
- * ლიმიტის გადაჭარბებისას HTTP 429 → `server`-ის ტექსტი; დროის ლიმიტი ფორმაზე არ ედება.
+ * სერვერი ჩუმად აგდებს და ჩვეულებრივ `{ ok: true }`-ს აბრუნებს. ძალიან ბევრი მცდელობა → 429
+ * (`rate-limited`); დროის ლიმიტი ფორმაზე არ ედება.
  * @param {ContactPayload} payload
  * @returns {Promise<ContactResult>}  შეცდომისას → `validation` + `fields`
  */
@@ -225,7 +256,7 @@ export function sendContact(payload) {
   return call('sendContact', payload);
 }
 
-/** ამჟამინდელი წყარო (`mock` | `cms`) — dev-ბანერისთვის. @returns {Promise<ContentAdapter['source']>} */
+/** ამჟამინდელი წყარო (`mock` | `http`) — dev-ბანერისთვის. @returns {Promise<ContentAdapter['source']>} */
 export async function contentSource() {
   return (await getAdapter()).source;
 }

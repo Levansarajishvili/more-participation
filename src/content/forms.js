@@ -98,6 +98,48 @@ export function validateSubscribe(email) {
   return {};
 }
 
+/* ─── B6: გამოწერა — double opt-in (B0 #11) ─────────────────────────────── */
+
+/** დადასტურების ბმულის ვადა, დღე (B0 #10 — `pending` ჩანაწერის TTL იგივეა). */
+export const SUBSCRIBE_CONFIRM_DAYS = 7;
+/** დადასტურების token: 32 შემთხვევითი ბაიტი, base64url (43 სიმბოლო); ბაზაში — მხოლოდ sha256. */
+export const SUBSCRIBE_TOKEN = /^[A-Za-z0-9_-]{43}$/;
+/**
+ * გაუქმების token: გამომწერის id (24 hex) + `.` + HMAC-SHA256 (base64url, 43) — სერვერის საიდუმლოთი
+ * (`SUBSCRIBE_SECRET`); ბაზაში არ ინახება, ყოველ წერილში თავიდან იქმნება (newsletter-იც).
+ */
+export const UNSUBSCRIBE_TOKEN = /^[0-9a-f]{24}\.[A-Za-z0-9_-]{43}$/;
+
+/** @param {unknown} value @returns {value is string} */
+export const isSubscribeToken = (value) => typeof value === 'string' && SUBSCRIBE_TOKEN.test(value);
+
+/** @param {unknown} value @returns {value is string} */
+export const isUnsubscribeToken = (value) =>
+  typeof value === 'string' && UNSUBSCRIBE_TOKEN.test(value);
+
+/**
+ * წერილის ბმული: `<origin>[/en]/subscribe/<confirm | unsubscribe>#token=…`. token fragment-შია —
+ * სერვერამდე (ლოგი), Referer-სა და ანალიტიკამდე არ მიდის; გვერდი მას POST-ის სხეულში აგზავნის.
+ * GET თავისით არაფერს ცვლის (ფოსტის სკანერი ბმულს თვითონ ხსნის) — ღილაკი „დადასტურება“ / „გაუქმება“.
+ * @param {string} origin  `https://…` (ბოლო `/`-ის გარეშე); mock-ში — ''
+ * @param {'ka' | 'en'} locale
+ * @param {'confirm' | 'unsubscribe'} kind
+ * @param {string} token
+ * @returns {string}
+ */
+export function subscriptionLink(origin, locale, kind, token) {
+  return `${origin}${locale === 'en' ? '/en' : ''}/subscribe/${kind}#token=${encodeURIComponent(token)}`;
+}
+
+/**
+ * `#token=…` → token ('' — არ არის).
+ * @param {string} hash  `location.hash`
+ * @returns {string}
+ */
+export function tokenFromHash(hash) {
+  return new URLSearchParams(String(hash ?? '').replace(/^#/, '')).get('token')?.trim() ?? '';
+}
+
 /**
  * საპასუხო არხი და საკონტაქტო ველი ერთმანეთს უნდა შეესაბამებოდეს: ელფოსტით პასუხს ელფოსტა
  * სჭირდება, ზარსა და მესიჯს — ტელეფონი; ჟესტური ენის ვიდეოზარი ორივეთი იჯავშნება.

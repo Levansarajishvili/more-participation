@@ -12,7 +12,9 @@ info:
 
     **კონვენციები**
     - ერთი origin: API `/api/*`, CORS header-ები არ იგზავნება. ყოველ `/api/*` პასუხს აქვს
-      `Cache-Control: no-store` (საჯარო GET-ის ქეში — B6) და `X-Robots-Tag: noindex, nofollow`.
+      `X-Robots-Tag: noindex, nofollow` და `Cache-Control: no-store` — გარდა საჯარო GET-ის წარმატებული
+      პასუხისა (B6): `ETag` + `Cache-Control: public, max-age=0, must-revalidate`, `If-None-Match` →
+      304 სხეულის გარეშე (გამოქვეყნება / წაშლა მომდევნო მოთხოვნაზე მაშინვე ჩანს).
     - მოთხოვნის სხეული — მხოლოდ `application/json` (მედიის ატვირთვა — `multipart/form-data`);
       `text/plain` არ მიიღება (CSRF-ის „მარტივი მოთხოვნა“). უცნობი ველი უარყოფილია (`additionalProperties`
       / `unevaluatedProperties: false`), ajv — `removeAdditional: false`.
@@ -123,9 +125,13 @@ paths:
       responses:
         '200':
           description: გვერდი
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ArticlePage' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -143,9 +149,13 @@ paths:
       responses:
         '200':
           description: სტატია
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Article' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
@@ -167,11 +177,15 @@ paths:
       responses:
         '200':
           description: სერიები (სლაიდების გარეშე)
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/SeriesSummary' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -189,9 +203,13 @@ paths:
       responses:
         '200':
           description: სერია
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Series' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
@@ -213,11 +231,15 @@ paths:
       responses:
         '200':
           description: ვიდეოები (სუბტიტრის და ტრანსკრიპტის გარეშე)
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/VideoSummary' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -235,9 +257,13 @@ paths:
       responses:
         '200':
           description: ვიდეო
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/Video' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
@@ -265,9 +291,13 @@ paths:
       responses:
         '200':
           description: გვერდი
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NewsPage' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -285,9 +315,13 @@ paths:
       responses:
         '200':
           description: სიახლე
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/NewsItem' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
@@ -311,11 +345,15 @@ paths:
       responses:
         '200':
           description: ღონისძიებები
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Event' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '400': { $ref: '#/components/responses/BadRequest' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
@@ -332,11 +370,15 @@ paths:
       responses:
         '200':
           description: გუნდის წევრები
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/TeamMember' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -352,11 +394,15 @@ paths:
       responses:
         '200':
           description: პარტნიორები
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Partner' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -372,11 +418,15 @@ paths:
       responses:
         '200':
           description: ეტაპები
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema:
                 type: array
                 items: { $ref: '#/components/schemas/Stage' }
+        '304': { $ref: '#/components/responses/NotModified' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -385,6 +435,7 @@ paths:
       operationId: getSettings
       tags: [public]
       summary: საიტის პარამეტრები — კონტაქტი, საათები, ოფისი, FAQ, ბმულები
+      description: 'პარამეტრების ჩანაწერი ჯერ არ არსებობს (ცარიელი ბაზა, seed / ადმინის შენახვის გარეშე) → 404.'
       x-adapter: getSettings
       x-step: B6
       parameters:
@@ -392,9 +443,14 @@ paths:
       responses:
         '200':
           description: პარამეტრები
+          headers:
+            ETag: { $ref: '#/components/headers/ETag' }
+            Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
           content:
             application/json:
               schema: { $ref: '#/components/schemas/SiteSettings' }
+        '304': { $ref: '#/components/responses/NotModified' }
+        '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
@@ -402,14 +458,18 @@ paths:
     post:
       operationId: subscribe
       tags: [public]
-      summary: newsletter-ის გამოწერა
+      summary: newsletter-ის გამოწერა — double opt-in, ნაბიჯი 1
       description: |
-        ელფოსტა მოწმდება `forms.js`-ის `validateSubscribe`-ით (422 + `fields.email`). Rate limit — IP-ით,
-        CAPTCHA-ს გარეშე. B6: double opt-in — პასუხი `{ ok, status: 'pending' }` და
-        `confirmSubscription(token)`; კონტრაქტი ორივე მხარეს B6-ში იცვლება.
+        ელფოსტა მოწმდება `forms.js`-ის `validateSubscribe`-ით (422 + `fields.email`, ტექსტი `lang`-ის
+        ენაზე). Rate limit — IP-ით, CAPTCHA-ს გარეშე. ჩანაწერი `pending` (token-ის sha256, ვადა
+        `SUBSCRIBE_CONFIRM_DAYS` = 7 დღე) და წერილი ბმულით `[/en]/subscribe/confirm#token=…`
+        (`lang`-ის ენაზე). პასუხი ყოველთვის `{ ok, status: 'pending' }` — უკვე გამოწერილ მისამართზეც
+        (წერილის გარეშე); `pending`-ზე განმეორებით — ახალი token, ძველი აღარ მოქმედებს.
       x-adapter: subscribe
       x-rate-limit: forms
       x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
       requestBody:
         required: true
         content:
@@ -427,6 +487,69 @@ paths:
         '429': { $ref: '#/components/responses/RateLimited' }
         '500': { $ref: '#/components/responses/ServerError' }
 
+  /api/v1/subscribe/confirm:
+    post:
+      operationId: confirmSubscription
+      tags: [public]
+      summary: გამოწერის დადასტურება — double opt-in, ნაბიჯი 2
+      description: |
+        გვერდი `/subscribe/confirm` (ka / en) token-ს ბმულის fragment-იდან იღებს და ღილაკით აგზავნის
+        (GET თავისით არაფერს ადასტურებს — ფოსტის სკანერი ბმულს თვითონ ხსნის). უცნობი, ვადაგასული ან
+        უკვე გამოყენებული token → 404. წარმატება — `confirmed`, token იშლება, მისასალმებელი წერილი
+        გაუქმების ბმულით (`List-Unsubscribe`).
+      x-adapter: confirmSubscription
+      x-rate-limit: forms
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConfirmSubscriptionRequest' }
+      responses:
+        '200':
+          description: დადასტურდა
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConfirmResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/subscribe/unsubscribe:
+    post:
+      operationId: unsubscribe
+      tags: [public]
+      summary: გამოწერის გაუქმება ერთი ბმულით
+      description: |
+        token = გამომწერის id + HMAC-SHA256 (`SUBSCRIBE_SECRET`) — ბაზაში არ ინახება, ყოველ წერილში
+        იქმნება. ჩანაწერი იშლება (B0 #10: გაუქმება = წაშლა); განმეორებით — იგივე `{ ok }`. ყალბი
+        ხელმოწერა → 404. გვერდი `/subscribe/unsubscribe` — ღილაკით, როგორც დადასტურება.
+      x-adapter: unsubscribe
+      x-rate-limit: forms
+      x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UnsubscribeRequest' }
+      responses:
+        '200':
+          description: გაუქმდა (ან უკვე გაუქმებული იყო)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UnsubscribeResult' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/RateLimited' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
   /api/v1/contact:
     post:
       operationId: sendContact
@@ -435,11 +558,17 @@ paths:
       description: |
         შემოწმება — `forms.js`-ის `validateContact` (422 + `fields`, `CONTACT_FIELDS`-ის რიგით).
         honeypot (`website`) შევსებულია → ჩვეულებრივი `{ ok: true, id }`, შეტყობინება არ ინახება და არ
-        იგზავნება. დიაგნოზი არ გროვდება — `support` მხოლოდ კომუნიკაციის საჭიროებაა. Rate limit — IP +
-        საკონტაქტო მისამართი (B6), CAPTCHA და დროის ლიმიტი არ არის.
+        იგზავნება. დიაგნოზი არ გროვდება — `support` მხოლოდ კომუნიკაციის საჭიროებაა (უცნობი ველი → 400).
+        Rate limit — IP + საკონტაქტო მისამართი (sha256, მეხსიერებაში), CAPTCHA და დროის ლიმიტი არ არის.
+        შენახვა `messages`-ში (TTL `MESSAGES_TTL_DAYS`) და წერილი `CONTACT_INBOX`-ზე (`Reply-To` —
+        თუ `replyVia=email`; სათაურში პერსონალური მონაცემი არ არის); გაგზავნა ვერ მოხერხდა → 500,
+        ჩანაწერი იშლება (მომხმარებელი ხელახლა ცდის — ტექსტი ფორმაში რჩება). ველის შეცდომის ტექსტი —
+        `lang`-ის ენაზე.
       x-adapter: sendContact
       x-rate-limit: forms
       x-step: B6
+      parameters:
+        - $ref: '#/components/parameters/Lang'
       requestBody:
         required: true
         content:
@@ -1339,6 +1468,12 @@ components:
     RetryAfter:
       description: წამები შემდეგ მცდელობამდე
       schema: { type: integer, minimum: 1 }
+    ETag:
+      description: 'B6: ძლიერი ETag — პასუხის სხეულის sha256 (base64url); `If-None-Match`-ით → 304'
+      schema: { type: string, pattern: '^"[A-Za-z0-9_-]{27}"$' }
+    PublicCacheControl:
+      description: 'B6: `public, max-age=0, must-revalidate` — ბრაუზერი ყოველ ჯერზე ამოწმებს (ETag)'
+      schema: { type: string, const: 'public, max-age=0, must-revalidate' }
 
   parameters:
     Lang:
@@ -1388,6 +1523,11 @@ components:
       schema: { $ref: '#/components/schemas/UserId' }
 
   responses:
+    NotModified:
+      description: 'B6: `If-None-Match` ემთხვევა მიმდინარე `ETag`-ს — სხეულის გარეშე'
+      headers:
+        ETag: { $ref: '#/components/headers/ETag' }
+        Cache-Control: { $ref: '#/components/headers/PublicCacheControl' }
     BadRequest:
       description: არასწორი მოთხოვნა
       content:
@@ -2498,6 +2638,41 @@ components:
         email: { type: string, maxLength: 120 }
       additionalProperties: false
     SubscribeResult:
+      type: object
+      description: 'B6: ყოველთვის `pending` (უკვე გამოწერილ მისამართზეც — მისამართის არსებობა არ ჩანს)'
+      required: [ok, status]
+      properties:
+        ok: { const: true }
+        status: { const: pending }
+      additionalProperties: false
+    SubscribeToken:
+      type: string
+      description: '`forms.js`-ის `SUBSCRIBE_TOKEN` — 32 ბაიტი base64url'
+      pattern: '^[A-Za-z0-9_-]{43}$'
+    UnsubscribeToken:
+      type: string
+      description: '`forms.js`-ის `UNSUBSCRIBE_TOKEN` — გამომწერის id (24 hex) + `.` + HMAC-SHA256 (base64url)'
+      pattern: '^[0-9a-f]{24}\.[A-Za-z0-9_-]{43}$'
+    ConfirmSubscriptionRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { $ref: '#/components/schemas/SubscribeToken' }
+      additionalProperties: false
+    UnsubscribeRequest:
+      type: object
+      required: [token]
+      properties:
+        token: { $ref: '#/components/schemas/UnsubscribeToken' }
+      additionalProperties: false
+    ConfirmResult:
+      type: object
+      required: [ok, status]
+      properties:
+        ok: { const: true }
+        status: { const: confirmed }
+      additionalProperties: false
+    UnsubscribeResult:
       type: object
       required: [ok]
       properties:

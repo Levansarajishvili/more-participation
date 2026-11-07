@@ -90,6 +90,17 @@ export function createRoutes() {
               handle: { title: 'nav.contact' },
               lazy: page(() => import('@/pages/ContactPage.jsx')),
             },
+            {
+              // B6: double opt-in — წერილის ბმული (token fragment-ში), მოქმედება მხოლოდ ღილაკით
+              path: 'subscribe/confirm',
+              handle: { title: 'subscription.confirmTitle' },
+              lazy: page(() => import('@/pages/SubscribeConfirmPage.jsx')),
+            },
+            {
+              path: 'subscribe/unsubscribe',
+              handle: { title: 'subscription.unsubscribeTitle' },
+              lazy: page(() => import('@/pages/UnsubscribePage.jsx')),
+            },
             ...(import.meta.env.DEV
               ? [
                   // dev-ის გვერდი: სათაური usePageTitle-ით (წარწერა i18n-ში არ არის)

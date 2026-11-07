@@ -35,6 +35,8 @@ const METHODS = /** @type {const} */ ([
   'getStages',
   'getSettings',
   'subscribe',
+  'confirmSubscription',
+  'unsubscribe',
   'sendContact',
 ]);
 

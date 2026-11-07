@@ -19,7 +19,9 @@ import { ContentError } from '@/content/errors.js';
  *   არის, CSRF token არ ითხოვება) ეს ფარავს login CSRF-ისგან.
  * - CSP — API-ს JSON-ისთვის (`default-src 'none'`). საიტის HTML-ის CSP (`YOUTUBE_CSP`) — B7,
  *   სტატიკურ ფაილებთან ერთად.
- * - `/api/*`: `Cache-Control: no-store` (საჯარო GET-ის ქეში — B6), `X-Robots-Tag: noindex, nofollow`.
+ * - `/api/*`: `Cache-Control: no-store`, `X-Robots-Tag: noindex, nofollow`. B6: საჯარო GET-ის წარმატებული
+ *   პასუხი (200 / 304) თავის `Cache-Control`-ს თავად წერს (`routes/public.js` — ETag) და აქ არ
+ *   იცვლება; შეცდომის პასუხზე (≥ 400) ყოველთვის `no-store`.
  */
 
 export const API_CSP = Object.freeze({
@@ -65,7 +67,9 @@ export async function registerSecurity(app) {
 
   app.addHook('onSend', async (request, reply, payload) => {
     if (isApi(request.url)) {
-      reply.header('cache-control', 'no-store');
+      if (reply.statusCode >= 400 || !reply.hasHeader('cache-control')) {
+        reply.header('cache-control', 'no-store');
+      }
       reply.header('x-robots-tag', 'noindex, nofollow');
     }
     return payload;

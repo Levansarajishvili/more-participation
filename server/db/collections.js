@@ -77,6 +77,11 @@ export const MEDIA_KINDS = Object.freeze(['image', 'document', 'track']);
 export const SUBSCRIBER_STATUSES = Object.freeze(['pending', 'confirmed']);
 export const LANGS = Object.freeze(['ka', 'en']);
 export const DAY_SECONDS = 86_400;
+/**
+ * `content.searchText`-ის ზღვარი. B6-მდე 10 000 იყო (სათაური + აღწერა); B6-დან სტატიის ტექსტიც
+ * შედის ორივე ენაზე. item ≤ `BODY_LIMIT` (1 MB JSON) — ტექსტი ერთ ენაზე ამაზე მეტი ვერ იქნება.
+ */
+export const SEARCH_TEXT_MAX = 2_000_000;
 
 /** მასალის / ვერსიის ფაილების გასაღებები (`derive.js` — `mediaKeysOf`). */
 const MEDIA_KEYS = Object.freeze({
@@ -164,7 +169,8 @@ function contentValidator(spec, items) {
       updatedAt: DATE,
       updatedBy: userId,
       working: { bsonType: ['object', 'null'] },
-      searchText: { bsonType: 'string', maxLength: 10_000 },
+      // B6: + სტატიის საჯარო ძიების ტექსტი ორივე ენაზე (`derive.js`)
+      searchText: { bsonType: 'string', maxLength: SEARCH_TEXT_MAX },
       mediaKeys: MEDIA_KEYS,
     },
     additionalProperties: false,

@@ -113,6 +113,9 @@ scripts/
   placeholders.mjs        F7: [placeholder]-ები ტიპების მიხედვით (`npm run placeholders`, `--json`)
   audit.py                F7: Chromium-ის აუდიტი (`npm run build && npm run audit`; Python Playwright,
                           axe-core node_modules-იდან, ffmpeg — fixture-ები `.audit-fixtures/`-ში)
+                          B6: `AUDIT_API=1 npm run audit -- --only axe,en,forms` — საჯარო გვერდები რეალურ
+                          API-ზე (server + build `VITE_CONTENT_API`-ით `dist-api/`-ში, preview proxy-ით),
+                          `forms` — ფორმები კლავიატურით, double opt-in წერილის ფაილით (MAIL_DIR)
   audit_media_api.py      B5: `npm run audit:media-api` — მედიის ეკრანები რეალურ API-ზე (server:dev +
                           vite dev, proxy), ატვირთვის ნაკადი, axe × 3 თემა × 1440 / 390
 src/
@@ -151,7 +154,9 @@ src/
     news/                 F6: NewsFilters (ტიპი + წელი), FeaturedNews, NewsList (<ol>), UpcomingEvents; news.css
     contact/              F6: ContactChannels (+ contact-channels.js), ContactForm, ContactConfirmation,
                           OfficeInfo (რუკა, ოფისი, საათები), ContactFaq, contact-fields.js; contact.css
-    subscribe/            F6: SubscribeForm (dark | card) + subscribe.css — სტატიები და სიახლეები
+    subscribe/            F6: SubscribeForm (dark | card) + subscribe.css — სტატიები და სიახლეები;
+                          B6: SubscriptionAction (`/subscribe/confirm` | `/subscribe/unsubscribe`, token —
+                          `#token=`, მოქმედება ღილაკით) + subscription.css
     development/          F7: SeriesDeck (სერია სლაიდერში, PdfButton, TextVersion), SeriesGrid
                           („სხვა სერიები“), series-links.js (seriesHref); development.css
     videos/               F7: VideoStage (ფლეიერი + ინფორმაცია), VideoGrid (კატეგორიები + 6 ბარათი),
@@ -175,7 +180,8 @@ src/
                           native-controller.js (PlaybackController), player-prefs.js (mc-player),
                           usePlayback.js (usePlayback, usePlayerLayout), media.css (lazy, გვერდთან ერთად);
                           __tests__/fake-source.jsx — ტესტისა და /__kit-ის წყარო
-  pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV)
+  pages/                  თითო გვერდი = ერთი lazy chunk; KitPage — /__kit (მხოლოდ DEV);
+                          B6: SubscribeConfirmPage, UnsubscribePage
   admin/                  F8: ადმინ პანელი — საჯარო bundle-ში არ ხვდება (routes.jsx იტვირთება
                           src/routes.jsx-ის patchRoutesOnNavigation-ით)
     routes.jsx            createAdminRoutes(); handle.admin = { title, crumbs, root, editor }
@@ -205,7 +211,11 @@ src/
     __tests__/            admin-helpers.jsx (setupAdmin, signInDirect, renderAdmin, fillLogin), ტესტები;
                           B4: scenarios/admin-scenarios.js — სცენარები mock-ისა და HTTP-ის adapter-ზე
   content/
-    adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/sendContact; mock — lazy chunk
+    adapter.js            ერთადერთი შესასვლელი: list*/get*/subscribe/confirmSubscription/unsubscribe/
+                          sendContact; `VITE_CONTENT_API` → http.js (B6), სხვაგვარად mock — lazy chunk
+    http.js               B6: ContentAdapter-ის HTTP ვერსია (`/api/v1`, `lang`, ContentError, ქეში — ბრაუზერის)
+    public.js             B6: საჯარო ხედი — publicItem / publicSnapshot (localize + readingMinutes ენის
+                          ვერსიით), orgFromPage (გვერდის translations.en.team[i] → წევრი) — mock და სერვერი
     model.js              JSDoc typedef-ები + EXCERPT_MAX, MEDIA_RATIO, READING_WPM
     checks.js             B4: validateEntity / validatePage / validateTranslation / EN_CODES,
                           publishBlockers, blockerFields — რედაქტორი, ადმინის mock და სერვერი
@@ -214,12 +224,16 @@ src/
     errors.js             ContentError { code, message, fields }, normalizeError
     files.js              B5: ტიპი შიგთავსით (sniffType), checkFile / checkBlob, ზღვრები, acceptFor —
                           სერვერი, ადმინის mock და UI (UX) ერთი წესით
-    forms.js              validateContact / validateSubscribe (adapter + F6 ფორმა)
+    forms.js              validateContact / validateSubscribe (adapter + F6 ფორმა); B6: გამოწერის token-ის
+                          ფორმა (SUBSCRIBE_TOKEN / UNSUBSCRIBE_TOKEN), SUBSCRIBE_CONFIRM_DAYS,
+                          subscriptionLink, tokenFromHash
     validate.js           validateContent — dev console + F8-ის ჩეკლისტი (dev-only)
     slug.js               ქართული → ლათინური (§10)
     text.js               ბლოკების ტექსტი, კითხვის დრო, ძიების ნორმალიზაცია
     mock/                 createMockAdapter, createMockData; ყველა ფაქტი [ფრჩხილებში];
-                          F8: store.js — საერთო in-memory საცავი (საჯარო + ადმინის adapter)
+                          F8: store.js — საერთო in-memory საცავი (საჯარო + ადმინის adapter);
+                          B6: forms.js — double opt-in (pending / confirmed, outbox), კონტაქტი
+    __tests__/scenarios/  B6: content-scenarios.js — CONTENT_SCENARIOS + FORM_SCENARIOS (mock ↔ HTTP, ka + en)
   hooks/
     useContent.js         ერთი მოთხოვნა → { data, status, error, reload }
     useLoadMore.js        cursor-ით „მეტის ჩატვირთვა“, firstNewIndex ფოკუსისთვის
@@ -231,7 +245,8 @@ src/
     ka.js                 ინტერფეისის ყველა სტრიქონი
     en.js                 ინგლისური (F9) — იგივე გასაღებები, მრავლობითი `{ one, other }`; ცალკე chunk,
                           main.jsx ტვირთავს მხოლოდ `/en`-ზე (`registerDictionary`)
-    locale.js             ენა: getLocale / setLocale, localizePath, alternatePath, `/en` პრეფიქსი
+    locale.js             ენა: getLocale / setLocale, localizePath, alternatePath, `/en` პრეფიქსი;
+                          B6: withLocale(locale, fn) — სინქრონული (სერვერი: ენა მოთხოვნიდან)
     index.js              t(), createT(), formatDurationLabel + format.js-ის რეექსპორტი
     format.js             ka-GE, Asia/Tbilisi: formatDate, formatTimeRange, formatDuration… (F6: თვეები
                           და დღეები ფაილშია — ICU-ის ქართულ ლოკალზე აღარ არის დამოკიდებული)
@@ -252,10 +267,14 @@ server/                   B1: API — ცალკე package (npm workspace), N
   app.js                  buildApp({ config, db, spec, logStream, extend }) — ვალიდაცია, header-ები, ლოგი, route-ები
   lib/
     openapi.js            loadSpec, createAjv (Ajv2020), routeSchema, route(app, spec, operationId, handler)
-    errors.js             შეცდომის ერთი handler: ContentError / ajv → { code, message, fields? } + HTTP
+    errors.js             შეცდომის ერთი handler: ContentError / ajv → { code, message, fields? } + HTTP;
+                          B6: `/api/v1/*`-ზე ტექსტი `?lang=`-ის ენაზე
+    i18n.js               B6: ინგლისური ლექსიკონი სერვერზე, requestLocale, inLocale (= withLocale)
+    subscriptions.js      B6: გაუქმების ბმული — HMAC-SHA256(SUBSCRIBE_SECRET), ბაზაში არ ინახება
     logger.js             pino-ს ოფციები PII-ის გარეშე, ერთი ხაზი პასუხზე
     security.js           helmet (CSP, Referrer-Policy, HSTS 1 წელი…), CORS-ის გარეშე, text/plain-ის გარეშე,
-                          /api/* — no-store; B3: Fetch Metadata (cross-site / same-site ცვლილება → 403)
+                          /api/* — no-store (B6: საჯარო GET-ის 200 / 304 — საკუთარი Cache-Control);
+                          B3: Fetch Metadata (cross-site / same-site ცვლილება → 403)
     auth.js               B3: `__Host-` cookie-ები, guard-ები spec-იდან (security, x-permission, x-rate-limit)
     password.js           B3: argon2id (OWASP), dummy hash, ცნობილი პაროლები, registerFieldErrors
     tokens.js             B3: CSPRNG token (256 ბიტი), sha256, safeEqual, მოწვევის კოდი (MC- + base32)
@@ -266,6 +285,12 @@ server/                   B1: API — ცალკე package (npm workspace), N
                           რიგით), checkPdf, checkVtt, detectRatio
     dev-db.js             startMemoryReplicaSet (MongoDB 8.0.34) — dev და ტესტი
   routes/health.js        GET /api/health — 200 / 503
+  routes/public.js        B6: საჯარო GET /api/v1/* (13) — ბაზა → public.js → query.js; ETag +
+                          `public, max-age=0, must-revalidate`, If-None-Match → 304
+  routes/forms.js         B6: subscribe / subscribe/confirm / subscribe/unsubscribe / contact — forms.js-ის
+                          ვალიდაცია, honeypot, rate limit (+ კონტაქტის მისამართი), ფოსტა
+  mail/                   B6: index.js (createMailer: memory | file | log — ლოგში მხოლოდ მოვლენა),
+                          templates.js (დადასტურება / მისასალმებელი ka · en, კონტაქტი — ქართულად)
   routes/auth.js          B3: login, register, logout, me, extendSession
   routes/users.js         B3: listUsers, createInvite, setUserRole, deactivateUser (users.manage)
   routes/content.js       B4: content / items — სია, შექმნა, slug / YouTube, მიღება, შენახვა, წაშლა,
@@ -289,10 +314,14 @@ server/                   B1: API — ცალკე package (npm workspace), N
     invites.js            B3: invites (კოდი — sha256; create, claim — ერთჯერადი, ტრანზაქციაში)
     media.js              B5: ფაილების რეესტრი (insert, list, update, remove — ტრანზაქციაში: 409 +
                           ისტორიის `src` → null), toFileRecord
-    index.js              createRepositories → { content, settings, users, sessions, invites, media, snapshot }
+    forms.js              B6: messages (insert, markSent, remove) + subscribers (subscribe — upsert,
+                          confirm — findOneAndUpdate ვადით, removeSubscriber)
+    index.js              createRepositories → { content, settings, users, sessions, invites, media, forms,
+                          snapshot }
     seed.js               seedSource / seedDatabase (createMockData + adminState-ის გვერდები)
   migrations/             B2: ensure.js (იდემპოტენტური DDL), 001-init.js, index.js (migrate, countChanges);
-                          B5: 002-version-media-keys.js (`versions.mediaKeys` ძველ ჩანაწერებზე)
+                          B5: 002-version-media-keys.js (`versions.mediaKeys` ძველ ჩანაწერებზე);
+                          B6: 003-public-search.js (`searchText` — სტატიის ტექსტი ორივე ენაზე)
   scripts/shared-smoke.js საერთო მოდულები სუფთა Node-ში (Vite-ის გარეშე)
   scripts/migrate.js      B2: `npm run server:migrate`
   scripts/seed.js         B2: `npm run server:seed [-- --reset]`
@@ -301,18 +330,22 @@ server/                   B1: API — ცალკე package (npm workspace), N
   vitest.config.js        Node-ის გარემო, `@` alias, global setup (memory server); B4: react() + svgr(),
                           `*.test.jsx` (jsdom — ფაილის `@vitest-environment`)
   test/                   config, app, db, openapi, shared-modules, boot (`node server/index.js`);
-    contract/             spec-match.js, public-plan.js (B6-ის გეგმა), requests / responses / constants
+    contract/             spec-match.js, requests (B6: რეალური `src/content/http.js`) / responses / constants
     db/                   B2: schema, collections (მიგრაცია, validator-ები, TTL), content, seed (+ CLI),
                           differential (ajv ↔ MongoDB), parity (↔ mock), translations (↔ რედაქტორი)
     auth/                 B3: units, session (შესვლა, CSRF, Fetch Metadata, header-ები), users (როლები,
                           მოწვევა, რეგისტრაცია), limits (429, ლოგი), http-adapter (createHttpAdminAdapter
                           რეალურ სერვერზე), create-admin (CLI)
     browser.js            B4: cookie jar + spec-ის შემოწმება (createBrowser), installDocument (Node / jsdom)
-    content/              B4: http-env.js (mock-ის მონაცემი ბაზაში, HTTP adapter, საჯარო ხედი snapshot-იდან),
+    content/              B4: http-env.js (mock-ის მონაცემი ბაზაში, HTTP adapter, საჯარო ხედი — B6-დან
+                          რეალური `/api/v1`),
                           parity (საერთო სცენარები mock ↔ HTTP), content (ნაწილი ა-ს წესები),
                           publish (ბლოკერი 422, უფლებები, პარამეტრები)
     ui/                   B4: editor-http.test.jsx — რედაქტორი (jsdom) რეალურ სერვერზე;
-                          B5: media-http.test.jsx — მედიის ეკრანი და რედაქტორის ატვირთვა
+                          B5: media-http.test.jsx — მედიის ეკრანი და რედაქტორის ატვირთვა;
+                          B6: forms-http.test.jsx — კონტაქტი (კლავიატურით, 429), გამოწერის მთელი გზა
+    public/               B6: public-env.js (seed-იანი ბაზა, http.js, spec + ქეშის შემოწმება), parity
+                          (CONTENT_ + FORM_SCENARIOS mock ↔ HTTP, ka + en), cache (ETag / 304), forms
     media/                B5: fixtures.js (GPS-იანი JPEG / PNG / WebP, PDF, VTT, multipart), upload,
                           library (გამოყენება, alt, 409, წაშლა, მიწოდება, მიგრაცია 002), storage
                           (SigV4-ის AWS მაგალითები, S3-ის სატესტო სერვერი), publish (alt / VTT → 422)
@@ -331,7 +364,7 @@ server/                   B1: API — ცალკე package (npm workspace), N
 
 ## კოდის კონვენციები (F2)
 
-- კონტენტი მხოლოდ `@/content/adapter.js`-დან: `listArticles`, `getArticle`, `listSeries`, `getSeries`, `listVideos`, `getVideo`, `listNews`, `listEvents`, `getTeam`, `getPartners`, `getStages`, `getSettings`, `subscribe`, `sendContact`. mock-ს ან query.js-ს გვერდი პირდაპირ არ იძახებს.
+- კონტენტი მხოლოდ `@/content/adapter.js`-დან: `listArticles`, `getArticle`, `listSeries`, `getSeries`, `listVideos`, `getVideo`, `listNews`, `listEvents`, `getTeam`, `getPartners`, `getStages`, `getSettings`, `subscribe`, `confirmSubscription`, `unsubscribe`, `sendContact`. mock-ს ან query.js-ს გვერდი პირდაპირ არ იძახებს.
 - მოთხოვნა კომპონენტში: `useContent(() => getArticle(slug), [slug])`; სია „მეტით“: `useLoadMore((cursor) => listArticles({ category, q, cursor }), [category, q])`. fn ყოველთვის inline-ია — ESLint deps-ს ამოწმებს; პირობითი მოთხოვნა — `{ enabled }`.
 - შეცდომა ყოველთვის `ContentError`-ია: UI გადაწყვეტილებას `code`-ით იღებს (`not-found` → 404, `network` → „ხელახლა ცდა“), `message`-ს პირდაპირ აჩვენებს; ფორმაში — `error.fields[name].message`.
 - ტექსტი UI-ში მხოლოდ `t('…')`-ით; ტაქსონომიის წარწერა — `label('articleCategory', id)`. რიცხვის შემდეგ არსებითი მხოლობითშია.
@@ -571,7 +604,7 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **ადმინის სია / ძიება მეხსიერებაში:** `check` ფილტრს ვალიდაცია სჭირდება, `q` — სათაური + slug (mock-ის იგივე); `searchText` / ინდექსი — B6-ის საჯარო ძიებისთვის.
 - **რიგი mock-ისაა:** გამოქვეყნება — (დაგეგმვის თარიღი) → item → სქემა → ბლოკერი → `replace` (ვერსია → 409); შენახვა — 404 → 409 → სტატუსი → სქემა → ჩაწერა.
 - **parity-ტესტი:** ახალი ადმინის ქცევა — სცენარი `src/admin/__tests__/scenarios/admin-scenarios.js`-ში (`step`, `env.note()` — მხოლოდ ის, რაც ორივე მხარეს ერთნაირია: კოდი, ველის გზა, seed-ის id, სათაური, ვერსია, ავტორი; არა — ახალი id და დროის სტრიქონი). frontend-ი მას mock-ზე უშვებს (`api.test.js`), სერვერი — ორივეზე (`test/content/parity.test.js`) და კვალს ადარებს; HTTP-ის ყოველი პასუხი spec-ით მოწმდება (`problems`).
-- **HTTP-ის გარემო:** `test/content/http-env.js` — `httpEnv(label, { start })`: mock-ის საცავი `adminState`-ით → ბაზა იმავე id-ებით / მეტათი, მომხმარებლები `u-001` / `u-002`, საათი `start`-იდან (`advance`), საჯარო ხედი — `snapshot()` → mock-ის საჯარო adapter-ი (B6-მდე). `close()` კავშირებს იძულებით ხურავს (Fastify-ის keep-alive 72 წმ).
+- **HTTP-ის გარემო:** `test/content/http-env.js` — `httpEnv(label, { start })`: mock-ის საცავი `adminState`-ით → ბაზა იმავე id-ებით / მეტათი, მომხმარებლები `u-001` / `u-002`, საათი `start`-იდან (`advance`), საჯარო ხედი — B6-დან რეალური `/api/v1` (`createHttpContentAdapter`, `browser.fetch`). `close()` კავშირებს იძულებით ხურავს (Fastify-ის keep-alive 72 წმ).
 - **UI რეალურ სერვერზე:** `server/test/ui/*.test.jsx` — `// @vitest-environment jsdom` + `import '@/test/setup.js'`; `setAdminAdapter(env.adapter)`; afterEach — `cleanup()` env-ის დახურვამდე. სერვერის კოდში `new URL(…, String(import.meta.url))` — Vite-ის asset-ის გარდაქმნა jsdom-ში ფაილის გზას `http://`-ად აქცევდა.
 
 ## კოდის კონვენციები (B5 — მედია და დოკუმენტები)
@@ -586,3 +619,15 @@ server/                   B1: API — ცალკე package (npm workspace), N
 - **გამოქვეყნება:** `reconcileFiles` — `/media/` ფაილი რეესტრში უნდა იყოს (`fileMissing`), VTT-ის `cues` / `end` სერვერის მნიშვნელობით.
 - **ტესტი:** სერვერის ფაილის ტესტი — `server/test/media/fixtures.js`-ის ფიქსტურებით (GPS ხელით აწყობილ TIFF-შია; sharp-ის `withExif` GPS-ს არ წერს); multipart — `multipart(file, fields)` (`app.inject`) ან `encodeMultipart` (`browser.js`, jsdom-ის FormData-ც); parity-ში `media: true`.
 - **დამოკიდებულება:** transitive პაკეტი, რომელიც 14 დღეზე ახალია — root `overrides`-ით (`@fastify/busboy`, `semver`), ლოკში შემოწმებით (`npm ls` სუფთა).
+
+## კოდის კონვენციები (B6 — საჯარო API და ფორმები)
+
+- **საჯარო წაკითხვა = mock-ის კოდი:** `routes/public.js` ბაზიდან იღებს მხოლოდ საჯაროდ ხილულს (`publicItems` / `publicItem` — ჩასმის რიგით), შემდეგ — `public.js` (`publicItem`: localize + გამოთვლადი ველები) და `query.js` (`query*` / `find*`) მოთხოვნის ენაზე (`inLocale` — სინქრონულ ბლოკში, `await`-ის გარეშე). საკუთარი ფილტრი / დალაგება / გვერდები სერვერზე არ იწერება. ბაზის ფილტრი (`item.category`, `item.featured`, `searchFilter`) მხოლოდ წინასწარია — ზესიმრავლე.
+- **`searchText`** სტატიაზე ორივე ენის საჯარო საძიებო ტექსტს შეიცავს (`articleSearchText`); ახალი საძიებო ველი → `query.js`-ის `articleSearchText`-ში (ორივე მხარე ერთად) + მიგრაცია (ხელახლა დათვლა, 003-ის ნიმუშით).
+- **ქეში:** საჯარო GET — `cached()` (`ETag` = sha256, `PUBLIC_CACHE_CONTROL`); სერვერის ქეში არ არის. შეცდომა — `no-store` (`security.js`). ახალი საჯარო GET spec-ში — 200-ზე `ETag` + `Cache-Control` header-ები და `'304': NotModified` (`openapi.test.js` ამოწმებს).
+- **ენა სერვერზე:** მოთხოვნის `?lang=` (`requestLocale`); ველის შეცდომა, 404 / 429-ის ტექსტი — `inLocale`-ით. `setLocale` სერვერზე აკრძალულია (გლობალური მდგომარეობაა); `withLocale` Promise-ს არ იღებს.
+- **ფორმები:** ვალიდაცია — `forms.js` (`validateContact`, `validateSubscribe`) handler-ში, სქემა — მხოლოდ სტრუქტურა (უცნობი ველი → 400; დიაგნოზის / ჯანმრთელობის ველი არ არსებობს და არ დაემატება). honeypot — პირველი შემოწმება, პასუხი იგივე ფორმისაა. CAPTCHA და დროის ლიმიტი არ არის — rate limit (`x-rate-limit: forms`, კონტაქტზე + `sendContact:contact:<sha256>`).
+- **გამოწერა:** double opt-in — `pending` (token-ის sha256, `SUBSCRIBE_CONFIRM_DAYS`) → `confirmed`; პასუხი ყოველთვის `{ ok, status: 'pending' }`. ბმული — `subscriptionLink(origin, locale, kind, token)` (token fragment-ში); GET არაფერს ცვლის — გვერდზე ღილაკი (POST). გაუქმების token — `unsubscribeToken(secret, id)` (HMAC), ბაზაში არ ინახება; newsletter-ის ინსტრუმენტი ბმულს ამავე ფუნქციით ქმნის.
+- **ფოსტა:** მხოლოდ `app.mailer.send(template(...))` — შაბლონი `server/mail/templates.js`-ში (ka / en; კონტაქტი — ქართულად, სათაურში პერსონალური მონაცემი არ არის). ლოგში — `mail.sent` / `mail.stub` / `mail.failed` + შაბლონი; მიმღები, სათაური, ტექსტი, ბმული და შეცდომის ტექსტი — არასოდეს. ტესტში — `MAIL_TRANSPORT=memory` (`app.mailer.outbox`, `failNext`).
+- **parity:** ახალი საჯარო ქცევა — სცენარი `src/content/__tests__/scenarios/content-scenarios.js`-ში (`CONTENT_SCENARIOS` / `FORM_SCENARIOS`, `locales`), `env.note()`-ში სრული პასუხი (შემთხვევითი token / id — არა). frontend — mock-ზე (`adapter.test.js`), სერვერი — ორივეზე (`test/public/parity.test.js`).
+

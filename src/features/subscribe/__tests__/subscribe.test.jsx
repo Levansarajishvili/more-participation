@@ -28,7 +28,7 @@ describe('SubscribeForm (სტატიები: მუქი ზოლი, �
     expect(block.querySelector('[data-theme="dark"]')).not.toBeNull();
   });
 
-  it('არასწორი → ფორმატის მინიშნება; სწორი → role="status" „გამოწერა მიღებულია“, ველი სუფთავდება', async () => {
+  it('არასწორი → ფორმატის მინიშნება; სწორი → role="status" „შეამოწმე ელფოსტა“ (B6), ველი სუფთავდება', async () => {
     const adapter = okAdapter();
     const { main, user } = await renderPage('/news', adapter);
     await settle(main);
@@ -43,12 +43,13 @@ describe('SubscribeForm (სტატიები: მუქი ზოლი, �
     await user.type(field, 'name@example.ge{Enter}');
     await waitFor(() =>
       expect(within(block).getByRole('status')).toHaveTextContent(
-        'გამოწერა მიღებულია: name@example.ge.',
+        'შეამოწმე ელფოსტა: name@example.ge. გამოწერა წერილის ბმულით დაადასტურე — ბმული 7 დღე მოქმედებს.',
       ),
     );
     expect(field).toHaveValue('');
     expect(field).not.toHaveAttribute('aria-invalid');
-    expect(adapter.subscribers.has('name@example.ge')).toBe(true);
+    expect(adapter.subscribers.get('name@example.ge')?.status).toBe('pending');
+    expect(adapter.outbox).toHaveLength(1);
   });
 
   it('ქსელის შეცდომა → შეტყობინება ველთან, ტექსტი რჩება', async () => {

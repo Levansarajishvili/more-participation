@@ -1,4 +1,9 @@
+import { localize } from '@/content/localize.js';
+import { articleSearchText } from '@/content/query.js';
 import { normalizeSearch, searchStem } from '@/content/text.js';
+import { LOCALES } from '@/i18n/locale.js';
+
+import { inLocale } from '../lib/i18n.js';
 
 /**
  * `content`-ის ზედა დონის ველები, რომლებიც `item`-იდან ჩაწერისას ითვლება (B2). ბაზა მათ ინდექსით
@@ -33,16 +38,34 @@ export function parseDate(value) {
 /**
  * საძიებო ტექსტი (MongoDB-ის text index ქართულ ფუძეს ვერ ცნობს, §12): `normalizeSearch`
  * ქართულ და ინგლისურ სათაურზე / სახელზე და აღწერაზე + slug (ადმინის ძიება slug-საც ეძებს).
+ *
+ * B6 — სტატიაზე + საჯარო ძიების ტექსტი ორივე ენაზე (`query.js`-ის `articleSearchText`: სათაური,
+ * აღწერა, კატეგორიის წარწერა, ავტორი, ტექსტი; ენის ვერსია — `localize`). ამიტომ `searchText`
+ * ორივე ენის საძიებო ტექსტის **ზესიმრავლეა**: `searchFilter(q)` ბაზაში ვერცერთ შედეგს ვერ
+ * დაკარგავს, ზუსტ შედეგს კი `query.js` ითვლის მოთხოვნის ენაზე (`routes/public.js`).
+ * სიტყვა ჰარს არ შეიცავს, ნაწილები ჰარით ერთდება — ნაწილებს შორის ყალბი დამთხვევა არ ხდება.
  * @param {Record<string, any>} item
+ * @param {string} [type]  `content.type` — `articles`-ზე + საჯარო ძიების ტექსტი
  * @returns {string}
  */
-export function searchTextOf(item) {
+export function searchTextOf(item, type) {
   const en = item?.translations?.en ?? {};
-  return normalizeSearch(
-    [item.slug, item.title ?? item.name, item.excerpt, en?.title ?? en?.name, en?.excerpt]
-      .filter((part) => typeof part === 'string')
-      .join(' '),
-  );
+  const parts = [
+    item.slug,
+    item.title ?? item.name,
+    item.excerpt,
+    en?.title ?? en?.name,
+    en?.excerpt,
+  ];
+  if (type === 'articles' && Array.isArray(item?.body)) {
+    for (const locale of LOCALES) {
+      const view = localize(item, locale);
+      if (Array.isArray(view.body)) {
+        parts.push(inLocale(locale, () => articleSearchText(/** @type {any} */ (view))));
+      }
+    }
+  }
+  return normalizeSearch(parts.filter((part) => typeof part === 'string').join(' '));
 }
 
 /**
@@ -82,15 +105,16 @@ export function mediaKeysOf(...values) {
 /**
  * @param {Record<string, any>} item
  * @param {Record<string, any> | null} [working]  სამუშაო ასლის `item`
+ * @param {string} [type]  `content.type` (B6: `searchText`)
  * @returns {Derived}
  */
-export function derivedFields(item, working = null) {
+export function derivedFields(item, working = null, type) {
   const slug = typeof item.slug === 'string' && item.slug.trim() ? item.slug : null;
   return {
     slug,
     status: typeof item.status === 'string' ? item.status : null,
     publishedAt: parseDate(item.publishedAt),
-    searchText: searchTextOf(item),
+    searchText: searchTextOf(item, type),
     mediaKeys: mediaKeysOf(item, working),
   };
 }

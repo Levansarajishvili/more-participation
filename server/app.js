@@ -13,8 +13,11 @@ import { registerAuthRoutes } from './routes/auth.js';
 import { registerContentRoutes } from './routes/content.js';
 import { registerHealth } from './routes/health.js';
 import { registerMediaRoutes } from './routes/media.js';
+import { registerFormRoutes } from './routes/forms.js';
+import { registerPublicRoutes } from './routes/public.js';
 import { registerSettingsRoutes } from './routes/settings.js';
 import { registerUsersRoutes } from './routes/users.js';
+import { createMailer } from './mail/index.js';
 import { createStorage } from './storage/index.js';
 
 /**
@@ -22,8 +25,9 @@ import { createStorage } from './storage/index.js';
  * B3: cookie, guard-ები spec-იდან (`security`, `x-permission`, `x-rate-limit` — `lib/auth.js`),
  * auth / users. B4: კონტენტი (`routes/content.js`), პარამეტრები და ანგარიშები (`routes/settings.js`).
  * B5: მედია (`routes/media.js`) + ფაილის მიწოდება `/media/*`, საცავი — `app.storage`
- * (`storage/index.js`). B6-ის route-ები აქ ერთვება `route(app, spec, operationId, handler)`-ით —
- * guard-ს ავტომატურად იღებს.
+ * (`storage/index.js`). B6: საჯარო API `/api/v1/*` (`routes/public.js`) — ETag + მოკლე ქეში;
+ * ფორმები (`routes/forms.js`) — გამოწერა double opt-in-ით, კონტაქტი; ელფოსტა — `app.mailer`.
+ * ყოველი route `route(app, spec, operationId, handler)`-ით — guard-ს ავტომატურად იღებს.
  */
 
 /** @typedef {import('./config.js').Config} Config */
@@ -38,6 +42,7 @@ import { createStorage } from './storage/index.js';
  *   ტესტი: დამატებითი route-ები შეცდომის handler-ის რეგისტრაციის შემდეგ
  * @property {() => number} [now]  საათი (სესია, მოწვევა, rate limit); ტესტში — მართვადი
  * @property {import('./storage/index.js').Storage} [storage]  B5: ნაგულისხმევი — `config.media`-დან
+ * @property {import('./mail/index.js').Mailer} [mailer]  B6: ნაგულისხმევი — `config.mail`-დან
  */
 
 /**
@@ -52,6 +57,7 @@ export async function buildApp({
   extend,
   now = Date.now,
   storage = createStorage(config.media, { now }),
+  mailer,
 }) {
   const app = Fastify({
     logger: loggerOptions({
@@ -97,6 +103,8 @@ export async function buildApp({
   app.decorate('apiRoutes', apiRoutes);
   app.decorate('now', now);
   app.decorate('storage', storage);
+  // B6: ელფოსტა — ლოგი მხოლოდ მოვლენით (`mail/index.js`)
+  app.decorate('mailer', mailer ?? createMailer(config.mail, { logger: app.log }));
   app.decorate(
     'repos',
     db
@@ -121,8 +129,11 @@ export async function buildApp({
   registerErrorHandlers(app);
   await registerAuth(app);
   registerHealth(app, { spec });
+  // spec-ის რიგით (openapi.test.js): health → საჯარო (B6) → auth → content / items (B4) → media (B5)
+  // → users → settings / reports
+  registerPublicRoutes(app);
+  registerFormRoutes(app);
   registerAuthRoutes(app);
-  // spec-ის რიგით (openapi.test.js): auth → content / items (B4) → media (B5) → users → settings / reports
   registerContentRoutes(app);
   await registerMediaRoutes(app);
   registerUsersRoutes(app);

@@ -1,8 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
-import { route } from '../../lib/openapi.js';
 import { hashToken } from '../../lib/tokens.js';
-import { FAKE_R2_ENV, captureLogs } from '../helpers.js';
+import { FAKE_PRODUCTION_ENV, captureLogs } from '../helpers.js';
 import { MINUTE } from '../db/helpers.js';
 
 import { ADMIN, ADMIN_EMAIL, EDITOR_EMAIL, PASSWORD, addUser, agent, authApp } from './helpers.js';
@@ -35,8 +34,8 @@ describe('rate limit', () => {
         RATE_LIMIT_FORMS_MAX: '2',
         RATE_LIMIT_FORMS_WINDOW_SECONDS: '60',
       },
-      // B6-ის საჯარო ფორმა: guard spec-იდან (`x-rate-limit: forms`) route-ს ავტომატურად ედება
-      extend: (app) => route(app, app.spec, 'sendContact', async () => ({ ok: true, id: 'test' })),
+      // B6-ის საჯარო ფორმა (`routes/forms.js`): guard spec-იდან (`x-rate-limit: forms`) route-ს
+      // ავტომატურად ედება; + საკონტაქტო მისამართის ლიმიტი handler-ში
     });
     await addUser(ctx.repos, { email: ADMIN_EMAIL, role: 'admin' });
     await addUser(ctx.repos, { email: EDITOR_EMAIL });
@@ -87,7 +86,7 @@ describe('rate limit', () => {
     );
   });
 
-  it('რეგისტრაცია და საჯარო ფორმა: IP-ით 429', async () => {
+  it('რეგისტრაცია და საჯარო ფორმა: IP-ით 429; კონტაქტზე — საკონტაქტო მისამართითაც (B6)', async () => {
     const a = agent(ctx.app, { ip: '192.0.2.50' });
     const body = { name: 'სახელი', email: 'r@example.org', invite: 'MC-X', password: PASSWORD };
     for (let i = 0; i < 3; i += 1) {
@@ -103,8 +102,16 @@ describe('rate limit', () => {
     const contact = await form.post('/api/v1/contact', VALID_CONTACT);
     expect(contact.statusCode).toBe(429);
     expect(Number(contact.headers['retry-after'])).toBe(60);
+    // სხვა IP, იგივე მისამართი (ჰარებითა და დეფისებით ჩაწერილი) → 429; სხვა მისამართი → 200
+    const other = agent(ctx.app, { ip: '192.0.2.61' });
+    const sameContact = await other.post('/api/v1/contact', {
+      ...VALID_CONTACT,
+      contact: '+995-555-123456',
+    });
+    expect(sameContact.statusCode).toBe(429);
+    expect(sameContact.json().code).toBe('rate-limited');
     expect(
-      (await agent(ctx.app, { ip: '192.0.2.61' }).post('/api/v1/contact', VALID_CONTACT))
+      (await other.post('/api/v1/contact', { ...VALID_CONTACT, contact: '+995 555 00 00 01' }))
         .statusCode,
     ).toBe(200);
   });
@@ -117,7 +124,7 @@ describe('ლოგი: პაროლი, token, სესიის id, კო
       logStream: logs.stream,
       env: {
         NODE_ENV: 'production',
-        ...FAKE_R2_ENV,
+        ...FAKE_PRODUCTION_ENV,
         MONGODB_URI: 'mongodb://127.0.0.1:1/unused',
         LOG_LEVEL: 'info',
         TRUST_PROXY: '1',

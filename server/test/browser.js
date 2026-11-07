@@ -122,6 +122,8 @@ export function createBrowser({ base, matcher }) {
   return {
     jar,
     problems,
+    /** B6: იგივე fetch საჯარო adapter-ისთვის (spec-ის შემოწმებით) */
+    fetch: doFetch,
     adapter: createHttpAdminAdapter({ baseUrl: base, fetch: doFetch }),
     /** `document.cookie` — მხოლოდ httpOnly-ს გარეშე (ბრაუზერის წესი) */
     get cookie() {

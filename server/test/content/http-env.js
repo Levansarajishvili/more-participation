@@ -1,7 +1,7 @@
 import { ADMIN_EMAIL, normalized, plain } from '@/admin/__tests__/scenarios/admin-scenarios.js';
 import { MOCK_PASSWORD, adminState } from '@/admin/api/mock.js';
 import { CONTENT_TYPES } from '@/admin/content-types.js';
-import { createMockAdapter } from '@/content/mock/index.js';
+import { createHttpContentAdapter } from '@/content/http.js';
 import { createMockData } from '@/content/mock/data.js';
 import { createMockStore } from '@/content/mock/store.js';
 
@@ -19,7 +19,9 @@ import { makeApp } from '../helpers.js';
  * იმავე id-ებით და მეტათი; მომხმარებლები — mock-ის `u-001` / `u-002` (იგივე სახელი, ელფოსტა,
  * პაროლი), რომ `updatedBy` დაემთხვეს. საათი ერთია (`start`) — mock-ის გარემოსაც იგივე.
  *
- * საჯარო ხედი B6-მდე: ბაზის `snapshot()` → mock-ის საჯარო adapter-ი (იგივე `query.js`, `localize`).
+ * საჯარო ხედი (B6): რეალური საჯარო API (`/api/v1/*`) frontend-ის `createHttpContentAdapter`-ით —
+ * ადმინში გამოქვეყნებული / წაშლილი მასალა იმავე სერვერის საჯარო პასუხში მაშინვე ჩანს (ETag-ის ქეშის
+ * მიუხედავად). B4–B5-ში აქ ბაზის `snapshot()` → mock-ის adapter-ი იდგა.
  */
 
 export const ADMIN = '/api/admin';
@@ -79,7 +81,10 @@ export async function httpEnv(label, { start = Date.now(), env } = {}) {
   const restore = installDocument(() => browser);
   const admin = normalized(browser.adapter);
 
-  const view = async () => createMockAdapter({ data: plain(await repos.snapshot()), now: clk.now });
+  const pub = createHttpContentAdapter({
+    baseUrl: `http://127.0.0.1:${app.server.address().port}/api/v1`,
+    fetch: browser.fetch,
+  });
 
   /** @type {unknown[]} */
   const notes = [];
@@ -100,10 +105,10 @@ export async function httpEnv(label, { start = Date.now(), env } = {}) {
     },
     adapter: browser.adapter,
     pub: {
-      getArticle: async (slug) => (await view()).getArticle(slug),
-      listArticles: async (params) => (await view()).listArticles(/** @type {any} */ (params)),
-      getTeam: async () => (await view()).getTeam(),
-      getSettings: async () => (await view()).getSettings(),
+      getArticle: (slug) => pub.getArticle(slug),
+      listArticles: (params) => pub.listArticles(/** @type {any} */ (params)),
+      getTeam: () => pub.getTeam(),
+      getSettings: () => pub.getSettings(),
     },
     login: (email = ADMIN_EMAIL) => admin.auth.login({ email, password: MOCK_PASSWORD }),
     item: async (id) => (await repos.content.find(id))?.item ?? null,

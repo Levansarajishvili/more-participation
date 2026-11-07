@@ -102,7 +102,7 @@ export function toContentDoc({ id, type, item, meta, working = null }) {
   const work = working
     ? { item: plain(working.item), at: new Date(working.at), by: working.by ?? null }
     : null;
-  const derived = derivedFields(value, work?.item ?? null);
+  const derived = derivedFields(value, work?.item ?? null, type);
   return {
     _id: id,
     type,
@@ -180,6 +180,11 @@ export async function inTransaction(client, work) {
  * @typedef {object} ContentRepository
  * @property {(type: ContentType, options?: { visibleAt?: number }) => Promise<ContentRecord[]>} list
  *   ჩასმის რიგით; `visibleAt` — მხოლოდ საჯაროდ ხილული, უახლესი პირველი
+ * @property {(type: ContentType, options: { at: number, where?: Record<string, unknown> }) => Promise<Record<string, any>[]>} publicItems
+ *   B6: საჯაროდ ხილული მასალის `item`-ები ჩასმის რიგით (mock-ის საცავის რიგი — `query.js` მათ
+ *   სტაბილურად ალაგებს); `where` — დამატებითი ფილტრი (`item.category`, `searchFilter`…)
+ * @property {(type: ContentType, slug: string, at: number) => Promise<Record<string, any> | null>} publicItem
+ *   B6: საჯაროდ ხილული მასალა slug-ით (`item`) ან null
  * @property {(id: string) => Promise<ContentRecord | null>} find
  * @property {(type: ContentType, slug: string) => Promise<ContentRecord | null>} findBySlug
  * @property {(type: ContentType, item: object, options?: { by?: string | null, id?: string }) => Promise<ContentRecord>} insert
@@ -280,7 +285,7 @@ export function createContentRepository(
       keepWorking && doc.working
         ? { item: plain(keepWorking), at: doc.working.at, by: doc.working.by ?? null }
         : null;
-    const derived = derivedFields(value, working?.item ?? null);
+    const derived = derivedFields(value, working?.item ?? null, doc.type);
     const set = {
       status: derived.status,
       publishedAt: derived.publishedAt,
@@ -331,6 +336,25 @@ export function createContentRepository(
           ? content.find({ type }).sort({ createdAt: 1, _id: 1 })
           : content.find(publicFilter(type, visibleAt)).sort({ publishedAt: -1, _id: 1 });
       return (await cursor.toArray()).map(toContentRecord);
+    },
+
+    async publicItems(type, { at, where = {} }) {
+      assertType(type);
+      const docs = await content
+        .find({ ...publicFilter(type, at), ...where }, { projection: { item: 1 } })
+        .sort({ createdAt: 1, _id: 1 })
+        .toArray();
+      return docs.map((doc) => doc.item);
+    },
+
+    async publicItem(type, slug, at) {
+      assertType(type);
+      if (typeof slug !== 'string' || !slug.trim()) return null;
+      const doc = await content.findOne(
+        { ...publicFilter(type, at), slug },
+        { projection: { item: 1 } },
+      );
+      return doc ? doc.item : null;
     },
 
     async find(id) {

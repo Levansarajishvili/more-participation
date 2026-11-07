@@ -15,6 +15,16 @@ export const FAKE_R2_ENV = Object.freeze({
 });
 
 /**
+ * B6: production-ის სავალდებულო env (R2 + ფორმები) — სატესტო, ყალბი მნიშვნელობებით.
+ */
+export const FAKE_PRODUCTION_ENV = Object.freeze({
+  ...FAKE_R2_ENV,
+  CONTACT_INBOX: 'inbox@example.org',
+  PUBLIC_ORIGIN: 'https://example.org',
+  SUBSCRIBE_SECRET: 'test-subscribe-secret-0123456789abcdef',
+});
+
+/**
  * @param {Record<string, string>} [env]
  */
 export function testConfig(env = {}) {

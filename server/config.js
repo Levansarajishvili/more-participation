@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import { URL, fileURLToPath } from 'node:url';
 
 import Ajv2020 from 'ajv/dist/2020.js';
@@ -29,6 +30,18 @@ import Ajv2020 from 'ajv/dist/2020.js';
  * @property {{ auth: RateLimit, forms: RateLimit }} rateLimit
  *   B3: `auth` — შესვლა / რეგისტრაცია (IP; შესვლაზე + ანგარიში), `forms` — საჯარო ფორმები (B6)
  * @property {MediaConfig} media  B5: ფაილების საცავი და ატვირთვის ზღვრები
+ * @property {MailConfig} mail    B6: ელფოსტა (კონტაქტის წერილი, გამოწერის ბმული)
+ * @property {string} publicOrigin  B6: საიტის origin წერილის ბმულისთვის (`https://…`, `/`-ის გარეშე)
+ * @property {{ secret: string }} subscriptions  B6: გაუქმების ბმულის HMAC-ის საიდუმლო
+ */
+
+/**
+ * @typedef {object} MailConfig
+ * @property {'log' | 'file' | 'memory'} transport  log — მხოლოდ მოვლენის სახელი ლოგში (stub, B7-მდე);
+ *   file — წერილი ფაილად (`dir`, dev); memory — მეხსიერება (ტესტი, `mailer.outbox`)
+ * @property {string} dir     file: საქაღალდე
+ * @property {string} inbox   კონტაქტის ფორმის მიმღები (`CONTACT_INBOX`, B0 #8)
+ * @property {string} from    გამგზავნი (`no-reply@[დომენი]` — B7)
  */
 
 /**
@@ -47,6 +60,14 @@ const TRACK_LIMIT = 1024 * 1024;
 // `String(import.meta.url)`: Vite-ის asset-ის გარდაქმნის გარეშე (jsdom-ის ტესტი, `openapi.js`-ის იგივე)
 export const DEFAULT_MEDIA_DIR = fileURLToPath(new URL('./.media/', String(import.meta.url)));
 export const STORAGE_KINDS = Object.freeze(['r2', 'local', 'memory']);
+/** B6: ელფოსტის გადამცემი. `resend` — B7 (დომენი, DNS: SPF / DKIM / DMARC). */
+export const MAIL_TRANSPORTS = Object.freeze(['log', 'file', 'memory']);
+/** file გადამცემის ნაგულისხმევი საქაღალდე (git / zip-ის გარეთ). */
+export const DEFAULT_MAIL_DIR = fileURLToPath(new URL('./.mail/', String(import.meta.url)));
+/** development / test: მიმღები და გამგზავნი — `.invalid` (RFC 2606: ვერასდროს მიიღება). */
+const DEV_INBOX = 'inbox@example.invalid';
+const DEV_FROM = 'no-reply@example.invalid';
+const EMAIL_PATTERN = '^[^\\s@]+@[^\\s@]+\\.[^\\s@]{2,}$';
 
 /** @typedef {{ max: number, windowMs: number }} RateLimit */
 
@@ -100,6 +121,16 @@ export const ENV_SCHEMA = Object.freeze({
     MEDIA_MAX_DOCUMENT_MB: { type: 'integer', minimum: 1, maximum: 100, default: 20 },
     // სურათის მეგაპიქსელები (მეხსიერება: 40 MP ≈ 120 MB გაშლილი)
     MEDIA_MAX_MEGAPIXELS: { type: 'integer', minimum: 1, maximum: 100, default: 40 },
+    // B6 — ელფოსტა: log | file | memory (ცარიელი → production: log, development: file, test: memory)
+    MAIL_TRANSPORT: { type: 'string', enum: MAIL_TRANSPORTS },
+    MAIL_DIR: { type: 'string', minLength: 1, maxLength: 1024 },
+    // კონტაქტის ფორმის მიმღები (B0 #8) და გამგზავნი — მხოლოდ env-ში
+    CONTACT_INBOX: { type: 'string', maxLength: 254, pattern: EMAIL_PATTERN },
+    MAIL_FROM: { type: 'string', maxLength: 254, pattern: EMAIL_PATTERN },
+    // საიტის origin წერილის ბმულისთვის: https://[დომენი] (staging — *.onrender.com)
+    PUBLIC_ORIGIN: { type: 'string', maxLength: 255, pattern: '^https?://[^\\s/?#]+$' },
+    // გაუქმების ბმულის HMAC-SHA256-ის საიდუმლო (≥ 32 სიმბოლო; შეცვლა ძველ ბმულებს აუქმებს)
+    SUBSCRIBE_SECRET: { type: 'string', pattern: '^\\S{32,256}$' },
   },
   allOf: [
     // წარმოებაში in-memory ბაზა არ არსებობს — connection string სავალდებულოა; ფაილები — მხოლოდ R2
@@ -107,8 +138,13 @@ export const ENV_SCHEMA = Object.freeze({
     {
       if: { properties: { NODE_ENV: { const: 'production' } }, required: ['NODE_ENV'] },
       then: {
-        required: ['MONGODB_URI'],
-        properties: { MEDIA_STORAGE: { const: 'r2' } },
+        // B6: წერილის მიმღები, ბმულის origin (https) და გაუქმების საიდუმლო; ფოსტა — `log` (B7: resend)
+        required: ['MONGODB_URI', 'CONTACT_INBOX', 'PUBLIC_ORIGIN', 'SUBSCRIBE_SECRET'],
+        properties: {
+          MEDIA_STORAGE: { const: 'r2' },
+          MAIL_TRANSPORT: { const: 'log' },
+          PUBLIC_ORIGIN: { type: 'string', pattern: '^https://' },
+        },
       },
     },
     {
@@ -209,6 +245,10 @@ export function loadConfig(env = process.env) {
         })
       : null;
   const megabytes = (/** @type {string} */ key) => /** @type {number} */ (input[key]) * 1024 * 1024;
+  const mailTransport = /** @type {MailConfig['transport']} */ (
+    input.MAIL_TRANSPORT ??
+      (nodeEnv === 'production' ? 'log' : nodeEnv === 'test' ? 'memory' : 'file')
+  );
   return Object.freeze({
     env: nodeEnv,
     // PaaS (Render, Fly) კონტეინერში 0.0.0.0-ზე უსმენს; ლოკალურად — მხოლოდ ამ კომპიუტერზე
@@ -243,6 +283,20 @@ export function loadConfig(env = process.env) {
         track: TRACK_LIMIT,
       }),
       maxPixels: /** @type {number} */ (input.MEDIA_MAX_MEGAPIXELS) * 1_000_000,
+    }),
+    mail: Object.freeze({
+      transport: mailTransport,
+      dir: /** @type {string | undefined} */ (input.MAIL_DIR) ?? DEFAULT_MAIL_DIR,
+      inbox: /** @type {string | undefined} */ (input.CONTACT_INBOX) ?? DEV_INBOX,
+      from: /** @type {string | undefined} */ (input.MAIL_FROM) ?? DEV_FROM,
+    }),
+    publicOrigin:
+      /** @type {string | undefined} */ (input.PUBLIC_ORIGIN) ?? 'http://localhost:5173',
+    // development / test: საიდუმლო პროცესის სიცოცხლეზე (გადატვირთვის შემდეგ ძველი ბმული აღარ მუშაობს)
+    subscriptions: Object.freeze({
+      secret:
+        /** @type {string | undefined} */ (input.SUBSCRIBE_SECRET) ??
+        randomBytes(32).toString('base64url'),
     }),
   });
 }

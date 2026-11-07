@@ -8,7 +8,7 @@ import { normalizeSearch } from '@/content/text.js';
 
 import { COLLECTION } from '../../db/collections.js';
 import { createContentRepository, typeOfId } from '../../db/content.js';
-import { mediaKeysOf, searchFilter } from '../../db/derive.js';
+import { mediaKeysOf, searchFilter, searchTextOf } from '../../db/derive.js';
 import { createRepositories } from '../../db/index.js';
 
 import { T0, caught, clock, freshDatabase, iso } from './helpers.js';
@@ -59,19 +59,24 @@ describe('content repository', () => {
     expect(doc?.slug).toBe('insert-test');
     expect(doc?.status).toBe('published');
     expect(doc?.publishedAt).toEqual(new Date(item.publishedAt));
-    expect(doc?.searchText).toBe(
-      normalizeSearch(
-        [
-          item.slug,
-          item.title,
-          item.excerpt,
-          item.translations?.en?.title,
-          item.translations?.en?.excerpt,
-        ]
-          .filter(Boolean)
-          .join(' '),
+    // B6: სტატიაზე + საჯარო ძიების ტექსტი ორივე ენაზე (ავტორი, კატეგორია, ტექსტი)
+    expect(doc?.searchText).toBe(searchTextOf(item, 'articles'));
+    expect(
+      doc?.searchText.startsWith(
+        normalizeSearch(
+          [
+            item.slug,
+            item.title,
+            item.excerpt,
+            item.translations?.en?.title,
+            item.translations?.en?.excerpt,
+          ]
+            .filter(Boolean)
+            .join(' '),
+        ),
       ),
-    );
+    ).toBe(true);
+    expect(doc?.searchText).toContain(normalizeSearch(item.author));
     expect(doc?.mediaKeys).toEqual([]);
   });
 

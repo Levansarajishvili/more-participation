@@ -1,8 +1,10 @@
 import { CONTENT_TYPES } from '@/admin/content-types.js';
+import { orgFromPage } from '@/content/public.js';
 
 import { createContentRepository } from './content.js';
 import { createInvitesRepository } from './invites.js';
 import { createMediaRepository } from './media.js';
+import { createFormsRepository } from './forms.js';
 import { createSessionsRepository } from './sessions.js';
 import { createSettingsRepository } from './settings.js';
 import { createUsersRepository } from './users.js';
@@ -38,6 +40,8 @@ export function createRepositories(database, options = {}) {
   const sessions = createSessionsRepository(database, { now, ...options.session });
   const invites = createInvitesRepository(database, { now, ...options.invites });
   const media = createMediaRepository(database, { now, content });
+  // B6: კონტაქტის შეტყობინება, გამოწერა
+  const forms = createFormsRepository(database);
 
   /**
    * სტატუსის ფილტრის გარეშე, როგორც mock-ის `snapshot()` (ხილვადობას `query.js` ფილტრავს).
@@ -50,16 +54,25 @@ export function createRepositories(database, options = {}) {
     const items = Object.fromEntries(
       SNAPSHOT_TYPES.map((type, i) => [type, lists[i].map((record) => record.item)]),
     );
+    // B6: გვერდის ინგლისური თარგმანი (`translations.en.team[i]`) წევრს ერთვის — `orgFromPage`
     return /** @type {any} */ ({
       ...items,
-      team: about?.item.team ?? [],
-      partners: about?.item.partners ?? [],
-      stages: about?.item.stages ?? [],
+      ...orgFromPage(about?.item),
       settings: site?.item ?? null,
     });
   }
 
-  return { client: database.client, content, settings, users, sessions, invites, media, snapshot };
+  return {
+    client: database.client,
+    content,
+    settings,
+    users,
+    sessions,
+    invites,
+    media,
+    forms,
+    snapshot,
+  };
 }
 
 /** @typedef {ReturnType<typeof createRepositories>} Repositories */

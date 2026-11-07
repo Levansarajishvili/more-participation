@@ -18,6 +18,9 @@ const MODULES = [
   'youtube',
   'vtt',
   'query',
+  // B6: საჯარო ხედი და HTTP adapter-ი (fetch მხოლოდ გამოძახებისას)
+  'public',
+  'http',
 ];
 
 /** @type {Record<string, number>} */
@@ -39,6 +42,12 @@ const { normalizeEmail } = await import('@/content/forms.js');
 const { CSRF_COOKIE, CSRF_HEADER } = await import('@/admin/api/http.js');
 const { PASSWORD_MIN, validateRegister } = await import('@/admin/auth/auth-forms.js');
 const { ROLE_PERMISSIONS, can } = await import('@/admin/api/permissions.js');
+// B6: ენა მოთხოვნიდან (ინგლისური ლექსიკონი სერვერზე), საჯარო ხედი, გამოწერის token-ი
+const { inLocale } = await import('../lib/i18n.js');
+const { getLocale } = await import('@/i18n/locale.js');
+const { orgFromPage, publicItem } = await import('@/content/public.js');
+const { isUnsubscribeToken } = await import('@/content/forms.js');
+const { unsubscribeToken } = await import('../lib/subscriptions.js');
 
 const result = {
   node: process.versions.node,
@@ -65,6 +74,16 @@ const result = {
     roles: Object.keys(ROLE_PERMISSIONS),
     editorUsers: can({ role: 'editor' }, 'users.manage'),
     email: normalizeEmail('  Nino@Example.GE '),
+  },
+  b6: {
+    english: inLocale('en', () => t('errors.not-found')),
+    locale: getLocale(),
+    team: orgFromPage({
+      team: [{ name: 'ა', role: 'როლი' }],
+      translations: { en: { team: [{ name: '', role: '[Director]' }] } },
+    }).team[0].translations.en,
+    article: publicItem('articles', { body: [{ type: 'h2', text: 'ა ბ გ' }] }, 'ka').readingMinutes,
+    unsubscribe: isUnsubscribeToken(unsubscribeToken('x'.repeat(32), '0'.repeat(24))),
   },
 };
 
