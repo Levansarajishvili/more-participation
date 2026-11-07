@@ -93,16 +93,28 @@ describe('თავსებადობის მენიუ: შენახ�
     const first = await renderApp();
     const { panel } = await openMenu(first.user);
 
-    await first.user.click(within(panel).getByRole('button', { name: 'შრიფტის გაზრდა' }));
+    await first.user.click(within(panel).getByRole('button', { name: 'შრიფტი 100%' }));
     expect(document.documentElement).toHaveAttribute('data-size', '125');
     expect(await within(panel).findByText('შრიფტის ზომა: 125%')).toBeInTheDocument();
+    expect(within(panel).getByRole('button', { name: 'შრიფტი 125%' })).toHaveFocus();
 
-    await first.user.click(within(panel).getByRole('radio', { name: 'მაღალი' }));
+    // სტანდარტული → მუქი → მაღალი
+    const contrast = within(panel).getByRole('button', { name: 'კონტრასტი სტანდარტული' });
+    await first.user.click(contrast);
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
+    await first.user.click(contrast);
     expect(document.documentElement).toHaveAttribute('data-theme', 'contrast');
+    expect(contrast).toHaveAccessibleName('კონტრასტი მაღალი');
     expect(await within(panel).findByText('კონტრასტი: მაღალი')).toBeInTheDocument();
 
-    await first.user.click(within(panel).getByRole('switch', { name: 'განლაგება' }));
+    const spacing = within(panel).getByRole('button', { name: 'განლაგება' });
+    expect(spacing).toHaveAttribute('aria-pressed', 'false');
+    expect(spacing).toHaveAccessibleDescription('სტრიქონებს შორის მეტი მანძილი');
+    await first.user.click(spacing);
     expect(document.documentElement).toHaveAttribute('data-spacing', 'wide');
+    expect(spacing).toHaveAttribute('aria-pressed', 'true');
+    // მდგომარეობა ფერის გარდა ტექსტითაც ჩანს
+    expect(within(spacing).getByText('გაშლილი')).toBeVisible();
 
     expect(JSON.parse(localStorage.getItem('mc-a11y') ?? 'null')).toEqual({
       size: 125,
@@ -120,36 +132,41 @@ describe('თავსებადობის მენიუ: შენახ�
 
     const second = await renderApp();
     const reopened = (await openMenu(second.user)).panel;
-    expect(within(reopened).getByText('125%')).toBeInTheDocument();
-    expect(within(reopened).getByRole('radio', { name: 'მაღალი' })).toBeChecked();
-    expect(within(reopened).getByRole('switch', { name: 'განლაგება' })).toHaveAttribute(
-      'aria-checked',
+    expect(within(reopened).getByRole('button', { name: 'შრიფტი 125%' })).toBeInTheDocument();
+    expect(within(reopened).getByRole('button', { name: 'კონტრასტი მაღალი' })).toBeInTheDocument();
+    expect(within(reopened).getByRole('button', { name: 'განლაგება' })).toHaveAttribute(
+      'aria-pressed',
       'true',
     );
     expect(document.documentElement).toHaveAttribute('data-theme', 'contrast');
   });
 
-  it('ზღვარზე ღილაკი aria-disabled-ია, ფოკუსს ინარჩუნებს და ზომას არ ცვლის', async () => {
+  it('შრიფტი ციკლურია: 100 → 125 → … → 200 → 100, ფოკუსი ფილაზე რჩება', async () => {
     const { user } = await renderApp();
     const { panel } = await openMenu(user);
-    const decrease = within(panel).getByRole('button', { name: 'შრიფტის შემცირება' });
-    expect(decrease).toHaveAttribute('aria-disabled', 'true');
-    await user.click(decrease);
-    expect(decrease).toHaveFocus();
+    const font = within(panel).getByRole('button', { name: 'შრიფტი 100%' });
+    expect(font).toHaveAccessibleDescription(
+      'ყოველი დაჭერა შრიფტს ზრდის; 200%-ის შემდეგ ზომა 100%-ს უბრუნდება.',
+    );
+    for (const size of ['125', '150', '175', '200']) {
+      await user.click(font);
+      expect(document.documentElement).toHaveAttribute('data-size', size);
+    }
+    await user.click(font);
     expect(document.documentElement).toHaveAttribute('data-size', '100');
-
-    const increase = within(panel).getByRole('button', { name: 'შრიფტის გაზრდა' });
-    for (let i = 0; i < 5; i += 1) await user.click(increase);
-    expect(document.documentElement).toHaveAttribute('data-size', '200');
-    expect(increase).toHaveAttribute('aria-disabled', 'true');
+    expect(font).toHaveAccessibleName('შრიფტი 100%');
+    expect(font).toHaveFocus();
   });
 
   it('გასუფთავება: საცავი იშლება, თემა OS-ს უბრუნდება', async () => {
     media = installMatchMedia({ width: 1440, dark: true });
     const { user } = await renderApp();
     const { panel } = await openMenu(user);
-    await user.click(within(panel).getByRole('radio', { name: 'სტანდარტული' }));
-    await user.click(within(panel).getByRole('button', { name: 'შრიფტის გაზრდა' }));
+    // OS მუქია: მუქი → მაღალი → სტანდარტული
+    const contrast = within(panel).getByRole('button', { name: 'კონტრასტი მუქი' });
+    await user.click(contrast);
+    await user.click(contrast);
+    await user.click(within(panel).getByRole('button', { name: 'შრიფტი 100%' }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
     expect(localStorage.getItem('mc-a11y')).not.toBeNull();
 
@@ -194,7 +211,7 @@ describe('თავსებადობის მენიუ: ქცევა'
       within(panel).getByRole('button', { name: 'თავსებადობის მენიუს დახურვა' }),
     ).toHaveFocus();
     await user.tab();
-    expect(within(panel).getByRole('switch', { name: 'ხმოვანი რეჟიმი' })).toHaveFocus();
+    expect(within(panel).getByRole('button', { name: 'ხმოვანი რეჟიმი' })).toHaveFocus();
 
     await user.keyboard('{Escape}');
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
@@ -205,27 +222,20 @@ describe('თავსებადობის მენიუ: ქცევა'
   it('Tab-ის თანმიმდევრობა პანელში და დახურვა ფოკუსის გასვლისას', async () => {
     const { user } = await renderApp();
     const { toggle, panel } = await openMenu(user);
-    const names = [];
-    for (let i = 0; i < 8; i += 1) {
-      await user.tab();
-      const el = /** @type {HTMLElement} */ (document.activeElement);
-      names.push(
-        el.getAttribute('aria-label') ||
-          el.querySelector('.mc-switch__label')?.textContent ||
-          el.closest('label')?.textContent ||
-          el.textContent,
-      );
-    }
-    expect(names).toEqual([
+    const order = [
       'თავსებადობის მენიუს დახურვა',
       'ხმოვანი რეჟიმი',
-      'შრიფტის შემცირება',
-      'შრიფტის გაზრდა',
-      'სტანდარტული',
+      'შრიფტი 100%',
+      'კონტრასტი სტანდარტული',
       'განლაგება',
       'გასუფთავება',
-      'English',
-    ]);
+    ];
+    for (const name of order) {
+      await user.tab();
+      expect(within(panel).getByRole('button', { name })).toHaveFocus();
+    }
+    await user.tab();
+    expect(document.activeElement).toHaveTextContent('English');
     // ფოკუსი პანელიდან გავიდა — ღია პანელი ფოკუსირებულ ელემენტს არ დაფარავს (WCAG 2.4.11)
     expect(toggle).toHaveAttribute('aria-expanded', 'false');
     expect(panel).not.toBeVisible();
@@ -246,7 +256,10 @@ describe('თავსებადობის მენიუ: ქცევა'
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
 
     const { panel } = await openMenu(user);
-    await user.click(within(panel).getByRole('radio', { name: 'სტანდარტული' }));
+    // მუქი → მაღალი → სტანდარტული (ხელით არჩეული)
+    const contrast = within(panel).getByRole('button', { name: 'კონტრასტი მუქი' });
+    await user.click(contrast);
+    await user.click(contrast);
     act(() => media?.set({ dark: false }));
     act(() => media?.set({ dark: true }));
     expect(document.documentElement).toHaveAttribute('data-theme', 'light');
@@ -254,16 +267,22 @@ describe('თავსებადობის მენიუ: ქცევა'
 });
 
 describe('ხმოვანი რეჟიმი', () => {
-  it('speechSynthesis-ის გარეშე: გადამრთველი aria-disabled-ია და მიზეზს ტექსტით ხსნის', async () => {
+  it('speechSynthesis-ის გარეშე: ფილა aria-disabled-ია და მიზეზს ტექსტით ხსნის', async () => {
     const { user } = await renderApp();
     const { panel } = await openMenu(user);
-    const voice = within(panel).getByRole('switch', { name: 'ხმოვანი რეჟიმი' });
+    const voice = within(panel).getByRole('button', { name: 'ხმოვანი რეჟიმი' });
     expect(voice).toBeVisible();
     expect(voice).toHaveAttribute('aria-disabled', 'true');
     expect(voice).toHaveAccessibleDescription(/ქართული ხმა არ არის/);
+    expect(within(voice).getByText('მიუწვდომელია')).toBeVisible();
     await user.click(voice);
-    expect(voice).toHaveAttribute('aria-checked', 'false');
+    expect(voice).toHaveAttribute('aria-pressed', 'false');
+    expect(voice).toHaveFocus();
     expect(localStorage.getItem('mc-a11y')).toBeNull();
+    // სრული მიზეზი ხილულ სტატუსში
+    await waitFor(() =>
+      expect(within(panel).getByRole('status')).toHaveTextContent(/ქართული ხმა არ არის/),
+    );
   });
 
   it('API არის, ქართული ხმა — არა: ჯერ „შემოწმება“, შემდეგ მიზეზი', async () => {
@@ -272,7 +291,7 @@ describe('ხმოვანი რეჟიმი', () => {
     try {
       const { user } = await renderApp();
       const { panel } = await openMenu(user);
-      const voice = within(panel).getByRole('switch', { name: 'ხმოვანი რეჟიმი' });
+      const voice = within(panel).getByRole('button', { name: 'ხმოვანი რეჟიმი' });
       expect(voice).toHaveAccessibleDescription('ქართული ხმის შემოწმება…');
       act(() => vi.advanceTimersByTime(VOICE_TIMEOUT_MS + 10));
       expect(voice).toHaveAccessibleDescription(/ქართული ხმა არ არის/);
@@ -286,11 +305,12 @@ describe('ხმოვანი რეჟიმი', () => {
     const { spoken, cancel } = installSpeech([{ lang: 'ka-GE', name: 'Georgian' }]);
     const { user, router } = await renderApp('/about');
     const { panel } = await openMenu(user);
-    const voice = within(panel).getByRole('switch', { name: 'ხმოვანი რეჟიმი' });
+    const voice = within(panel).getByRole('button', { name: 'ხმოვანი რეჟიმი' });
     expect(voice).not.toHaveAttribute('aria-disabled');
 
     await user.click(voice);
-    expect(voice).toHaveAttribute('aria-checked', 'true');
+    expect(voice).toHaveAttribute('aria-pressed', 'true');
+    expect(within(voice).getByText('ჩართული')).toBeVisible();
     // F5: გვერდს შიგთავსი აქვს — #main ბლოკებად იკითხება: ბილიკი, h1, ტექსტი…
     const texts = spoken.map((u) => u.text);
     expect(texts.slice(0, 2)).toEqual(['მთავარი', 'ჩვენ შესახებ']);

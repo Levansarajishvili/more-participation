@@ -48,11 +48,12 @@ const en = {
     voiceChecking: 'Checking for an English voice…',
     voiceUnavailable:
       'This browser has no English voice, so voice mode is unavailable. Try another browser or a screen reader.',
+    font: 'Text',
     fontSize: 'Text size',
     fontSizeValue: '{size}%',
-    fontSizeIncrease: 'Larger text',
-    fontSizeDecrease: 'Smaller text',
+    fontHint: 'Each press makes the text larger; after {max}% it returns to {min}%.',
     contrast: 'Contrast',
+    contrastHint: 'Each press switches to the next mode: standard, dark, high.',
     themes: {
       light: 'Standard',
       dark: 'Dark',
@@ -63,6 +64,14 @@ const en = {
     reset: 'Reset',
     resetDone: 'Settings are back to default.',
     themeToggle: 'Dark mode',
+    state: {
+      on: 'On',
+      off: 'Off',
+      checking: 'Checking…',
+      unavailable: 'Unavailable',
+      spacingNormal: 'Standard',
+      spacingWide: 'Wide',
+    },
     status: {
       voiceOn: 'Voice mode is on.',
       voiceOff: 'Voice mode is off.',
