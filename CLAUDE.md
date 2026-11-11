@@ -107,7 +107,7 @@ docs/
   deploy.md               B7: runbook — ანგარიშები, env, Atlas / R2 / Resend / Render, პირველი გაშვება,
                           განახლება, rollback, backup / აღდგენა, როტაცია, მონიტორინგი, header-ები
 index.html                lang="ka", color-scheme meta, inline mc-boot, favicon.svg
-render.yaml               B7: Render Blueprint (Frankfurt, Starter, pre-deploy migrate, /api/health)
+render.yaml               B7: Render Blueprint (Frankfurt, Free — MIGRATE_ON_START=1, /api/health)
 .node-version             B7: Node 22 (Render)
 public/favicon.svg        ლოგოს 16px ვერსია (LogoSynergy)
 scripts/

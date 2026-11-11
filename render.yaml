@@ -5,12 +5,12 @@ services:
     name: meti-chartuloba
     runtime: node
     region: frankfurt
-    # Starter — spin-down-ის გარეშე და pre-deploy-ით (B0 #1); Free-ზე: plan: free + MIGRATE_ON_START=1
-    plan: starter
+    # Free (ბიუჯეტი $0, 2026-11-11): 15 წთ უმოქმედობის შემდეგ იძინებს (გაღვიძება ≈ 1 წთ), pre-deploy და
+    # Shell არ აქვს — მიგრაცია გაშვებისას (MIGRATE_ON_START=1). Starter-ზე: plan: starter +
+    # preDeployCommand: npm run server:migrate + MIGRATE_ON_START=0
+    plan: free
     # devDependencies build-ს სჭირდება (Vite); შემდეგ იშლება — გაშვებისას მხოლოდ dependencies
     buildCommand: npm ci --include=dev && npm run build && npm prune --omit=dev
-    # მიგრაცია + საბაზისო ჩანაწერები (7 გვერდი, პარამეტრები) — ახალი ვერსია ტრაფიკს მის შემდეგ იღებს
-    preDeployCommand: npm run server:migrate
     startCommand: node server/index.js
     healthCheckPath: /api/health
     # SIGTERM → ახალ მოთხოვნას 503, მიმდინარე სრულდება (server/main.js — 10 წმ)
@@ -20,6 +20,9 @@ services:
         value: production
       # Render-ის proxy — 1; Cloudflare-ის proxy-ით წინ — 2
       - key: TRUST_PROXY
+        value: '1'
+      # pre-deploy-ის ნაცვლად: მიგრაცია + საბაზისო ჩანაწერები ყოველ გაშვებაზე (იდემპოტენტური) — listen-მდე
+      - key: MIGRATE_ON_START
         value: '1'
       # staging / დომენამდე — off (noindex); საბოლოო დომენზე — on
       - key: SITE_INDEXING
